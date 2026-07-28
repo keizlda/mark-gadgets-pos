@@ -203,3 +203,26 @@ export const lowStockItems = [
   { device: "MacBook Air M3", variant: "256GB Silver", category: "MacBooks", storage: "256GB", available: 2, reorderLevel: 4, estimatedValue: 98000, lastUpdated: "Jul 16, 2026", time: "9:18 AM" },
   { device: "iPad 10th Gen", variant: "Wi-Fi 64GB Blue", category: "iPads", storage: "64GB", available: 18, reorderLevel: 20, estimatedValue: 18530, lastUpdated: "Jul 16, 2026", time: "8:55 AM" },
 ];
+
+export const posCategories = ["All Categories", "iPhones", "iPads", "MacBooks", "Apple Watches", "Accessories"];
+
+export const posProducts = [
+  { batchCode: "F7T93X2L7J", product: "iPhone 16 Pro", category: "iPhones", storage: "256GB", color: "Natural Titanium", available: 5, price: 68990 },
+  { batchCode: "G6VJ81K2PQ", product: "iPhone 16 Pro Max", category: "iPhones", storage: "512GB", color: "Desert Titanium", available: 3, price: 78990 },
+  { batchCode: "DNPXJ6F72K", product: "iPhone 15 Pro", category: "iPhones", storage: "256GB", color: "Blue Titanium", available: 4, price: 58990 },
+  { batchCode: "K2L9M8N6PP", product: "iPhone 16", category: "iPhones", storage: "128GB", color: "Black", available: 7, price: 48990 },
+  { batchCode: "K8L2M1N3PQ", product: "iPad 10th Gen Wi-Fi", category: "iPads", storage: "64GB", color: "Blue", available: 6, price: 18990 },
+  { batchCode: "C02XK0YH7L2", product: "MacBook Air M4", category: "MacBooks", storage: "512GB", color: "Silver", available: 2, price: 64000 },
+  { batchCode: "RX1X2Y3Z4A", product: "Apple Watch Series 9 45mm", category: "Apple Watches", storage: "-", color: "Midnight", available: 4, price: 25990 },
+  { batchCode: "AP2GEN-USBC", product: "AirPods Pro 2nd Gen", category: "Accessories", storage: "-", color: "White", available: 8, price: 12990 },
+];
+
+export const paymentMethods = ["Cash", "GCash", "Credit Card", "Bank Transfer"];
+
+export const salesHistory = [
+  { orderId: "ORD-2026-0716-0021", date: "Jul 16, 2026", time: "10:15 AM", customer: "Juan Dela Cruz", phone: "0917 123 4567", device: "iPhone 16 Pro", storage: "256GB", color: "Natural Titanium", salesperson: "Admin", payment: "GCash", total: 78990, status: "Completed" },
+  { orderId: "ORD-2026-0716-0020", date: "Jul 16, 2026", time: "9:42 AM", customer: "Mark Santos", phone: "0998 765 4321", device: "iPhone 15", storage: "128GB", color: "Pink", salesperson: "Admin", payment: "Cash", total: 48990, status: "Completed" },
+  { orderId: "ORD-2026-0715-0019", date: "Jul 15, 2026", time: "4:30 PM", customer: "Ana Cruz", phone: "0921 456 7890", device: "MacBook Air M4", storage: "512GB", color: "Silver", salesperson: "Jane Reyes", payment: "Credit Card", total: 74990, status: "Completed" },
+  { orderId: "ORD-2026-0715-0018", date: "Jul 15, 2026", time: "2:10 PM", customer: "Kimberly Yu", phone: "0916 555 8888", device: "iPad Air 6", storage: "256GB", color: "Space Gray", salesperson: "Admin", payment: "GCash", total: 33990, status: "Refunded" },
+  { orderId: "ORD-2026-0714-0017", date: "Jul 14, 2026", time: "11:05 AM", customer: "Patricia Gomez", phone: "0906 789 1234", device: "Apple Watch Series 9", storage: "45mm", color: "Midnight", salesperson: "Jane Reyes", payment: "Bank Transfer", total: 25990, status: "Completed" },
+];

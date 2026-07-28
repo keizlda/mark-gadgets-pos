@@ -13,6 +13,8 @@ import { useState } from "react";
 
 function Sidebar() {
   const [inventoryOpen, setInventoryOpen] = useState(true);
+  const [salesOpen, setSalesOpen] = useState(true);
+  const [afterSalesOpen, setAfterSalesOpen] = useState(true);
 
   const linkClass = ({ isActive }) =>
     `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors ${
@@ -83,15 +85,63 @@ function Sidebar() {
           )}
         </div>
 
-        <NavLink to="/sales/new" className={linkClass}>
-          <ShoppingCart size={18} />
-          Sales
-        </NavLink>
+        {/* Sales group */}
+        <div>
+          <button
+            onClick={() => setSalesOpen(!salesOpen)}
+            className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+          >
+            <span className="flex items-center gap-3">
+              <ShoppingCart size={18} />
+              Sales
+            </span>
+            <ChevronDown
+              size={16}
+              className={`transition-transform ${
+                salesOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+          {salesOpen && (
+            <div className="mt-1 space-y-1">
+              <NavLink to="/sales/new" className={subLinkClass}>
+                New Sale
+              </NavLink>
+              <NavLink to="/sales/history" className={subLinkClass}>
+                Sales History
+              </NavLink>
+            </div>
+          )}
+        </div>
 
-        <NavLink to="/after-sales" className={linkClass}>
-          <RotateCcw size={18} />
-          After Sales
-        </NavLink>
+        {/* After Sales group */}
+        <div>
+          <button
+            onClick={() => setAfterSalesOpen(!afterSalesOpen)}
+            className="flex items-center justify-between w-full px-4 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+          >
+            <span className="flex items-center gap-3">
+              <RotateCcw size={18} />
+              After Sales
+            </span>
+            <ChevronDown
+              size={16}
+              className={`transition-transform ${
+                afterSalesOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+          {afterSalesOpen && (
+            <div className="mt-1 space-y-1">
+              <NavLink to="/after-sales/customer-returns" className={subLinkClass}>
+                Customer Returns
+              </NavLink>
+              <NavLink to="/after-sales/return-history" className={subLinkClass}>
+                Return History
+              </NavLink>
+            </div>
+          )}
+        </div>
 
         <NavLink to="/reports" className={linkClass}>
           <FileText size={18} />
