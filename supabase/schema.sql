@@ -38,6 +38,25 @@ create table public.devices (
   created_at timestamptz not null default now()
 );
 
+-- Bulk shipment placeholders — staff can log "a shipment arrived" (supplier,
+-- model, quantity, date) the same night without entering every serial, then
+-- link each individual unit back to it the next morning via Add Device.
+create table public.bulk_order_shells (
+  id uuid primary key default gen_random_uuid(),
+  supplier_id uuid references public.suppliers (id),
+  device_name text not null,
+  storage text,
+  color text,
+  quantity_expected int not null check (quantity_expected > 0),
+  date_arrived timestamptz not null,
+  status text not null default 'Pending' check (status in ('Pending', 'Completed')),
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.devices add column bulk_order_shell_id uuid references public.bulk_order_shells (id);
+alter table public.devices add column date_arrived timestamptz;
+
 -- Reorder threshold is set per model (device_name), not per unit — the owner
 -- configures this from the Low Stock page rather than at Add Device time.
 create table public.reorder_settings (
@@ -203,6 +222,8 @@ create index on public.supplier_defective_records (device_id);
 create index on public.supplier_defective_records (supplier_id);
 create index on public.reservations (device_id);
 create index on public.reservations (salesperson_id);
+create index on public.bulk_order_shells (supplier_id);
+create index on public.devices (bulk_order_shell_id);
 
 -- ============================================================
 -- TRANSACTIONAL RPCs
@@ -556,6 +577,7 @@ alter table public.customer_returns enable row level security;
 alter table public.supplier_defective_records enable row level security;
 alter table public.reservations enable row level security;
 alter table public.expenses enable row level security;
+alter table public.bulk_order_shells enable row level security;
 
 -- profiles: everyone authenticated can view (needed for salesperson lookups),
 -- but a user can only update their own row.
@@ -590,4 +612,7 @@ create policy "reservations_all_authenticated" on public.reservations
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
 create policy "expenses_all_authenticated" on public.expenses
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+create policy "bulk_order_shells_all_authenticated" on public.bulk_order_shells
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
