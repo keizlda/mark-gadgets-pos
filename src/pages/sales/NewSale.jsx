@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle, Wallet, CreditCard, Smartphone, Landmark, FileCheck, Tablet, Laptop, Watch, Headphones } from "lucide-react";
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle, Wallet, CreditCard, Smartphone, Landmark, FileCheck, CalendarClock, Building2, Tablet, Laptop, Watch, Headphones } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { processSale } from "../../services/salesService";
 import { getAvailableDevicesForSale } from "../../services/inventoryService";
@@ -7,12 +7,18 @@ import { getPosCategories } from "../../services/referenceService";
 
 const BULK_THRESHOLD = 3;
 
+// Check is only offered once the order actually qualifies as Bulk — it's
+// the payment method bulk buyers use, not something a regular sale needs.
 const paymentOptions = [
   { id: "Cash", label: "Cash", icon: Wallet },
   { id: "Credit Card", label: "Card", icon: CreditCard },
   { id: "GCash", label: "GCash", icon: Smartphone },
   { id: "Bank Transfer", label: "Bank Transfer", icon: Landmark },
-  { id: "Check", label: "Check", icon: FileCheck },
+];
+
+const installmentOptions = [
+  { id: "Skyro", label: "Skyro", icon: CalendarClock },
+  { id: "Home Credit", label: "Home Credit", icon: Building2 },
 ];
 
 const categoryIcon = {
@@ -76,6 +82,16 @@ function NewSale() {
   };
 
   const clearCart = () => setCart([]);
+
+  // Check only shows up once the order qualifies as Bulk — if the cart
+  // drops back to 3 or fewer units while Check is selected, fall back to
+  // Cash so a hidden, stale selection can't silently go through.
+  useEffect(() => {
+    if (payment === "Check" && cart.length <= BULK_THRESHOLD) {
+      setPayment("Cash");
+      setReferenceNumber("N/A");
+    }
+  }, [cart.length, payment]);
 
   const subtotal = cart.reduce((sum, c) => sum + c.price, 0);
   const discountAmount = Number(discount) || 0;
@@ -344,6 +360,42 @@ function NewSale() {
           <p className="text-xs font-medium text-gray-600 mb-2">Payment Method</p>
           <div className="grid grid-cols-2 gap-2">
             {paymentOptions.map((opt) => {
+              const Icon = opt.icon;
+              const active = payment === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => handlePaymentChange(opt.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border ${
+                    active
+                      ? "border-blue-500 bg-blue-50 text-blue-600"
+                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <Icon size={14} />
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {cart.length > BULK_THRESHOLD && (
+            <button
+              onClick={() => handlePaymentChange("Check")}
+              className={`w-full mt-2 flex items-center gap-2 px-3 py-2 rounded-lg text-sm border ${
+                payment === "Check"
+                  ? "border-blue-500 bg-blue-50 text-blue-600"
+                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <FileCheck size={14} />
+              Check
+            </button>
+          )}
+
+          <p className="text-xs font-medium text-gray-600 mt-4 mb-2">Installment</p>
+          <div className="grid grid-cols-2 gap-2">
+            {installmentOptions.map((opt) => {
               const Icon = opt.icon;
               const active = payment === opt.id;
               return (

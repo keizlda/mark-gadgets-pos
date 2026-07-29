@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
+import ScrollToTop from "./components/layout/ScrollToTop";
 import RequireAuth from "./components/auth/RequireAuth";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -29,6 +30,7 @@ function AppLayout() {
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
