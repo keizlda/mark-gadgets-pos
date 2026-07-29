@@ -89,6 +89,30 @@ function AddDevice() {
     setForm((f) => ({ ...f, model, customModel: "", color: "" }));
   };
 
+  // Log Shipment Arrival already picked the model/color/storage/supplier
+  // from the same catalog, so pulling them back in here just saves staff
+  // from re-selecting what's already known about the shipment.
+  const handleShellChange = (shellId) => {
+    const shell = pendingShells.find((s) => s.id === shellId);
+    if (!shell) {
+      update("shellId", shellId);
+      return;
+    }
+
+    const matchedCategory = categories.find((cat) => productCatalog[cat]?.models?.includes(shell.deviceName));
+
+    setForm((f) => ({
+      ...f,
+      shellId,
+      category: matchedCategory || f.category,
+      model: matchedCategory ? shell.deviceName : OTHER_MODEL,
+      customModel: matchedCategory ? "" : shell.deviceName,
+      color: shell.color || "",
+      storage: shell.storage || "",
+      supplier: shell.supplierName || f.supplier,
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -169,7 +193,7 @@ function AddDevice() {
           </label>
           <select
             value={form.shellId}
-            onChange={(e) => update("shellId", e.target.value)}
+            onChange={(e) => handleShellChange(e.target.value)}
             className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Not linked to a shipment</option>
@@ -178,8 +202,8 @@ function AddDevice() {
             ))}
           </select>
           <p className="text-xs text-gray-400 mt-1">
-            Links this unit to the shipment and records its actual arrival date. Everything else below still
-            needs to be entered as normal.
+            Fills in category, model, color, storage, and supplier from the shipment, and records its actual
+            arrival date. Batch code, price, and status still need to be entered per unit.
           </p>
         </div>
       )}
