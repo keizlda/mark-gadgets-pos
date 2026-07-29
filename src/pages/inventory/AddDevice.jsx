@@ -40,6 +40,7 @@ const blankForm = {
   supplier: "",
   dateReceived: new Date().toISOString().slice(0, 10),
   batchCode: "",
+  purchasePrice: "",
   price: "",
   status: "Available",
   issueDescription: "",
@@ -136,6 +137,7 @@ function AddDevice() {
         color: form.color,
         status: form.status,
         supplierName: form.supplier,
+        purchasePrice: Number(form.purchasePrice),
         price: Number(form.price),
         notes: form.remarks.trim(),
         dateAdded,
@@ -359,6 +361,24 @@ function AddDevice() {
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
+                Capital (Purchase Price) <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
+                <input
+                  type="number"
+                  value={form.purchasePrice}
+                  onChange={(e) => update("purchasePrice", e.target.value)}
+                  required
+                  placeholder="45000.00"
+                  className="w-full border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">How much this unit cost — used to gauge profit at sale time</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
                 Base Selling Price <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -448,6 +468,12 @@ function AddDevice() {
             <div className="flex justify-between">
               <span className="text-gray-400">Batch Code</span>
               <span className="text-gray-700">{form.batchCode || "—"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Capital</span>
+              <span className="text-gray-700">
+                {form.purchasePrice ? `₱${Number(form.purchasePrice).toLocaleString()}` : "—"}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Base Price</span>

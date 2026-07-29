@@ -65,6 +65,7 @@ export async function updateDevice(id, device) {
     p_price: device.price,
     p_notes: device.notes || null,
     p_issue_description: device.issueDescription || null,
+    p_purchase_price: device.purchasePrice ?? null,
   });
   if (error) throw error;
 }
@@ -99,7 +100,7 @@ export async function getAvailableDevicesForReplacement(deviceName) {
 export async function getAvailableDevicesForSale() {
   const { data, error } = await supabase
     .from("devices")
-    .select("id, batch_code, device_name, category, storage, color, selling_price")
+    .select("id, batch_code, device_name, category, storage, color, selling_price, purchase_price")
     .eq("status", "Available");
 
   if (error) throw error;
@@ -112,6 +113,7 @@ export async function getAvailableDevicesForSale() {
     storage: d.storage,
     color: d.color,
     price: d.selling_price,
+    purchasePrice: d.purchase_price,
   }));
 }
 

@@ -502,7 +502,8 @@ create function public.add_device(
   p_date_added timestamptz,
   p_issue_description text default null,
   p_bulk_order_shell_id uuid default null,
-  p_date_arrived timestamptz default null
+  p_date_arrived timestamptz default null,
+  p_purchase_price numeric default null
 )
 returns uuid
 language plpgsql
@@ -521,8 +522,8 @@ begin
     select id into v_supplier_id from public.suppliers where name = p_supplier_name;
   end if;
 
-  insert into public.devices (batch_code, device_name, category, storage, color, status, supplier_id, selling_price, notes, date_added, bulk_order_shell_id, date_arrived)
-  values (p_batch_code, p_device_name, p_category, p_storage, p_color, p_status, v_supplier_id, p_price, p_notes, p_date_added, p_bulk_order_shell_id, p_date_arrived)
+  insert into public.devices (batch_code, device_name, category, storage, color, status, supplier_id, selling_price, purchase_price, notes, date_added, bulk_order_shell_id, date_arrived)
+  values (p_batch_code, p_device_name, p_category, p_storage, p_color, p_status, v_supplier_id, p_price, p_purchase_price, p_notes, p_date_added, p_bulk_order_shell_id, p_date_arrived)
   returning id into v_device_id;
 
   if p_status = 'Supplier Defective' and p_issue_description is not null then
@@ -557,7 +558,8 @@ create function public.update_device(
   p_supplier_name text,
   p_price numeric,
   p_notes text,
-  p_issue_description text default null
+  p_issue_description text default null,
+  p_purchase_price numeric default null
 )
 returns void
 language plpgsql
@@ -585,6 +587,7 @@ begin
       status = p_status,
       supplier_id = v_supplier_id,
       selling_price = p_price,
+      purchase_price = p_purchase_price,
       notes = p_notes
   where id = p_id;
 

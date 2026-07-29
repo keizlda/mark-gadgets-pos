@@ -52,7 +52,6 @@ function NewSale() {
   const [productSearch, setProductSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Categories");
   const [cart, setCart] = useState([]);
-  const [discount, setDiscount] = useState("");
   const [payment, setPayment] = useState("Cash");
   const [referenceNumber, setReferenceNumber] = useState("N/A");
   const [notes, setNotes] = useState("");
@@ -73,12 +72,19 @@ function NewSale() {
     });
   }, [activeCategory, productSearch, availableDevices, cartIds]);
 
+  // actualPrice defaults to the catalog price but is editable per unit —
+  // staff can see Capital (cost) alongside it and adjust what's actually
+  // charged so the sale still profits instead of blindly using list price.
   const addToCart = (product) => {
-    setCart((prev) => [...prev, product]);
+    setCart((prev) => [...prev, { ...product, actualPrice: product.price }]);
   };
 
   const removeFromCart = (id) => {
     setCart((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  const updateActualPrice = (id, value) => {
+    setCart((prev) => prev.map((c) => (c.id === id ? { ...c, actualPrice: value } : c)));
   };
 
   const clearCart = () => setCart([]);
@@ -93,9 +99,9 @@ function NewSale() {
     }
   }, [cart.length, payment]);
 
-  const subtotal = cart.reduce((sum, c) => sum + c.price, 0);
-  const discountAmount = Number(discount) || 0;
-  const total = Math.max(0, subtotal - discountAmount);
+  const totalCapital = cart.reduce((sum, c) => sum + (Number(c.purchasePrice) || 0), 0);
+  const total = cart.reduce((sum, c) => sum + (Number(c.actualPrice) || 0), 0);
+  const profit = total - totalCapital;
 
   const handlePaymentChange = (method) => {
     setPayment(method);
@@ -112,12 +118,10 @@ function NewSale() {
         paymentMethod: payment,
         referenceNumber,
         notes,
-        discount: discountAmount,
-        cartItems: cart,
+        cartItems: cart.map((c) => ({ ...c, price: Number(c.actualPrice) || 0 })),
       });
       alert("Sale processed.");
       clearCart();
-      setDiscount("");
       setReferenceNumber("N/A");
       setNotes("");
       setCustomerSearch("");
@@ -302,7 +306,7 @@ function NewSale() {
             {cart.map((c) => {
               const Icon = categoryIcon[c.category] || Smartphone;
               return (
-                <div key={c.id} className="flex items-center justify-between">
+                <div key={c.id} className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${categoryColor[c.category] || "bg-gray-100 text-gray-600"}`}>
                       <Icon size={13} />
@@ -310,12 +314,21 @@ function NewSale() {
                     <div className="min-w-0">
                       <p className="text-sm text-gray-800 font-medium truncate">{c.product}</p>
                       <p className="text-xs text-gray-400">{c.storage} · {c.color} · {c.batchCode}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Capital: ₱{(Number(c.purchasePrice) || 0).toLocaleString()}
+                      </p>
                     </div>
                   </div>
-                  <span className="text-sm font-medium text-gray-700 w-16 text-right">
-                    ₱{c.price.toLocaleString()}
-                  </span>
-                  <button onClick={() => removeFromCart(c.id)} className="text-red-400 hover:text-red-600 ml-2">
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <span className="text-gray-400 text-xs">₱</span>
+                    <input
+                      type="number"
+                      value={c.actualPrice}
+                      onChange={(e) => updateActualPrice(c.id, e.target.value)}
+                      className="w-20 text-right border border-gray-200 rounded-lg px-1.5 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <button onClick={() => removeFromCart(c.id)} className="text-red-400 hover:text-red-600 mt-1.5">
                     <X size={14} />
                   </button>
                 </div>
@@ -326,22 +339,16 @@ function NewSale() {
 
         <div className="space-y-2 text-sm border-t border-gray-100 pt-3">
           <div className="flex justify-between text-gray-500">
-            <span>Subtotal ({cart.length} item{cart.length === 1 ? "" : "s"})</span>
-            <span>₱{subtotal.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between items-center text-gray-500">
-            <span>Discount</span>
-            <input
-              type="number"
-              value={discount}
-              onChange={(e) => setDiscount(e.target.value)}
-              placeholder="Enter amount"
-              className="w-28 text-right border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <span>Total Capital ({cart.length} item{cart.length === 1 ? "" : "s"})</span>
+            <span>₱{totalCapital.toLocaleString()}</span>
           </div>
           <div className="flex justify-between font-semibold text-gray-800 pt-2 border-t border-gray-100 text-base">
-            <span>Total</span>
+            <span>Total (Actual Price Sold)</span>
             <span>₱{total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+          </div>
+          <div className={`flex justify-between font-medium ${profit < 0 ? "text-red-500" : "text-green-600"}`}>
+            <span>Profit</span>
+            <span>₱{profit.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
         </div>
 

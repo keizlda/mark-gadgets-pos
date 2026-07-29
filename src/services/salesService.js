@@ -78,13 +78,12 @@ export async function updateSalePaymentStatus(saleId, paymentStatus) {
 // serialized device, so quantity per line item is always 1. Runs as a single
 // atomic RPC (see process_sale in schema.sql) so a dropped connection can't
 // leave a sale recorded with its devices still "Available".
-export async function processSale({ customerName, paymentMethod, referenceNumber, notes, discount, cartItems }) {
+export async function processSale({ customerName, paymentMethod, referenceNumber, notes, cartItems }) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price, 0);
-  const total = Math.max(0, subtotal - (Number(discount) || 0));
+  const total = cartItems.reduce((sum, item) => sum + item.price, 0);
 
   const { error } = await supabase.rpc("process_sale", {
     p_customer_name: customerName || null,

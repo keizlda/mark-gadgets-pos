@@ -18,6 +18,7 @@ function EditDeviceModal({ device, onClose, onSaved }) {
     color: device.color || "",
     status: device.status,
     supplierName: device.supplier || "",
+    purchasePrice: device.purchasePrice ?? "",
     price: device.price ?? "",
     notes: device.notes || "",
     issueDescription: "",
@@ -48,6 +49,7 @@ function EditDeviceModal({ device, onClose, onSaved }) {
         color: form.color.trim(),
         status: form.status,
         supplierName: form.supplierName,
+        purchasePrice: form.purchasePrice === "" ? null : Number(form.purchasePrice),
         price: Number(form.price) || 0,
         notes: form.notes.trim(),
         issueDescription: isNewlyDefective ? form.issueDescription.trim() : null,
@@ -174,6 +176,20 @@ function EditDeviceModal({ device, onClose, onSaved }) {
               </p>
             </div>
           )}
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">Capital (Purchase Price)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
+              <input
+                type="number"
+                value={form.purchasePrice}
+                onChange={(e) => update("purchasePrice", e.target.value)}
+                placeholder="Not recorded"
+                className="w-full border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">Selling Price</label>
