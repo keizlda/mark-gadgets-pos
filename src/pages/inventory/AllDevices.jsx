@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Download } from "lucide-react";
+import { Download, PackagePlus } from "lucide-react";
 import InventoryStats from "../../components/inventory/InventoryStats";
 import FilterBar from "../../components/inventory/FilterBar";
 import DeviceTable from "../../components/inventory/DeviceTable";
 import DeviceDetailsModal from "../../components/inventory/DeviceDetailsModal";
 import EditDeviceModal from "../../components/inventory/EditDeviceModal";
+import LogShipmentArrivalModal from "../../components/inventory/LogShipmentArrivalModal";
 import { downloadCsv } from "../../utils/csv";
 import { getDeviceKind } from "../../utils/deviceKind";
 import { useServiceData } from "../../hooks/useServiceData";
@@ -43,6 +44,12 @@ function AllDevices() {
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [viewDevice, setViewDevice] = useState(null);
   const [editDevice, setEditDevice] = useState(null);
+  const [showLogShipment, setShowLogShipment] = useState(false);
+
+  const handleShipmentLogged = () => {
+    setShowLogShipment(false);
+    alert("Shipment logged. Link each unit to it from Add Device as they're entered.");
+  };
 
   const handleEditSaved = () => {
     setEditDevice(null);
@@ -115,13 +122,22 @@ function AllDevices() {
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-4">
           <p className="font-medium text-gray-800">Devices List</p>
-          <button
-            onClick={() => downloadCsv("all-devices.csv", filtered, csvColumns)}
-            className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
-          >
-            <Download size={14} />
-            Export
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowLogShipment(true)}
+              className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+            >
+              <PackagePlus size={14} />
+              Log Shipment Arrival
+            </button>
+            <button
+              onClick={() => downloadCsv("all-devices.csv", filtered, csvColumns)}
+              className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+            >
+              <Download size={14} />
+              Export
+            </button>
+          </div>
         </div>
 
         <DeviceTable
@@ -136,6 +152,10 @@ function AllDevices() {
 
       {editDevice && (
         <EditDeviceModal device={editDevice} onClose={() => setEditDevice(null)} onSaved={handleEditSaved} />
+      )}
+
+      {showLogShipment && (
+        <LogShipmentArrivalModal onClose={() => setShowLogShipment(false)} onCreated={handleShipmentLogged} />
       )}
     </div>
   );
