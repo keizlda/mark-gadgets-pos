@@ -88,7 +88,7 @@ export const productCatalog = {
 
 export const posCategories = ["All Categories", "iPhones", "iPads", "MacBooks", "Apple Watches", "Accessories"];
 
-export const paymentMethods = ["Cash", "GCash", "Credit Card", "Bank Transfer"];
+export const paymentMethods = ["Cash", "GCash", "Credit Card", "Bank Transfer", "Check"];
 
 export const returnReasons = [
   "Defective Unit",

@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle, Wallet, CreditCard, Smartphone, Landmark, Tablet, Laptop, Watch, Headphones } from "lucide-react";
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle, Wallet, CreditCard, Smartphone, Landmark, FileCheck, Tablet, Laptop, Watch, Headphones } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { processSale } from "../../services/salesService";
 import { getAvailableDevicesForSale } from "../../services/inventoryService";
 import { getPosCategories } from "../../services/referenceService";
+
+const BULK_THRESHOLD = 3;
 
 const paymentOptions = [
   { id: "Cash", label: "Cash", icon: Wallet },
   { id: "Credit Card", label: "Card", icon: CreditCard },
   { id: "GCash", label: "GCash", icon: Smartphone },
   { id: "Bank Transfer", label: "Bank Transfer", icon: Landmark },
+  { id: "Check", label: "Check", icon: FileCheck },
 ];
 
 const categoryIcon = {
@@ -325,6 +328,16 @@ function NewSale() {
             <span>₱{total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
         </div>
+
+        {cart.length > BULK_THRESHOLD && (
+          <div className="flex items-start gap-2 bg-orange-50 border border-orange-100 rounded-lg p-2.5 mt-3">
+            <AlertTriangle size={14} className="text-orange-500 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-orange-700">
+              {cart.length} units — this will be recorded as a <strong>Bulk</strong> order with payment{" "}
+              <strong>Pending</strong>, regardless of payment method.
+            </p>
+          </div>
+        )}
 
         {/* Payment Method */}
         <div className="mt-4">

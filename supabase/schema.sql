@@ -267,6 +267,11 @@ create index on public.devices (bulk_order_shell_id);
 -- calling user's own RLS, not elevated privileges.
 -- ============================================================
 
+-- More than 3 total units (cart items, since each is always quantity 1)
+-- classifies the sale as Bulk and starts it Pending — bulk buyers usually
+-- pay by check, which isn't confirmed the moment the sale is rung up.
+-- Decided here rather than trusting the caller, same as every other
+-- business rule enforced inside these RPCs.
 create function public.process_sale(
   p_customer_name text,
   p_salesperson_id uuid,
@@ -285,9 +290,16 @@ declare
   v_sale_id uuid;
   v_item jsonb;
   v_device_id uuid;
+  v_item_count int;
+  v_order_type text;
+  v_payment_status text;
 begin
-  insert into public.sales (customer_name, salesperson_id, payment_method, reference_number, notes, total_amount, status)
-  values (p_customer_name, p_salesperson_id, p_payment_method, p_reference_number, p_notes, p_total_amount, 'Completed')
+  v_item_count := jsonb_array_length(p_cart_items);
+  v_order_type := case when v_item_count > 3 then 'Bulk' else 'Regular' end;
+  v_payment_status := case when v_item_count > 3 then 'Pending' else 'Paid' end;
+
+  insert into public.sales (customer_name, salesperson_id, payment_method, reference_number, notes, total_amount, status, order_type, payment_status)
+  values (p_customer_name, p_salesperson_id, p_payment_method, p_reference_number, p_notes, p_total_amount, 'Completed', v_order_type, v_payment_status)
   returning id into v_sale_id;
 
   for v_item in select * from jsonb_array_elements(p_cart_items)
