@@ -1,8 +1,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { inventoryByCategory } from "../../data/mockData";
 
-function InventoryDonut() {
-  const total = inventoryByCategory.reduce((sum, item) => sum + item.value, 0);
+function InventoryDonut({ data }) {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 flex-1">
@@ -13,13 +12,13 @@ function InventoryDonut() {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={inventoryByCategory}
+                data={data}
                 dataKey="value"
                 innerRadius={50}
                 outerRadius={75}
                 paddingAngle={2}
               >
-                {inventoryByCategory.map((entry, index) => (
+                {data.map((entry, index) => (
                   <Cell key={index} fill={entry.color} stroke="none" />
                 ))}
               </Pie>
@@ -32,7 +31,7 @@ function InventoryDonut() {
         </div>
 
         <div className="space-y-2">
-          {inventoryByCategory.map((item, index) => (
+          {data.map((item, index) => (
             <div key={index} className="flex items-center gap-2 text-sm">
               <span
                 className="w-2.5 h-2.5 rounded-full flex-shrink-0"

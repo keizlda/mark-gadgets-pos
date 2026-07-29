@@ -1,17 +1,21 @@
 import { Search, Filter } from "lucide-react";
-import { deviceCategories, deviceStorages, deviceColors } from "../../data/mockData";
+import { useServiceData } from "../../hooks/useServiceData";
+import { getDeviceCategories, getDeviceStorages, getSuppliers } from "../../services/referenceService";
 
-function FilterBar({ filters, setFilters, onApply, onClear }) {
+function FilterBar({ filters, setFilters, onApply, onClear, kinds = [] }) {
+  const deviceCategories = useServiceData(getDeviceCategories, []);
+  const deviceStorages = useServiceData(getDeviceStorages, []);
+  const suppliers = useServiceData(getSuppliers, []);
   const statuses = ["Available", "Sold", "Reserved", "Customer Returned", "Supplier Defective", "Returned"];
 
   const update = (key, value) => setFilters({ ...filters, [key]: value });
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <div>
           <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-            Search Device (Batch Code / Serial Number / IMEI)
+            Search Device (Batch Code)
           </label>
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -19,7 +23,7 @@ function FilterBar({ filters, setFilters, onApply, onClear }) {
               type="text"
               value={filters.search}
               onChange={(e) => update("search", e.target.value)}
-              placeholder="Type batch code, serial number, or IMEI..."
+              placeholder="Type batch code..."
               className="w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -69,15 +73,29 @@ function FilterBar({ filters, setFilters, onApply, onClear }) {
 
         <div>
           <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-            Color
+            Model
           </label>
           <select
-            value={filters.color}
-            onChange={(e) => update("color", e.target.value)}
+            value={filters.kind}
+            onChange={(e) => update("kind", e.target.value)}
             className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="All">All Colors</option>
-            {deviceColors.map((c) => <option key={c} value={c}>{c}</option>)}
+            <option value="All">All Models</option>
+            {kinds.map((k) => <option key={k} value={k}>{k}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
+            Supplier
+          </label>
+          <select
+            value={filters.supplier}
+            onChange={(e) => update("supplier", e.target.value)}
+            className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="All">All Suppliers</option>
+            {suppliers.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
       </div>

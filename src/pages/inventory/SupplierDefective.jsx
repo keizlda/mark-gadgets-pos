@@ -1,6 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, Filter, Download, MoreVertical, Wrench, ShoppingBag, Truck, CheckCircle2, Info } from "lucide-react";
-import { supplierDefectiveRecords, suppliers } from "../../data/mockData";
+import { downloadCsv } from "../../utils/csv";
+import { useServiceData } from "../../hooks/useServiceData";
+import { getSupplierDefectiveRecords } from "../../services/inventoryService";
+import { getSuppliers } from "../../services/referenceService";
+import UpdateDefectiveStatusModal from "../../components/inventory/UpdateDefectiveStatusModal";
+import DateRangePicker from "../../components/common/DateRangePicker";
+
+const csvColumns = [
+  { label: "Batch Code", value: (r) => r.batchCode },
+  { label: "Device", value: (r) => r.device },
+  { label: "Storage", value: (r) => r.storage },
+  { label: "Color", value: (r) => r.color },
+  { label: "Supplier", value: (r) => r.supplier },
+  { label: "Date Detected", value: (r) => r.dateDetected },
+  { label: "Time", value: (r) => r.time },
+  { label: "Issue", value: (r) => r.issue },
+  { label: "Status", value: (r) => r.status },
+  { label: "Action Taken", value: (r) => r.actionTaken },
+];
 
 const statusStyles = {
   "Pending Return": "bg-orange-100 text-orange-600",
@@ -8,15 +26,62 @@ const statusStyles = {
   Resolved: "bg-green-100 text-green-600",
 };
 
-function SupplierDefective() {
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [supplier, setSupplier] = useState("All");
-  const [status, setStatus] = useState("All");
-  const [search, setSearch] = useState("");
-  const [openMenu, setOpenMenu] = useState(null);
+const blankFilters = { dateRange: undefined, supplier: "All", status: "All", search: "" };
 
-  const records = supplierDefectiveRecords;
+function SupplierDefective() {
+  const suppliers = useServiceData(getSuppliers, []);
+
+  const [supplierDefectiveRecords, setSupplierDefectiveRecords] = useState([]);
+  const loadRecords = useCallback(() => {
+    getSupplierDefectiveRecords().then(setSupplierDefectiveRecords);
+  }, []);
+  useEffect(() => {
+    loadRecords();
+  }, [loadRecords]);
+
+  const [filters, setFilters] = useState(blankFilters);
+  const [appliedFilters, setAppliedFilters] = useState(blankFilters);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [openMenu, setOpenMenu] = useState(null);
+  const [updateRecord, setUpdateRecord] = useState(null);
+
+  const handleClear = () => {
+    setFilters(blankFilters);
+    setAppliedFilters(blankFilters);
+    setPage(1);
+  };
+
+  const handleApply = () => {
+    setAppliedFilters(filters);
+    setPage(1);
+  };
+
+  const handleUpdated = () => {
+    setUpdateRecord(null);
+    loadRecords();
+  };
+
+  const records = useMemo(() => {
+    const f = appliedFilters;
+    const from = f.dateRange?.from || null;
+    const to = f.dateRange?.to || null;
+    return supplierDefectiveRecords.filter((r) => {
+      const detectedDate = new Date(r.dateDetected);
+      const matchesSearch = !f.search || r.batchCode.toLowerCase().includes(f.search.toLowerCase());
+      return (
+        matchesSearch &&
+        (f.supplier === "All" || r.supplier === f.supplier) &&
+        (f.status === "All" || r.status === f.status) &&
+        (!from || detectedDate >= from) &&
+        (!to || detectedDate <= to)
+      );
+    });
+  }, [appliedFilters, supplierDefectiveRecords]);
+
+  const totalPages = Math.max(1, Math.ceil(records.length / perPage));
+  const start = (page - 1) * perPage;
+  const paginated = records.slice(start, start + perPage);
 
   const stats = [
     { label: "Total Supplier Defective", unit: "Units", value: records.length, icon: Wrench, bg: "bg-red-500", text: "text-red-600" },
@@ -30,27 +95,14 @@ function SupplierDefective() {
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <p className="text-sm font-semibold text-gray-700 mb-4">Filters</p>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-              Date From
+              Date Range
             </label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-              Date To
-            </label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <DateRangePicker
+              value={filters.dateRange}
+              onChange={(range) => setFilters((f) => ({ ...f, dateRange: range }))}
             />
           </div>
           <div>
@@ -58,8 +110,8 @@ function SupplierDefective() {
               Supplier
             </label>
             <select
-              value={supplier}
-              onChange={(e) => setSupplier(e.target.value)}
+              value={filters.supplier}
+              onChange={(e) => setFilters((f) => ({ ...f, supplier: e.target.value }))}
               className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="All">All Suppliers</option>
@@ -71,8 +123,8 @@ function SupplierDefective() {
               Status
             </label>
             <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              value={filters.status}
+              onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
               className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="All">All Status</option>
@@ -83,25 +135,25 @@ function SupplierDefective() {
           </div>
           <div>
             <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-              Search (Batch Code / Serial Number / IMEI)
+              Search (Batch Code)
             </label>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Type batch code, serial number, or IMEI..."
+                value={filters.search}
+                onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
+                placeholder="Type batch code..."
                 className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-4">
-          <button className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+          <button onClick={handleClear} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
             Clear
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+          <button onClick={handleApply} className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
             <Filter size={14} />
             Apply Filters
           </button>
@@ -133,7 +185,10 @@ function SupplierDefective() {
           <p className="font-medium text-gray-800">
             Supplier Defective List <span className="text-gray-400 font-normal">({records.length})</span>
           </p>
-          <button className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
+          <button
+            onClick={() => downloadCsv("supplier-defective.csv", records, csvColumns)}
+            className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+          >
             <Download size={14} />
             Export
           </button>
@@ -143,39 +198,43 @@ function SupplierDefective() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-400 border-b border-gray-100">
-                <th className="pb-2 font-medium">Batch Code</th>
-                <th className="pb-2 font-medium">Device</th>
-                <th className="pb-2 font-medium">Serial Number / IMEI</th>
-                <th className="pb-2 font-medium">Supplier</th>
-                <th className="pb-2 font-medium">Date Detected</th>
-                <th className="pb-2 font-medium">Issue / Defect</th>
-                <th className="pb-2 font-medium">Status</th>
-                <th className="pb-2 font-medium">Action Taken</th>
-                <th className="pb-2 font-medium text-right">Actions</th>
+                <th className="px-3 py-2 font-medium">Batch Code</th>
+                <th className="px-3 py-2 font-medium">Device</th>
+                <th className="px-3 py-2 font-medium">Supplier</th>
+                <th className="px-3 py-2 font-medium">Date Detected</th>
+                <th className="px-3 py-2 font-medium">Issue / Defect</th>
+                <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium">Action Taken</th>
+                <th className="px-3 py-2 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {records.map((row, index) => (
-                <tr key={index} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="py-3 text-gray-600">{row.batchCode}</td>
-                  <td className="py-3">
-                    <p className="text-gray-800 font-medium">{row.device}</p>
-                    <p className="text-xs text-gray-400">{row.storage} · {row.color}</p>
+              {paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-gray-400">
+                    No supplier defective records found.
                   </td>
-                  <td className="py-3 text-gray-500 text-xs">{row.serial}</td>
-                  <td className="py-3 text-gray-600">{row.supplier}</td>
-                  <td className="py-3 text-gray-500">
+                </tr>
+              ) : paginated.map((row, index) => (
+                <tr key={row.batchCode} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{row.batchCode}</td>
+                  <td className="px-3 py-3">
+                    <p className="text-gray-800 font-medium whitespace-nowrap">{row.device}</p>
+                    <p className="text-xs text-gray-400 whitespace-nowrap">{row.storage} · {row.color}</p>
+                  </td>
+                  <td className="px-3 py-3 text-gray-600">{row.supplier}</td>
+                  <td className="px-3 py-3 text-gray-500 whitespace-nowrap">
                     <p>{row.dateDetected}</p>
                     <p className="text-xs text-gray-400">{row.time}</p>
                   </td>
-                  <td className="py-3 text-gray-600">• {row.issue}</td>
-                  <td className="py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusStyles[row.status]}`}>
+                  <td className="px-3 py-3 text-gray-600">• {row.issue}</td>
+                  <td className="px-3 py-3">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusStyles[row.status]}`}>
                       {row.status}
                     </span>
                   </td>
-                  <td className="py-3 text-gray-500">{row.actionTaken}</td>
-                  <td className="py-3 text-right relative">
+                  <td className="px-3 py-3 text-gray-500">{row.actionTaken}</td>
+                  <td className="px-3 py-3 text-right relative">
                     <button
                       onClick={() => setOpenMenu(openMenu === index ? null : index)}
                       className="text-gray-400 hover:text-gray-700 p-1"
@@ -184,9 +243,12 @@ function SupplierDefective() {
                     </button>
                     {openMenu === index && (
                       <div className="absolute right-6 top-8 bg-white border border-gray-200 rounded-lg shadow-md z-10 w-40 text-left">
-                        <button className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50">View Details</button>
-                        <button className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Update Status</button>
-                        <button className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Mark Returned</button>
+                        <button
+                          onClick={() => { setUpdateRecord(row); setOpenMenu(null); }}
+                          className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                        >
+                          Update Status
+                        </button>
                       </div>
                     )}
                   </td>
@@ -197,16 +259,34 @@ function SupplierDefective() {
         </div>
 
         <div className="flex items-center justify-between mt-4 flex-wrap gap-3">
-          <p className="text-xs text-gray-500">Showing 1 to {records.length} of {records.length} records</p>
+          <p className="text-xs text-gray-500">
+            Showing {records.length === 0 ? 0 : start + 1} to {Math.min(start + perPage, records.length)} of {records.length} records
+          </p>
           <div className="flex items-center gap-3">
-            <select className="border border-gray-200 rounded-lg text-xs px-2 py-1.5">
-              <option>10 per page</option>
-              <option>20 per page</option>
+            <select
+              value={perPage}
+              onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+              className="border border-gray-200 rounded-lg text-xs px-2 py-1.5"
+            >
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
             </select>
             <div className="flex items-center gap-1">
-              <button className="p-1.5 border border-gray-200 rounded-lg text-gray-300" disabled>‹</button>
-              <button className="w-7 h-7 text-xs rounded-lg bg-blue-600 text-white">1</button>
-              <button className="p-1.5 border border-gray-200 rounded-lg text-gray-300" disabled>›</button>
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-1.5 border border-gray-200 rounded-lg text-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed"
+              >
+                ‹
+              </button>
+              <button className="w-7 h-7 text-xs rounded-lg bg-blue-600 text-white">{page}</button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-1.5 border border-gray-200 rounded-lg text-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed"
+              >
+                ›
+              </button>
             </div>
           </div>
         </div>
@@ -223,6 +303,14 @@ function SupplierDefective() {
           </p>
         </div>
       </div>
+
+      {updateRecord && (
+        <UpdateDefectiveStatusModal
+          record={updateRecord}
+          onClose={() => setUpdateRecord(null)}
+          onUpdated={handleUpdated}
+        />
+      )}
     </div>
   );
 }

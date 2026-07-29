@@ -1,17 +1,43 @@
-import { useState } from "react";
-import { Search, Filter, Download, MoreVertical, ShoppingCart, Users, Clock, XCircle } from "lucide-react";
-import { reservedDevices, salespersons } from "../../data/mockData";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Search, Filter, Download, MoreVertical, Plus, ShoppingCart, Users, Clock, XCircle } from "lucide-react";
+import { downloadCsv } from "../../utils/csv";
+import { getReservedDevices, cancelReservation } from "../../services/reservationsService";
+import { getDeviceKind } from "../../utils/deviceKind";
+import NewReservationModal from "../../components/inventory/NewReservationModal";
+import ReservationDetailsModal from "../../components/inventory/ReservationDetailsModal";
+import ConvertToSaleModal from "../../components/inventory/ConvertToSaleModal";
+
+const csvColumns = [
+  { label: "Batch Code", value: (r) => r.batchCode },
+  { label: "Date Reserved", value: (r) => r.dateReserved },
+  { label: "Time", value: (r) => r.time },
+  { label: "Customer", value: (r) => r.customer },
+  { label: "Phone", value: (r) => r.phone },
+  { label: "Salesperson", value: (r) => r.salesperson },
+  { label: "Device", value: (r) => r.device },
+  { label: "Storage", value: (r) => r.storage },
+  { label: "Color", value: (r) => r.color },
+  { label: "Reserved Until", value: (r) => r.reservedUntil },
+  { label: "Status", value: (r) => r.status },
+  { label: "Total Price", value: (r) => r.totalPrice },
+  { label: "Down Payment", value: (r) => r.downPayment || 0 },
+  { label: "Balance Due", value: (r) => Math.max(0, r.totalPrice - (r.downPayment || 0)) },
+];
 
 const statusStyles = {
   Active: "bg-green-100 text-green-600",
   "Expiring Soon": "bg-orange-100 text-orange-600",
   Expired: "bg-red-100 text-red-600",
+  Cancelled: "bg-gray-100 text-gray-500",
+  Converted: "bg-blue-100 text-blue-600",
 };
 
 const daysLeftStyles = {
   Active: "text-green-500",
   "Expiring Soon": "text-orange-500",
   Expired: "text-red-500",
+  Cancelled: "text-gray-400",
+  Converted: "text-blue-500",
 };
 
 function daysLeftLabel(days) {
@@ -20,16 +46,86 @@ function daysLeftLabel(days) {
   return `${days} day${days === 1 ? "" : "s"} left`;
 }
 
-function Reserved() {
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [customer, setCustomer] = useState("All");
-  const [salesperson, setSalesperson] = useState("All");
-  const [search, setSearch] = useState("");
-  const [openMenu, setOpenMenu] = useState(null);
+const blankFilters = { date: "", kind: "All", search: "" };
 
-  const records = reservedDevices;
-  const customers = [...new Set(records.map((r) => r.customer))];
+function Reserved() {
+  const [reservedDevices, setReservedDevices] = useState([]);
+  const loadReservations = useCallback(() => {
+    getReservedDevices().then(setReservedDevices);
+  }, []);
+  useEffect(() => {
+    loadReservations();
+  }, [loadReservations]);
+
+  const [filters, setFilters] = useState(blankFilters);
+  const [appliedFilters, setAppliedFilters] = useState(blankFilters);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [openMenu, setOpenMenu] = useState(null);
+  const [showNewReservation, setShowNewReservation] = useState(false);
+  const [detailsRecord, setDetailsRecord] = useState(null);
+  const [convertRecord, setConvertRecord] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
+
+  const kinds = useMemo(() => {
+    return [...new Set(reservedDevices.map((r) => getDeviceKind(r.device)))].sort();
+  }, [reservedDevices]);
+
+  const handleClear = () => {
+    setFilters(blankFilters);
+    setAppliedFilters(blankFilters);
+    setPage(1);
+  };
+
+  const handleApply = () => {
+    setAppliedFilters(filters);
+    setPage(1);
+  };
+
+  const handleCancelReservation = async (record) => {
+    if (!window.confirm(`Cancel the reservation for ${record.batchCode}? This frees the unit back up for sale.`)) return;
+    setCancellingId(record.id);
+    try {
+      await cancelReservation(record.id, record.deviceId);
+      loadReservations();
+    } catch (err) {
+      alert(err.message || "Failed to cancel reservation. Please try again.");
+    } finally {
+      setCancellingId(null);
+      setOpenMenu(null);
+    }
+  };
+
+  const handleCreated = () => {
+    setShowNewReservation(false);
+    loadReservations();
+  };
+
+  const handleConverted = () => {
+    setConvertRecord(null);
+    loadReservations();
+  };
+
+  const records = useMemo(() => {
+    const f = appliedFilters;
+    const filterDate = f.date ? new Date(`${f.date}T00:00:00`) : null;
+    return reservedDevices.filter((r) => {
+      const reservedDate = new Date(r.dateReserved);
+      const matchesSearch =
+        !f.search ||
+        r.batchCode.toLowerCase().includes(f.search.toLowerCase()) ||
+        r.device.toLowerCase().includes(f.search.toLowerCase());
+      return (
+        matchesSearch &&
+        (f.kind === "All" || getDeviceKind(r.device) === f.kind) &&
+        (!filterDate || reservedDate.getTime() === filterDate.getTime())
+      );
+    });
+  }, [appliedFilters, reservedDevices]);
+
+  const totalPages = Math.max(1, Math.ceil(records.length / perPage));
+  const start = (page - 1) * perPage;
+  const paginated = records.slice(start, start + perPage);
 
   const totalValue = records
     .filter((r) => r.status !== "Expired")
@@ -46,80 +142,54 @@ function Reserved() {
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <p className="text-sm font-semibold text-gray-700 mb-4">Filters</p>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-              Date From
+              Date
             </label>
             <input
               type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              value={filters.date}
+              onChange={(e) => setFilters((f) => ({ ...f, date: e.target.value }))}
               className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
             <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-              Date To
-            </label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-              Customer
+              Model
             </label>
             <select
-              value={customer}
-              onChange={(e) => setCustomer(e.target.value)}
+              value={filters.kind}
+              onChange={(e) => setFilters((f) => ({ ...f, kind: e.target.value }))}
               className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="All">All Customers</option>
-              {customers.map((c) => (
-                <option key={c} value={c}>{c}</option>
+              <option value="All">All Models</option>
+              {kinds.map((k) => (
+                <option key={k} value={k}>{k}</option>
               ))}
             </select>
           </div>
           <div>
             <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-              Salesperson
-            </label>
-            <select
-              value={salesperson}
-              onChange={(e) => setSalesperson(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">All Salespersons</option>
-              {salespersons.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-              Search (Batch Code / Serial Number / IMEI)
+              Search (Batch Code / Device)
             </label>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Type batch code, serial number, or IMEI..."
+                value={filters.search}
+                onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
+                placeholder="Type batch code or device..."
                 className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-4">
-          <button className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+          <button onClick={handleClear} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
             Clear
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+          <button onClick={handleApply} className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
             <Filter size={14} />
             Apply Filters
           </button>
@@ -149,22 +219,33 @@ function Reserved() {
           <p className="font-medium text-gray-800">
             Reserved Devices List <span className="text-gray-400 font-normal">({records.length})</span>
           </p>
-          <button className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
-            <Download size={14} />
-            Export
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => downloadCsv("reserved-devices.csv", records, csvColumns)}
+              className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+            >
+              <Download size={14} />
+              Export
+            </button>
+            <button
+              onClick={() => setShowNewReservation(true)}
+              className="flex items-center gap-2 text-sm text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700"
+            >
+              <Plus size={14} />
+              New Reservation
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-400 border-b border-gray-100">
-                <th className="pb-2 font-medium">Reservation ID</th>
+                <th className="pb-2 font-medium">Batch Code</th>
                 <th className="pb-2 font-medium">Date Reserved</th>
                 <th className="pb-2 font-medium">Customer</th>
                 <th className="pb-2 font-medium">Salesperson</th>
                 <th className="pb-2 font-medium">Device</th>
-                <th className="pb-2 font-medium">Serial Number / IMEI</th>
                 <th className="pb-2 font-medium">Reserved Until</th>
                 <th className="pb-2 font-medium">Status</th>
                 <th className="pb-2 font-medium">Total Price</th>
@@ -172,10 +253,16 @@ function Reserved() {
               </tr>
             </thead>
             <tbody>
-              {records.map((row, index) => (
-                <tr key={index} className="border-b border-gray-50 hover:bg-gray-50">
+              {paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-8 text-center text-gray-400">
+                    No reservations found.
+                  </td>
+                </tr>
+              ) : paginated.map((row, index) => (
+                <tr key={row.batchCode} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-3">
-                    <span className="text-blue-600 font-medium">{row.reservationId}</span>
+                    <span className="text-blue-600 font-medium">{row.batchCode}</span>
                   </td>
                   <td className="py-3 text-gray-500">
                     <p>{row.dateReserved}</p>
@@ -190,7 +277,6 @@ function Reserved() {
                     <p className="text-gray-800 font-medium">{row.device}</p>
                     <p className="text-xs text-gray-400">{row.storage} · {row.color}</p>
                   </td>
-                  <td className="py-3 text-gray-500 text-xs">{row.serial}</td>
                   <td className="py-3">
                     <p className="text-gray-600">{row.reservedUntil}</p>
                     <p className={`text-xs ${daysLeftStyles[row.status]}`}>
@@ -212,9 +298,29 @@ function Reserved() {
                     </button>
                     {openMenu === index && (
                       <div className="absolute right-6 top-8 bg-white border border-gray-200 rounded-lg shadow-md z-10 w-40 text-left">
-                        <button className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50">View Details</button>
-                        <button className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Convert to Sale</button>
-                        <button className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-50">Cancel Reservation</button>
+                        <button
+                          onClick={() => { setDetailsRecord(row); setOpenMenu(null); }}
+                          className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                        >
+                          View Details
+                        </button>
+                        {(row.status === "Active" || row.status === "Expiring Soon" || row.status === "Expired") && (
+                          <>
+                            <button
+                              onClick={() => { setConvertRecord(row); setOpenMenu(null); }}
+                              className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                            >
+                              Convert to Sale
+                            </button>
+                            <button
+                              onClick={() => handleCancelReservation(row)}
+                              disabled={cancellingId === row.id}
+                              className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-50 disabled:opacity-60"
+                            >
+                              {cancellingId === row.id ? "Cancelling..." : "Cancel Reservation"}
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </td>
@@ -225,20 +331,54 @@ function Reserved() {
         </div>
 
         <div className="flex items-center justify-between mt-4 flex-wrap gap-3">
-          <p className="text-xs text-gray-500">Showing 1 to {records.length} of {records.length} records</p>
+          <p className="text-xs text-gray-500">
+            Showing {records.length === 0 ? 0 : start + 1} to {Math.min(start + perPage, records.length)} of {records.length} records
+          </p>
           <div className="flex items-center gap-3">
-            <select className="border border-gray-200 rounded-lg text-xs px-2 py-1.5">
-              <option>10 per page</option>
-              <option>20 per page</option>
+            <select
+              value={perPage}
+              onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+              className="border border-gray-200 rounded-lg text-xs px-2 py-1.5"
+            >
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
             </select>
             <div className="flex items-center gap-1">
-              <button className="p-1.5 border border-gray-200 rounded-lg text-gray-300" disabled>‹</button>
-              <button className="w-7 h-7 text-xs rounded-lg bg-blue-600 text-white">1</button>
-              <button className="p-1.5 border border-gray-200 rounded-lg text-gray-300" disabled>›</button>
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-1.5 border border-gray-200 rounded-lg text-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed"
+              >
+                ‹
+              </button>
+              <button className="w-7 h-7 text-xs rounded-lg bg-blue-600 text-white">{page}</button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-1.5 border border-gray-200 rounded-lg text-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed"
+              >
+                ›
+              </button>
             </div>
           </div>
         </div>
       </div>
+
+      {showNewReservation && (
+        <NewReservationModal onClose={() => setShowNewReservation(false)} onCreated={handleCreated} />
+      )}
+
+      {detailsRecord && (
+        <ReservationDetailsModal record={detailsRecord} onClose={() => setDetailsRecord(null)} />
+      )}
+
+      {convertRecord && (
+        <ConvertToSaleModal
+          record={convertRecord}
+          onClose={() => setConvertRecord(null)}
+          onConverted={handleConverted}
+        />
+      )}
     </div>
   );
 }

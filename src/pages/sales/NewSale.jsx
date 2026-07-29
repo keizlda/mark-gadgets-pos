@@ -1,10 +1,13 @@
-import { useState, useMemo } from "react";
-import { Search, Filter, Plus, Minus, X, ChevronLeft, ChevronRight, ShoppingCart, Wallet, CreditCard, Smartphone, Landmark, Tablet, Laptop, Watch, Headphones } from "lucide-react";
-import { posCategories, posProducts } from "../../data/mockData";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle, Wallet, CreditCard, Smartphone, Landmark, Tablet, Laptop, Watch, Headphones } from "lucide-react";
+import { useServiceData } from "../../hooks/useServiceData";
+import { processSale } from "../../services/salesService";
+import { getAvailableDevicesForSale } from "../../services/inventoryService";
+import { getPosCategories } from "../../services/referenceService";
 
 const paymentOptions = [
   { id: "Cash", label: "Cash", icon: Wallet },
-  { id: "Card", label: "Card", icon: CreditCard },
+  { id: "Credit Card", label: "Card", icon: CreditCard },
   { id: "GCash", label: "GCash", icon: Smartphone },
   { id: "Bank Transfer", label: "Bank Transfer", icon: Landmark },
 ];
@@ -26,16 +29,32 @@ const categoryColor = {
 };
 
 function NewSale() {
+  const posCategories = useServiceData(getPosCategories, []);
+
+  const [availableDevices, setAvailableDevices] = useState([]);
+  const loadAvailableDevices = useCallback(() => {
+    getAvailableDevicesForSale().then(setAvailableDevices);
+  }, []);
+  useEffect(() => {
+    loadAvailableDevices();
+  }, [loadAvailableDevices]);
+
   const [customerSearch, setCustomerSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Categories");
   const [cart, setCart] = useState([]);
   const [discount, setDiscount] = useState("");
   const [payment, setPayment] = useState("Cash");
+  const [referenceNumber, setReferenceNumber] = useState("N/A");
   const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const cartIds = useMemo(() => new Set(cart.map((c) => c.id)), [cart]);
 
   const filteredProducts = useMemo(() => {
-    return posProducts.filter((p) => {
+    return availableDevices.filter((p) => {
+      if (cartIds.has(p.id)) return false;
       const matchesCategory = activeCategory === "All Categories" || p.category === activeCategory;
       const matchesSearch =
         !productSearch ||
@@ -43,47 +62,52 @@ function NewSale() {
         p.batchCode.toLowerCase().includes(productSearch.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [activeCategory, productSearch]);
+  }, [activeCategory, productSearch, availableDevices, cartIds]);
 
   const addToCart = (product) => {
-    setCart((prev) => {
-      const existing = prev.find((c) => c.batchCode === product.batchCode);
-      if (existing) {
-        return prev.map((c) =>
-          c.batchCode === product.batchCode ? { ...c, qty: c.qty + 1 } : c
-        );
-      }
-      return [...prev, { ...product, qty: 1 }];
-    });
+    setCart((prev) => [...prev, product]);
   };
 
-  const updateQty = (batchCode, delta) => {
-    setCart((prev) =>
-      prev
-        .map((c) => (c.batchCode === batchCode ? { ...c, qty: c.qty + delta } : c))
-        .filter((c) => c.qty > 0)
-    );
-  };
-
-  const removeFromCart = (batchCode) => {
-    setCart((prev) => prev.filter((c) => c.batchCode !== batchCode));
+  const removeFromCart = (id) => {
+    setCart((prev) => prev.filter((c) => c.id !== id));
   };
 
   const clearCart = () => setCart([]);
 
-  const subtotal = cart.reduce((sum, c) => sum + c.price * c.qty, 0);
+  const subtotal = cart.reduce((sum, c) => sum + c.price, 0);
   const discountAmount = Number(discount) || 0;
-  const taxable = Math.max(0, subtotal - discountAmount);
-  const tax = taxable * 0.12;
-  const total = taxable + tax;
+  const total = Math.max(0, subtotal - discountAmount);
 
-  const handleProcessSale = () => {
+  const handlePaymentChange = (method) => {
+    setPayment(method);
+    if (method === "Cash") setReferenceNumber("N/A");
+  };
+
+  const handleProcessSale = async () => {
     if (cart.length === 0) return;
-    console.log("Sale:", { cart, discount, payment, notes, total });
-    alert("Sale processed (mock — no backend connected yet).");
-    clearCart();
-    setDiscount("");
-    setNotes("");
+    setError("");
+    setSubmitting(true);
+    try {
+      await processSale({
+        customerName: customerSearch.trim(),
+        paymentMethod: payment,
+        referenceNumber,
+        notes,
+        discount: discountAmount,
+        cartItems: cart,
+      });
+      alert("Sale processed.");
+      clearCart();
+      setDiscount("");
+      setReferenceNumber("N/A");
+      setNotes("");
+      setCustomerSearch("");
+      loadAvailableDevices();
+    } catch (err) {
+      setError(err.message || "Failed to process sale. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -128,7 +152,7 @@ function NewSale() {
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Search by name, model, serial number or IMEI..."
+                placeholder="Search by name, model, or batch code..."
                 className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -165,7 +189,6 @@ function NewSale() {
                     <th className="pb-2 font-medium">Product</th>
                     <th className="pb-2 font-medium">Storage</th>
                     <th className="pb-2 font-medium">Color</th>
-                    <th className="pb-2 font-medium">Available</th>
                     <th className="pb-2 font-medium">Price</th>
                     <th className="pb-2 font-medium"></th>
                   </tr>
@@ -173,15 +196,15 @@ function NewSale() {
                 <tbody>
                   {filteredProducts.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-gray-400">
+                      <td colSpan={5} className="py-8 text-center text-gray-400">
                         No products found.
                       </td>
                     </tr>
                   ) : (
-                    filteredProducts.map((p, i) => {
+                    filteredProducts.map((p) => {
                       const Icon = categoryIcon[p.category] || Smartphone;
                       return (
-                        <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                        <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
                           <td className="py-2.5">
                             <div className="flex items-center gap-2.5">
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${categoryColor[p.category] || "bg-gray-100 text-gray-600"}`}>
@@ -195,7 +218,6 @@ function NewSale() {
                           </td>
                           <td className="py-2.5 text-gray-600">{p.storage}</td>
                           <td className="py-2.5 text-gray-600">{p.color}</td>
-                          <td className="py-2.5 text-green-600 font-medium">{p.available}</td>
                           <td className="py-2.5 text-gray-700">₱{p.price.toLocaleString()}</td>
                           <td className="py-2.5 text-right">
                             <button
@@ -258,32 +280,23 @@ function NewSale() {
           </div>
         ) : (
           <div className="space-y-3 mb-4 max-h-64 overflow-y-auto pr-1">
-            {cart.map((c, i) => {
+            {cart.map((c) => {
               const Icon = categoryIcon[c.category] || Smartphone;
               return (
-                <div key={i} className="flex items-center justify-between">
+                <div key={c.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${categoryColor[c.category] || "bg-gray-100 text-gray-600"}`}>
                       <Icon size={13} />
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm text-gray-800 font-medium truncate">{c.product}</p>
-                      <p className="text-xs text-gray-400">{c.storage} · {c.color}</p>
+                      <p className="text-xs text-gray-400">{c.storage} · {c.color} · {c.batchCode}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-1 mx-2">
-                    <button onClick={() => updateQty(c.batchCode, -1)} className="p-1 text-gray-500 hover:text-gray-800">
-                      <Minus size={11} />
-                    </button>
-                    <span className="text-xs w-4 text-center">{c.qty}</span>
-                    <button onClick={() => updateQty(c.batchCode, 1)} className="p-1 text-gray-500 hover:text-gray-800">
-                      <Plus size={11} />
-                    </button>
-                  </div>
                   <span className="text-sm font-medium text-gray-700 w-16 text-right">
-                    ₱{(c.price * c.qty).toLocaleString()}
+                    ₱{c.price.toLocaleString()}
                   </span>
-                  <button onClick={() => removeFromCart(c.batchCode)} className="text-red-400 hover:text-red-600 ml-2">
+                  <button onClick={() => removeFromCart(c.id)} className="text-red-400 hover:text-red-600 ml-2">
                     <X size={14} />
                   </button>
                 </div>
@@ -307,10 +320,6 @@ function NewSale() {
               className="w-28 text-right border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div className="flex justify-between text-gray-500">
-            <span>Tax (VAT 12%)</span>
-            <span>₱{tax.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-          </div>
           <div className="flex justify-between font-semibold text-gray-800 pt-2 border-t border-gray-100 text-base">
             <span>Total</span>
             <span>₱{total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
@@ -327,7 +336,7 @@ function NewSale() {
               return (
                 <button
                   key={opt.id}
-                  onClick={() => setPayment(opt.id)}
+                  onClick={() => handlePaymentChange(opt.id)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border ${
                     active
                       ? "border-blue-500 bg-blue-50 text-blue-600"
@@ -342,25 +351,46 @@ function NewSale() {
           </div>
         </div>
 
+        {/* Reference Number — only needed for non-cash payments */}
+        {payment !== "Cash" && (
+          <div className="mt-4">
+            <p className="text-xs font-medium text-gray-600 mb-1.5">Reference Number</p>
+            <input
+              type="text"
+              value={referenceNumber}
+              onChange={(e) => setReferenceNumber(e.target.value)}
+              placeholder="Enter reference number..."
+              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        )}
+
         {/* Notes */}
         <div className="mt-4">
-          <p className="text-xs font-medium text-gray-600 mb-1.5">Reference / Notes (Optional)</p>
+          <p className="text-xs font-medium text-gray-600 mb-1.5">Notes (Optional)</p>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
-            placeholder="Add reference or notes..."
+            placeholder="Add notes..."
             className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
         </div>
 
+        {error && (
+          <div className="mt-4 bg-red-50 border border-red-100 rounded-lg p-3 flex items-start gap-2">
+            <AlertTriangle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
         <button
           onClick={handleProcessSale}
-          disabled={cart.length === 0}
+          disabled={cart.length === 0 || submitting}
           className="w-full mt-4 flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <ShoppingCart size={15} />
-          Process Sale
+          {submitting ? "Processing..." : "Process Sale"}
         </button>
       </div>
     </div>

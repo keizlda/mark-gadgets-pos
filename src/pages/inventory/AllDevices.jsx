@@ -1,25 +1,77 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Download } from "lucide-react";
 import InventoryStats from "../../components/inventory/InventoryStats";
 import FilterBar from "../../components/inventory/FilterBar";
 import DeviceTable from "../../components/inventory/DeviceTable";
-import { allDevices } from "../../data/mockData";
+import DeviceDetailsModal from "../../components/inventory/DeviceDetailsModal";
+import EditDeviceModal from "../../components/inventory/EditDeviceModal";
+import { downloadCsv } from "../../utils/csv";
+import { getDeviceKind } from "../../utils/deviceKind";
+import { useServiceData } from "../../hooks/useServiceData";
+import { getAllDevices, getLowStockItems, deleteDevice } from "../../services/inventoryService";
+
+const csvColumns = [
+  { label: "Batch Code", value: (r) => r.batchCode },
+  { label: "Device", value: (r) => r.device },
+  { label: "Category", value: (r) => r.category },
+  { label: "Storage", value: (r) => r.storage },
+  { label: "Color", value: (r) => r.color },
+  { label: "Status", value: (r) => r.status },
+  { label: "Date Added", value: (r) => r.dateAdded },
+  { label: "Time", value: (r) => r.time },
+];
 
 function AllDevices() {
+  const lowStockItems = useServiceData(getLowStockItems, []);
+
+  const [allDevices, setAllDevices] = useState([]);
+  const loadDevices = useCallback(() => {
+    getAllDevices().then(setAllDevices);
+  }, []);
+  useEffect(() => {
+    loadDevices();
+  }, [loadDevices]);
+
   const [filters, setFilters] = useState({
     search: "",
     category: "All",
     status: "All",
     storage: "All",
-    color: "All",
+    kind: "All",
+    supplier: "All",
   });
   const [appliedFilters, setAppliedFilters] = useState(filters);
+  const [viewDevice, setViewDevice] = useState(null);
+  const [editDevice, setEditDevice] = useState(null);
+
+  const handleEditSaved = () => {
+    setEditDevice(null);
+    loadDevices();
+  };
+
+  const handleDelete = async (device) => {
+    if (!window.confirm(`Delete ${device.batchCode} — ${device.device}? This cannot be undone.`)) return;
+    try {
+      await deleteDevice(device.id);
+      loadDevices();
+    } catch (err) {
+      if (err.code === "23503") {
+        alert("Can't delete this device — it has sales, reservation, or return history. Consider changing its status instead.");
+      } else {
+        alert(err.message || "Failed to delete device. Please try again.");
+      }
+    }
+  };
 
   const handleClear = () => {
-    const cleared = { search: "", category: "All", status: "All", storage: "All", color: "All" };
+    const cleared = { search: "", category: "All", status: "All", storage: "All", kind: "All", supplier: "All" };
     setFilters(cleared);
     setAppliedFilters(cleared);
   };
+
+  const kinds = useMemo(() => {
+    return [...new Set(allDevices.map((d) => getDeviceKind(d.device)))].sort();
+  }, [allDevices]);
 
   const filtered = useMemo(() => {
     return allDevices.filter((d) => {
@@ -27,17 +79,17 @@ function AllDevices() {
       const matchesSearch =
         !f.search ||
         d.batchCode.toLowerCase().includes(f.search.toLowerCase()) ||
-        d.serial.toLowerCase().includes(f.search.toLowerCase()) ||
         d.device.toLowerCase().includes(f.search.toLowerCase());
       return (
         matchesSearch &&
         (f.category === "All" || d.category === f.category) &&
         (f.status === "All" || d.status === f.status) &&
         (f.storage === "All" || d.storage === f.storage) &&
-        (f.color === "All" || d.color === f.color)
+        (f.kind === "All" || getDeviceKind(d.device) === f.kind) &&
+        (f.supplier === "All" || d.supplier === f.supplier)
       );
     });
-  }, [appliedFilters]);
+  }, [appliedFilters, allDevices]);
 
   const stats = {
     total: allDevices.length,
@@ -45,7 +97,7 @@ function AllDevices() {
     reserved: allDevices.filter((d) => d.status === "Reserved").length,
     defective: allDevices.filter((d) => d.status === "Supplier Defective").length,
     returned: allDevices.filter((d) => d.status === "Returned" || d.status === "Customer Returned").length,
-    lowStock: 4,
+    lowStock: lowStockItems.length,
   };
 
   return (
@@ -55,6 +107,7 @@ function AllDevices() {
         setFilters={setFilters}
         onApply={() => setAppliedFilters(filters)}
         onClear={handleClear}
+        kinds={kinds}
       />
 
       <InventoryStats {...stats} />
@@ -62,14 +115,28 @@ function AllDevices() {
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-4">
           <p className="font-medium text-gray-800">Devices List</p>
-          <button className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
+          <button
+            onClick={() => downloadCsv("all-devices.csv", filtered, csvColumns)}
+            className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+          >
             <Download size={14} />
             Export
           </button>
         </div>
 
-        <DeviceTable devices={filtered} />
+        <DeviceTable
+          devices={filtered}
+          onView={setViewDevice}
+          onEdit={setEditDevice}
+          onDelete={handleDelete}
+        />
       </div>
+
+      {viewDevice && <DeviceDetailsModal device={viewDevice} onClose={() => setViewDevice(null)} />}
+
+      {editDevice && (
+        <EditDeviceModal device={editDevice} onClose={() => setEditDevice(null)} onSaved={handleEditSaved} />
+      )}
     </div>
   );
 }

@@ -1,0 +1,204 @@
+import { supabase } from "../lib/supabaseClient";
+import { formatDate, formatTime } from "../utils/datetime";
+import { expireOverdueReservations } from "./reservationsService";
+
+const DEVICE_SELECT =
+  "id, batch_code, device_name, category, storage, color, status, supplier_id, purchase_price, selling_price, notes, date_added, suppliers:supplier_id ( name )";
+
+function mapDevice(d) {
+  return {
+    id: d.id,
+    batchCode: d.batch_code,
+    device: d.device_name,
+    category: d.category,
+    storage: d.storage,
+    color: d.color,
+    status: d.status,
+    supplier: d.suppliers?.name,
+    purchasePrice: d.purchase_price,
+    price: d.selling_price,
+    notes: d.notes,
+    dateAdded: formatDate(d.date_added),
+    time: formatTime(d.date_added),
+  };
+}
+
+export async function getAllDevices() {
+  await expireOverdueReservations();
+
+  const { data, error } = await supabase.from("devices").select(DEVICE_SELECT);
+
+  if (error) throw error;
+
+  return data
+    .slice()
+    .sort((a, b) => new Date(b.date_added) - new Date(a.date_added))
+    .map(mapDevice);
+}
+
+// Full device record for a single unit — used by Sales History's "Unit Info"
+// action to show arrival date, original price, etc. for the specific unit
+// that was sold, reusing the same modal as All Devices.
+export async function getDeviceById(id) {
+  const { data, error } = await supabase.from("devices").select(DEVICE_SELECT).eq("id", id).single();
+  if (error) throw error;
+  return mapDevice(data);
+}
+
+// Also creates the matching Supplier Defective record in the same atomic
+// call when device.issueDescription is set and this is a genuine transition
+// into that status (see update_device in schema.sql) — a dropped connection
+// between "flip the status" and "create the record" used to be able to leave
+// a device marked Supplier Defective with no record to show for it.
+export async function updateDevice(id, device) {
+  const { error } = await supabase.rpc("update_device", {
+    p_id: id,
+    p_batch_code: device.batchCode,
+    p_device_name: device.deviceName,
+    p_category: device.category,
+    p_storage: device.storage,
+    p_color: device.color,
+    p_status: device.status,
+    p_supplier_name: device.supplierName || null,
+    p_price: device.price,
+    p_notes: device.notes || null,
+    p_issue_description: device.issueDescription || null,
+  });
+  if (error) throw error;
+}
+
+export async function deleteDevice(id) {
+  const { error } = await supabase.from("devices").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// Available units of a given model — used to pick a replacement device
+// when approving a customer return as an exchange rather than a refund.
+export async function getAvailableDevicesForReplacement(deviceName) {
+  const { data, error } = await supabase
+    .from("devices")
+    .select("id, batch_code, device_name, storage, color")
+    .eq("status", "Available")
+    .eq("device_name", deviceName);
+
+  if (error) throw error;
+
+  return data.map((d) => ({
+    id: d.id,
+    batchCode: d.batch_code,
+    device: d.device_name,
+    storage: d.storage,
+    color: d.color,
+  }));
+}
+
+// Every available unit, individually — New Sale sells specific serialized
+// devices, not "quantity of a product", so each row here is one real unit.
+export async function getAvailableDevicesForSale() {
+  const { data, error } = await supabase
+    .from("devices")
+    .select("id, batch_code, device_name, category, storage, color, selling_price")
+    .eq("status", "Available");
+
+  if (error) throw error;
+
+  return data.map((d) => ({
+    id: d.id,
+    batchCode: d.batch_code,
+    product: d.device_name,
+    category: d.category,
+    storage: d.storage,
+    color: d.color,
+    price: d.selling_price,
+  }));
+}
+
+// Also creates the matching Supplier Defective record in the same atomic
+// call when device.issueDescription is set (see add_device in schema.sql) —
+// a dropped connection between "insert the device" and "create the record"
+// used to be able to leave a brand-new device marked Supplier Defective
+// with no record to show for it.
+export async function addDevice(device) {
+  const { data, error } = await supabase.rpc("add_device", {
+    p_batch_code: device.batchCode,
+    p_device_name: device.deviceName,
+    p_category: device.category,
+    p_storage: device.storage,
+    p_color: device.color,
+    p_status: device.status,
+    p_supplier_name: device.supplierName || null,
+    p_price: device.price,
+    p_notes: device.notes || null,
+    p_date_added: device.dateAdded,
+    p_issue_description: device.issueDescription || null,
+  });
+
+  if (error) throw error;
+  return { id: data };
+}
+
+export async function getLowStockItems() {
+  const { data, error } = await supabase.from("low_stock_view").select("*");
+
+  if (error) throw error;
+
+  return data
+    .slice()
+    .sort((a, b) => a.available - b.available)
+    .map((r) => ({
+      device: r.device_name,
+      category: r.category,
+      available: r.available,
+      reorderLevel: r.reorder_level,
+      estimatedValue: r.estimated_value,
+      lastUpdated: formatDate(r.last_updated),
+      time: formatTime(r.last_updated),
+    }));
+}
+
+export async function getSupplierDefectiveRecords() {
+  const { data, error } = await supabase.from("supplier_defective_records").select(`
+    id,
+    issue_description,
+    status,
+    action_taken,
+    date_detected,
+    device_id,
+    devices:device_id ( batch_code, device_name, storage, color ),
+    suppliers:supplier_id ( name )
+  `);
+
+  if (error) throw error;
+
+  return data
+    .slice()
+    .sort((a, b) => new Date(b.date_detected) - new Date(a.date_detected))
+    .map((r) => ({
+      id: r.id,
+      deviceId: r.device_id,
+      batchCode: r.devices?.batch_code,
+      device: r.devices?.device_name,
+      storage: r.devices?.storage,
+      color: r.devices?.color,
+      supplier: r.suppliers?.name,
+      dateDetected: formatDate(r.date_detected),
+      time: formatTime(r.date_detected),
+      issue: r.issue_description,
+      status: r.status,
+      actionTaken: r.action_taken,
+    }));
+}
+
+// Resolving a defective record means the unit is fixed and back in stock —
+// this puts the device itself back to Available so it's no longer stuck
+// showing "Supplier Defective" on All Devices and everywhere else. Runs as a
+// single atomic RPC (see update_supplier_defective_status in schema.sql).
+export async function updateSupplierDefectiveStatus(id, { status, actionTaken, deviceId }) {
+  const { error } = await supabase.rpc("update_supplier_defective_status", {
+    p_id: id,
+    p_status: status,
+    p_action_taken: actionTaken || null,
+    p_device_id: deviceId || null,
+  });
+  if (error) throw error;
+}

@@ -1,8 +1,10 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { salesThisMonth } from "../../data/mockData";
+import { useServiceData } from "../../hooks/useServiceData";
+import { getSalesThisMonth } from "../../services/salesService";
 
 function SalesChart() {
-  const total = salesThisMonth[salesThisMonth.length - 1].sales;
+  const salesThisMonth = useServiceData(getSalesThisMonth, []);
+  const total = salesThisMonth.length ? salesThisMonth[salesThisMonth.length - 1].sales : 0;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 flex-1">

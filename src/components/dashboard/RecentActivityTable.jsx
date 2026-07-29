@@ -1,4 +1,6 @@
-import { recentActivity } from "../../data/mockData";
+import { useNavigate } from "react-router-dom";
+import { useServiceData } from "../../hooks/useServiceData";
+import { getRecentActivity } from "../../services/dashboardService";
 
 const statusStyles = {
   Sold: "bg-blue-100 text-blue-600",
@@ -9,11 +11,16 @@ const statusStyles = {
 };
 
 function RecentActivityTable() {
+  const navigate = useNavigate();
+  const recentActivity = useServiceData(getRecentActivity, []);
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
       <div className="flex items-center justify-between mb-4">
         <p className="font-medium text-gray-800">Recent Device Activity</p>
-        <button className="text-blue-600 text-sm hover:underline">View All</button>
+        <button onClick={() => navigate("/inventory/all")} className="text-blue-600 text-sm hover:underline">
+          View All
+        </button>
       </div>
 
       <div className="overflow-x-auto">

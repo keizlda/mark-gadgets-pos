@@ -17,7 +17,7 @@ const categoryIcon = {
   MacBooks: Laptop,
 };
 
-function DeviceTable({ devices, totalCount }) {
+function DeviceTable({ devices, onView, onEdit, onDelete }) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [openMenu, setOpenMenu] = useState(null);
@@ -34,7 +34,6 @@ function DeviceTable({ devices, totalCount }) {
             <tr className="text-left text-gray-400 border-b border-gray-100">
               <th className="pb-2 font-medium">Batch Code</th>
               <th className="pb-2 font-medium">Device</th>
-              <th className="pb-2 font-medium">Serial Number / IMEI</th>
               <th className="pb-2 font-medium">Category</th>
               <th className="pb-2 font-medium">Storage</th>
               <th className="pb-2 font-medium">Color</th>
@@ -46,7 +45,7 @@ function DeviceTable({ devices, totalCount }) {
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={9} className="py-8 text-center text-gray-400">
+                <td colSpan={8} className="py-8 text-center text-gray-400">
                   No devices found.
                 </td>
               </tr>
@@ -64,7 +63,6 @@ function DeviceTable({ devices, totalCount }) {
                         <span className="text-gray-800 font-medium">{row.device}</span>
                       </div>
                     </td>
-                    <td className="py-3 text-gray-500 text-xs">{row.serial}</td>
                     <td className="py-3 text-gray-600">{row.category}</td>
                     <td className="py-3 text-gray-600">{row.storage}</td>
                     <td className="py-3 text-gray-600">{row.color}</td>
@@ -86,9 +84,24 @@ function DeviceTable({ devices, totalCount }) {
                       </button>
                       {openMenu === index && (
                         <div className="absolute right-6 top-8 bg-white border border-gray-200 rounded-lg shadow-md z-10 w-32 text-left">
-                          <button className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50">View</button>
-                          <button className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Edit</button>
-                          <button className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-50">Delete</button>
+                          <button
+                            onClick={() => { onView(row); setOpenMenu(null); }}
+                            className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => { onEdit(row); setOpenMenu(null); }}
+                            className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => { onDelete(row); setOpenMenu(null); }}
+                            className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-50"
+                          >
+                            Delete
+                          </button>
                         </div>
                       )}
                     </td>

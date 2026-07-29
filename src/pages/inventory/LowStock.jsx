@@ -1,14 +1,62 @@
-import { useState } from "react";
-import { Search, Filter, Download, AlertTriangle, Package, TrendingUp, RotateCcw } from "lucide-react";
-import { lowStockItems, deviceCategories, deviceStorages, suppliers } from "../../data/mockData";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Search, Filter, Download, Settings, AlertTriangle, Package, TrendingUp, RotateCcw } from "lucide-react";
+import { downloadCsv } from "../../utils/csv";
+import { getLowStockItems } from "../../services/inventoryService";
+import { getDeviceCategories } from "../../services/referenceService";
+import { useServiceData } from "../../hooks/useServiceData";
+import ReorderSettingsModal from "../../components/inventory/ReorderSettingsModal";
+
+const blankFilters = { category: "All", search: "" };
+
+const csvColumns = [
+  { label: "Device", value: (r) => r.device },
+  { label: "Category", value: (r) => r.category },
+  { label: "Available", value: (r) => r.available },
+  { label: "Reorder Level", value: (r) => r.reorderLevel },
+  { label: "Estimated Value", value: (r) => r.estimatedValue },
+  { label: "Last Updated", value: (r) => r.lastUpdated },
+  { label: "Time", value: (r) => r.time },
+];
 
 function LowStock() {
-  const [category, setCategory] = useState("All");
-  const [storage, setStorage] = useState("All");
-  const [supplier, setSupplier] = useState("All");
-  const [search, setSearch] = useState("");
+  const deviceCategories = useServiceData(getDeviceCategories, []);
 
-  const records = lowStockItems;
+  const [lowStockItems, setLowStockItems] = useState([]);
+  const loadLowStockItems = useCallback(() => {
+    getLowStockItems().then(setLowStockItems);
+  }, []);
+  useEffect(() => {
+    loadLowStockItems();
+  }, [loadLowStockItems]);
+
+  const [filters, setFilters] = useState(blankFilters);
+  const [appliedFilters, setAppliedFilters] = useState(blankFilters);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const handleClear = () => {
+    setFilters(blankFilters);
+    setAppliedFilters(blankFilters);
+    setPage(1);
+  };
+
+  const handleApply = () => {
+    setAppliedFilters(filters);
+    setPage(1);
+  };
+
+  const records = useMemo(() => {
+    const f = appliedFilters;
+    return lowStockItems.filter((r) => {
+      const matchesSearch = !f.search || r.device.toLowerCase().includes(f.search.toLowerCase());
+      return matchesSearch && (f.category === "All" || r.category === f.category);
+    });
+  }, [appliedFilters, lowStockItems]);
+
+  const totalPages = Math.max(1, Math.ceil(records.length / perPage));
+  const start = (page - 1) * perPage;
+  const paginated = records.slice(start, start + perPage);
 
   const totalUnits = records.reduce((sum, r) => sum + r.available, 0);
   const totalValue = records.reduce((sum, r) => sum + r.estimatedValue, 0);
@@ -26,14 +74,14 @@ function LowStock() {
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <p className="text-sm font-semibold text-gray-700 mb-4">Filters</p>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
               Category
             </label>
             <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              value={filters.category}
+              onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
               className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="All">All Categories</option>
@@ -42,51 +90,25 @@ function LowStock() {
           </div>
           <div>
             <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-              Storage
-            </label>
-            <select
-              value={storage}
-              onChange={(e) => setStorage(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">All Storage</option>
-              {deviceStorages.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-              Supplier
-            </label>
-            <select
-              value={supplier}
-              onChange={(e) => setSupplier(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">All Suppliers</option>
-              {suppliers.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
-              Search (Batch Code / Serial Number / IMEI)
+              Search (Device)
             </label>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Type batch code, serial number, or IMEI..."
+                value={filters.search}
+                onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
+                placeholder="Type device name..."
                 className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-4">
-          <button className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+          <button onClick={handleClear} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
             Clear
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+          <button onClick={handleApply} className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
             <Filter size={14} />
             Apply Filters
           </button>
@@ -118,10 +140,22 @@ function LowStock() {
           <p className="font-medium text-gray-800">
             Low Stock Items <span className="text-gray-400 font-normal">({records.length})</span>
           </p>
-          <button className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
-            <Download size={14} />
-            Export
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSettings(true)}
+              className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+            >
+              <Settings size={14} />
+              Settings
+            </button>
+            <button
+              onClick={() => downloadCsv("low-stock.csv", records, csvColumns)}
+              className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+            >
+              <Download size={14} />
+              Export
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -130,23 +164,25 @@ function LowStock() {
               <tr className="text-left text-gray-400 border-b border-gray-100">
                 <th className="pb-2 font-medium">Device</th>
                 <th className="pb-2 font-medium">Category</th>
-                <th className="pb-2 font-medium">Storage</th>
                 <th className="pb-2 font-medium">Available Stock</th>
                 <th className="pb-2 font-medium">Reorder Level</th>
                 <th className="pb-2 font-medium">Estimated Value</th>
                 <th className="pb-2 font-medium">Last Updated</th>
-                <th className="pb-2 font-medium text-right">Action</th>
               </tr>
             </thead>
             <tbody>
-              {records.map((row, index) => (
+              {paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-400">
+                    No low stock items found.
+                  </td>
+                </tr>
+              ) : paginated.map((row, index) => (
                 <tr key={index} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-3">
                     <p className="text-gray-800 font-medium">{row.device}</p>
-                    <p className="text-xs text-gray-400">{row.variant}</p>
                   </td>
                   <td className="py-3 text-gray-600">{row.category}</td>
-                  <td className="py-3 text-gray-600">{row.storage}</td>
                   <td className="py-3">
                     <span className="text-red-500 font-semibold">{row.available}</span>
                     <span className="text-gray-400 text-xs"> unit{row.available === 1 ? "" : "s"} left</span>
@@ -160,11 +196,6 @@ function LowStock() {
                     <p>{row.lastUpdated}</p>
                     <p className="text-xs text-gray-400">{row.time}</p>
                   </td>
-                  <td className="py-3 text-right">
-                    <button className="px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50">
-                      View Details
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -172,16 +203,34 @@ function LowStock() {
         </div>
 
         <div className="flex items-center justify-between mt-4 flex-wrap gap-3">
-          <p className="text-xs text-gray-500">Showing 1 to {records.length} of {records.length} records</p>
+          <p className="text-xs text-gray-500">
+            Showing {records.length === 0 ? 0 : start + 1} to {Math.min(start + perPage, records.length)} of {records.length} records
+          </p>
           <div className="flex items-center gap-3">
-            <select className="border border-gray-200 rounded-lg text-xs px-2 py-1.5">
-              <option>10 per page</option>
-              <option>20 per page</option>
+            <select
+              value={perPage}
+              onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+              className="border border-gray-200 rounded-lg text-xs px-2 py-1.5"
+            >
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
             </select>
             <div className="flex items-center gap-1">
-              <button className="p-1.5 border border-gray-200 rounded-lg text-gray-300" disabled>‹</button>
-              <button className="w-7 h-7 text-xs rounded-lg bg-blue-600 text-white">1</button>
-              <button className="p-1.5 border border-gray-200 rounded-lg text-gray-300" disabled>›</button>
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-1.5 border border-gray-200 rounded-lg text-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed"
+              >
+                ‹
+              </button>
+              <button className="w-7 h-7 text-xs rounded-lg bg-blue-600 text-white">{page}</button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-1.5 border border-gray-200 rounded-lg text-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed"
+              >
+                ›
+              </button>
             </div>
           </div>
         </div>
@@ -194,10 +243,14 @@ function LowStock() {
           <p className="text-sm font-medium text-yellow-700">Low Stock Alert</p>
           <p className="text-xs text-yellow-600">
             These items are running low. Please restock soon to avoid loss of sales. Reorder level is the
-            minimum stock level before an item is considered low.
+            minimum stock level before an item is considered low — configure it per model from Settings.
           </p>
         </div>
       </div>
+
+      {showSettings && (
+        <ReorderSettingsModal onClose={() => setShowSettings(false)} onChanged={loadLowStockItems} />
+      )}
     </div>
   );
 }

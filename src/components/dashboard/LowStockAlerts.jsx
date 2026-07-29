@@ -1,7 +1,13 @@
+import { useNavigate } from "react-router-dom";
 import { AlertTriangle, ChevronRight } from "lucide-react";
-import { lowStockAlerts } from "../../data/mockData";
+import { useServiceData } from "../../hooks/useServiceData";
+import { getLowStockItems } from "../../services/inventoryService";
 
 function LowStockAlerts() {
+  const navigate = useNavigate();
+  const lowStockItems = useServiceData(getLowStockItems, []);
+  const alerts = lowStockItems.slice(0, 3);
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
       <div className="flex items-center gap-2 mb-4">
@@ -10,16 +16,18 @@ function LowStockAlerts() {
       </div>
 
       <div className="space-y-3">
-        {lowStockAlerts.map((item, index) => (
+        {alerts.map((item, index) => (
           <div key={index} className="bg-red-50 rounded-lg p-3">
-            <p className="text-sm font-medium text-gray-800">{item.name}</p>
-            <p className="text-xs text-gray-500">{item.variant}</p>
-            <p className="text-xs text-red-500 mt-1">{item.left} unit(s) left</p>
+            <p className="text-sm font-medium text-gray-800">{item.device}</p>
+            <p className="text-xs text-red-500 mt-1">{item.available} unit(s) left</p>
           </div>
         ))}
       </div>
 
-      <button className="flex items-center gap-1 text-blue-600 text-sm mt-4 hover:underline">
+      <button
+        onClick={() => navigate("/inventory/low-stock")}
+        className="flex items-center gap-1 text-blue-600 text-sm mt-4 hover:underline"
+      >
         View all low stock items
         <ChevronRight size={14} />
       </button>
