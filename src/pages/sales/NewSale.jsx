@@ -315,18 +315,22 @@ function NewSale() {
                       <p className="text-sm text-gray-800 font-medium truncate">{c.product}</p>
                       <p className="text-xs text-gray-400">{c.storage} · {c.color} · {c.batchCode}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        Capital: ₱{(Number(c.purchasePrice) || 0).toLocaleString()}
+                        Capital: ₱{(Number(c.purchasePrice) || 0).toLocaleString()} · Base: ₱
+                        {(Number(c.price) || 0).toLocaleString()}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <span className="text-gray-400 text-xs">₱</span>
-                    <input
-                      type="number"
-                      value={c.actualPrice}
-                      onChange={(e) => updateActualPrice(c.id, e.target.value)}
-                      className="w-20 text-right border border-gray-200 rounded-lg px-1.5 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                  <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                    <span className="text-xs text-gray-400">Actual Price Sold</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-400 text-xs">₱</span>
+                      <input
+                        type="number"
+                        value={c.actualPrice}
+                        onChange={(e) => updateActualPrice(c.id, e.target.value)}
+                        className="w-20 text-right border border-gray-200 rounded-lg px-1.5 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
                   <button onClick={() => removeFromCart(c.id)} className="text-red-400 hover:text-red-600 mt-1.5">
                     <X size={14} />
