@@ -111,6 +111,10 @@ function NewSale() {
   const handleProcessSale = async () => {
     if (cart.length === 0) return;
     setError("");
+    if (cart.some((c) => !(Number(c.actualPrice) > 0))) {
+      setError("Every unit needs an Actual Price Sold greater than ₱0 before processing the sale.");
+      return;
+    }
     setSubmitting(true);
     try {
       await processSale({
