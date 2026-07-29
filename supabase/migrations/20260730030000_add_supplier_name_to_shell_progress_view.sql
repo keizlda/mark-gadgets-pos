@@ -1,6 +1,10 @@
 -- Adds supplier name to the progress view for the All Devices "Pending
--- Shipments" display.
-create or replace view public.bulk_order_shell_progress_view
+-- Shipments" display. Dropped and recreated rather than "create or
+-- replace" — that only allows appending columns at the end, and
+-- supplier_name sits in the middle of the existing column list.
+drop view if exists public.bulk_order_shell_progress_view;
+
+create view public.bulk_order_shell_progress_view
 with (security_invoker = true) as
 select
   s.id,
