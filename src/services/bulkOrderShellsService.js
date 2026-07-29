@@ -36,7 +36,8 @@ export async function createBulkOrderShell({
 }
 
 // Pending shells with how many units have been linked to each so far — for
-// Add Device's "Link to Pending Shipment" dropdown.
+// Add Device's "Link to Pending Shipment" dropdown and the All Devices
+// progress display.
 export async function getPendingShellsWithProgress() {
   const { data, error } = await supabase
     .from("bulk_order_shell_progress_view")
@@ -48,6 +49,7 @@ export async function getPendingShellsWithProgress() {
 
   return data.map((s) => ({
     id: s.id,
+    supplierName: s.supplier_name,
     deviceName: s.device_name,
     storage: s.storage,
     color: s.color,

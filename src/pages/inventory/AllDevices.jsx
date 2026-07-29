@@ -6,10 +6,12 @@ import DeviceTable from "../../components/inventory/DeviceTable";
 import DeviceDetailsModal from "../../components/inventory/DeviceDetailsModal";
 import EditDeviceModal from "../../components/inventory/EditDeviceModal";
 import LogShipmentArrivalModal from "../../components/inventory/LogShipmentArrivalModal";
+import PendingShipmentsCard from "../../components/inventory/PendingShipmentsCard";
 import { downloadCsv } from "../../utils/csv";
 import { getDeviceKind } from "../../utils/deviceKind";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getAllDevices, getLowStockItems, deleteDevice } from "../../services/inventoryService";
+import { getPendingShellsWithProgress } from "../../services/bulkOrderShellsService";
 
 const csvColumns = [
   { label: "Batch Code", value: (r) => r.batchCode },
@@ -46,8 +48,17 @@ function AllDevices() {
   const [editDevice, setEditDevice] = useState(null);
   const [showLogShipment, setShowLogShipment] = useState(false);
 
+  const [pendingShells, setPendingShells] = useState([]);
+  const loadPendingShells = useCallback(() => {
+    getPendingShellsWithProgress().then(setPendingShells);
+  }, []);
+  useEffect(() => {
+    loadPendingShells();
+  }, [loadPendingShells]);
+
   const handleShipmentLogged = () => {
     setShowLogShipment(false);
+    loadPendingShells();
     alert("Shipment logged. Link each unit to it from Add Device as they're entered.");
   };
 
@@ -118,6 +129,8 @@ function AllDevices() {
       />
 
       <InventoryStats {...stats} />
+
+      <PendingShipmentsCard shells={pendingShells} />
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-4">

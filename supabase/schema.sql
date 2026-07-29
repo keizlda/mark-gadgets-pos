@@ -174,6 +174,7 @@ with (security_invoker = true) as
 select
   s.id,
   s.supplier_id,
+  sup.name as supplier_name,
   s.device_name,
   s.storage,
   s.color,
@@ -182,8 +183,9 @@ select
   s.status,
   count(d.id) as linked_count
 from public.bulk_order_shells s
+left join public.suppliers sup on sup.id = s.supplier_id
 left join public.devices d on d.bulk_order_shell_id = s.id
-group by s.id;
+group by s.id, sup.name;
 
 -- Monthly completed-sales totals, for the Dashboard trend chart.
 create view public.sales_by_month_view
