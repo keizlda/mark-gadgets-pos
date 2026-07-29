@@ -14,7 +14,7 @@ const PAGE_TITLES = {
   "/reports": "Reports",
 };
 
-function Topbar() {
+function Topbar({ onMenuClick }) {
   const location = useLocation();
   const pageTitle = PAGE_TITLES[location.pathname] || "Dashboard";
 
@@ -25,14 +25,16 @@ function Topbar() {
   });
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 fixed top-0 left-64 right-0 z-10">
-      <div className="flex items-center gap-4">
-        <Menu size={20} className="text-gray-500 cursor-pointer" />
-        <h2 className="font-semibold text-gray-800">{pageTitle}</h2>
+    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 fixed top-0 left-0 md:left-64 right-0 z-20">
+      <div className="flex items-center gap-4 min-w-0">
+        <button onClick={onMenuClick} className="text-gray-500 md:hidden flex-shrink-0">
+          <Menu size={22} />
+        </button>
+        <h2 className="font-semibold text-gray-800 truncate">{pageTitle}</h2>
       </div>
 
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+      <div className="flex items-center gap-3 sm:gap-6 flex-shrink-0">
+        <div className="hidden lg:flex items-center gap-2 text-sm text-gray-500">
           <Calendar size={16} />
           {today}
         </div>
@@ -45,10 +47,10 @@ function Topbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
             <User size={16} className="text-gray-500" />
           </div>
-          <div className="text-sm">
+          <div className="text-sm hidden sm:block">
             <p className="font-medium text-gray-800 leading-none">Admin</p>
             <p className="text-gray-400 text-xs">Administrator</p>
           </div>

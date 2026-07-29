@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
@@ -10,13 +11,15 @@ import AfterSales from "./pages/AfterSales";
 import Reports from "./pages/Reports";
 
 function AppLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <div className="bg-gray-50 min-h-screen">
       <div className="print:hidden">
-        <Sidebar />
-        <Topbar />
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Topbar onMenuClick={() => setSidebarOpen((o) => !o)} />
       </div>
-      <main className="ml-64 pt-16 p-6 print:ml-0 print:pt-0 print:p-0">
+      <main className="md:ml-64 pt-16 p-4 sm:p-6 print:ml-0 print:pt-0 print:p-0">
         <Outlet />
       </main>
     </div>
