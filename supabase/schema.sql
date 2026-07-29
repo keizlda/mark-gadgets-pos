@@ -72,11 +72,18 @@ create table public.sales (
   customer_name text,
   customer_phone text,
   salesperson_id uuid references public.profiles (id),
-  payment_method text not null check (payment_method in ('Cash', 'GCash', 'Credit Card', 'Bank Transfer')),
+  payment_method text not null check (payment_method in ('Cash', 'GCash', 'Credit Card', 'Bank Transfer', 'Check')),
   reference_number text,
   notes text,
   total_amount numeric(12, 2) not null check (total_amount >= 0),
   status text not null default 'Completed' check (status in ('Completed', 'Refunded')),
+  -- A sale with more than 3 total units (summed across its sale_items) is
+  -- classified Bulk and starts Pending — bulk buyers usually pay by check,
+  -- which isn't confirmed the moment the sale is rung up. Lives here (not
+  -- per sale_item) since every unit in one sale shares this one sales row —
+  -- marking it Paid naturally reflects across every unit in the order.
+  order_type text not null default 'Regular' check (order_type in ('Regular', 'Bulk')),
+  payment_status text not null default 'Paid' check (payment_status in ('Paid', 'Pending')),
   sold_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
