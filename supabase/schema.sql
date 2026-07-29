@@ -111,6 +111,19 @@ create table public.reservations (
   created_at timestamptz not null default now()
 );
 
+-- Reports' expense log. A plain date (not timestamptz) — an expense is tied
+-- to a calendar day, not a moment, so there's no timezone-midnight footgun
+-- when filtering by report date range.
+create table public.expenses (
+  id uuid primary key default gen_random_uuid(),
+  expense_date date not null,
+  description text not null,
+  amount numeric(12, 2) not null check (amount >= 0),
+  created_at timestamptz not null default now()
+);
+
+create index on public.expenses (expense_date);
+
 -- ============================================================
 -- VIEWS
 -- ============================================================
@@ -525,6 +538,7 @@ alter table public.sale_items enable row level security;
 alter table public.customer_returns enable row level security;
 alter table public.supplier_defective_records enable row level security;
 alter table public.reservations enable row level security;
+alter table public.expenses enable row level security;
 
 -- profiles: everyone authenticated can view (needed for salesperson lookups),
 -- but a user can only update their own row.
@@ -556,4 +570,7 @@ create policy "supplier_defective_records_all_authenticated" on public.supplier_
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
 create policy "reservations_all_authenticated" on public.reservations
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+create policy "expenses_all_authenticated" on public.expenses
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');

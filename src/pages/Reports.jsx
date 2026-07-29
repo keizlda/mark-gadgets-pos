@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   BarChart3,
   Printer,
@@ -9,9 +9,11 @@ import {
   TrendingUp,
   Plus,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
 import { getSalesHistory } from "../services/salesService";
+import { getExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import DateRangePicker from "../components/common/DateRangePicker";
 
 const REPORT_TYPES = ["Daily", "Weekly", "Monthly", "Custom Range"];
@@ -77,9 +79,18 @@ function Reports() {
   const [viewMode, setViewMode] = useState("all"); // "all" | "cash" | "expenses"
 
   const [expenses, setExpenses] = useState([]);
+  const loadExpenses = useCallback(() => {
+    getExpenses().then(setExpenses);
+  }, []);
+  useEffect(() => {
+    loadExpenses();
+  }, [loadExpenses]);
+
   const [expenseDate, setExpenseDate] = useState(toISODate(new Date()));
   const [expenseDesc, setExpenseDesc] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseError, setExpenseError] = useState("");
+  const [submittingExpense, setSubmittingExpense] = useState(false);
 
   const rows = useMemo(() => {
     const from = generatedRange.from ? new Date(generatedRange.from + "T00:00:00") : null;
@@ -150,19 +161,30 @@ function Reports() {
     window.print();
   };
 
-  const handleAddExpense = (e) => {
+  const handleAddExpense = async (e) => {
     e.preventDefault();
     if (!expenseDesc.trim() || !expenseAmount) return;
-    setExpenses((prev) => [
-      ...prev,
-      { id: Date.now(), date: expenseDate, description: expenseDesc.trim(), amount: Number(expenseAmount) },
-    ]);
-    setExpenseDesc("");
-    setExpenseAmount("");
+    setExpenseError("");
+    setSubmittingExpense(true);
+    try {
+      await addExpense({ date: expenseDate, description: expenseDesc.trim(), amount: Number(expenseAmount) });
+      setExpenseDesc("");
+      setExpenseAmount("");
+      loadExpenses();
+    } catch (err) {
+      setExpenseError(err.message || "Failed to add expense. Please try again.");
+    } finally {
+      setSubmittingExpense(false);
+    }
   };
 
-  const handleRemoveExpense = (id) => {
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
+  const handleRemoveExpense = async (id) => {
+    try {
+      await deleteExpense(id);
+      loadExpenses();
+    } catch (err) {
+      alert(err.message || "Failed to remove expense. Please try again.");
+    }
   };
 
   return (
@@ -377,6 +399,13 @@ function Reports() {
               </table>
             </div>
 
+            {expenseError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4 print:hidden">
+                <AlertTriangle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-red-700">{expenseError}</p>
+              </div>
+            )}
+
             <form onSubmit={handleAddExpense} className="flex flex-wrap items-end gap-3 mt-4 print:hidden">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Date</label>
@@ -412,10 +441,11 @@ function Reports() {
               </div>
               <button
                 type="submit"
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                disabled={submittingExpense}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
               >
                 <Plus size={14} />
-                Add Expense
+                {submittingExpense ? "Adding..." : "Add Expense"}
               </button>
             </form>
           </div>
