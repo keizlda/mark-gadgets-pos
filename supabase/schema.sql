@@ -383,6 +383,11 @@ begin
 end;
 $$;
 
+-- Marking Resolved puts the device back to Available. Undoing that (moving
+-- the record back off Resolved) puts it back to Supplier Defective — but
+-- only if the device is still sitting Available untouched since then; if
+-- it's since been reserved/sold/whatever else, leave it alone rather than
+-- clobbering newer state.
 create function public.update_supplier_defective_status(
   p_id uuid,
   p_status text,
@@ -394,13 +399,25 @@ language plpgsql
 security invoker
 set search_path = public
 as $$
+declare
+  v_previous_status text;
+  v_current_device_status text;
 begin
+  select status into v_previous_status from public.supplier_defective_records where id = p_id;
+
   update public.supplier_defective_records
   set status = p_status, action_taken = p_action_taken
   where id = p_id;
 
-  if p_status = 'Resolved' and p_device_id is not null then
-    update public.devices set status = 'Available' where id = p_device_id;
+  if p_device_id is not null then
+    if p_status = 'Resolved' then
+      update public.devices set status = 'Available' where id = p_device_id;
+    elsif v_previous_status = 'Resolved' and p_status <> 'Resolved' then
+      select status into v_current_device_status from public.devices where id = p_device_id;
+      if v_current_device_status = 'Available' then
+        update public.devices set status = 'Supplier Defective' where id = p_device_id;
+      end if;
+    end if;
   end if;
 end;
 $$;
