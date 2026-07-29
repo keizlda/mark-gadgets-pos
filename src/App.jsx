@@ -20,7 +20,7 @@ function AppLayout() {
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <Topbar onMenuClick={() => setSidebarOpen((o) => !o)} />
       </div>
-      <main className="md:ml-64 pt-16 p-4 sm:p-6 print:ml-0 print:pt-0 print:p-0">
+      <main className="md:ml-64 pt-16 px-4 pb-4 sm:px-6 sm:pb-6 print:ml-0 print:pt-0 print:p-0">
         <Outlet />
       </main>
     </div>
