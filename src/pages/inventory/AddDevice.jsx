@@ -5,8 +5,18 @@ import { useServiceData } from "../../hooks/useServiceData";
 import { getProductCatalog } from "../../services/referenceService";
 import { addDevice } from "../../services/inventoryService";
 import { getPendingShellsWithProgress } from "../../services/bulkOrderShellsService";
-import { formatDate } from "../../utils/datetime";
+import { formatDate, todayLocalDateString } from "../../utils/datetime";
 import SupplierSelect from "../../components/inventory/SupplierSelect";
+
+// Batch codes follow MMDDYY-### (e.g. 073026-001) — prefilling the date
+// part means staff only ever need to type the sequence number.
+function batchCodeDatePrefix() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${mm}${dd}${yy}-`;
+}
 
 function formatShellLabel(shell) {
   const variant = [shell.storage, shell.color].filter(Boolean).join(" · ");
@@ -31,22 +41,27 @@ const categoryToDbValue = {
 
 const OTHER_MODEL = "__other__";
 
-const blankForm = {
-  category: "iPhone",
-  model: "",
-  customModel: "",
-  color: "",
-  storage: "",
-  supplier: "",
-  dateReceived: new Date().toISOString().slice(0, 10),
-  batchCode: "",
-  purchasePrice: "",
-  price: "",
-  status: "Available",
-  issueDescription: "",
-  remarks: "",
-  shellId: "",
-};
+// A function (not a static object) so every fresh form — including the one
+// after "Save & Add Another" — picks up the current date rather than
+// whatever date happened to be current when the page first loaded.
+function createBlankForm() {
+  return {
+    category: "iPhone",
+    model: "",
+    customModel: "",
+    color: "",
+    storage: "",
+    supplier: "",
+    dateReceived: todayLocalDateString(),
+    batchCode: batchCodeDatePrefix(),
+    purchasePrice: "",
+    price: "",
+    status: "Available",
+    issueDescription: "",
+    remarks: "",
+    shellId: "",
+  };
+}
 
 function AddDevice() {
   const navigate = useNavigate();
@@ -61,7 +76,7 @@ function AddDevice() {
     loadPendingShells();
   }, [loadPendingShells]);
 
-  const [form, setForm] = useState(blankForm);
+  const [form, setForm] = useState(createBlankForm);
   const [submitMode, setSubmitMode] = useState("save");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -126,7 +141,7 @@ function AddDevice() {
       // A date-only value would parse to midnight UTC and print as 8 AM in
       // Manila time. When the receipt date is today, use the real current
       // timestamp; a backdated date still gets that day's local midnight.
-      const isToday = form.dateReceived === new Date().toISOString().slice(0, 10);
+      const isToday = form.dateReceived === todayLocalDateString();
       const dateAdded = isToday ? new Date().toISOString() : new Date(`${form.dateReceived}T00:00:00`).toISOString();
 
       await addDevice({
@@ -148,7 +163,7 @@ function AddDevice() {
 
       if (submitMode === "addAnother") {
         alert("Device saved. Form reset for the next entry.");
-        setForm(blankForm);
+        setForm(createBlankForm());
         loadPendingShells();
       } else {
         alert("Device saved.");
