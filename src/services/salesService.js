@@ -7,10 +7,13 @@ export async function getSalesHistory() {
     price_at_sale,
     quantity,
     sales:sale_id (
+      id,
       customer_name,
       customer_phone,
       payment_method,
       status,
+      order_type,
+      payment_status,
       sold_at,
       profiles:salesperson_id ( name )
     ),
@@ -32,6 +35,7 @@ export async function getSalesHistory() {
     .sort((a, b) => new Date(b.sales?.sold_at) - new Date(a.sales?.sold_at))
     .map((item) => ({
       saleItemId: item.id,
+      saleId: item.sales?.id,
       deviceId: item.devices?.id,
       batchCode: item.devices?.batch_code,
       date: formatDate(item.sales?.sold_at),
@@ -45,6 +49,11 @@ export async function getSalesHistory() {
       salesperson: item.sales?.profiles?.name,
       payment: item.sales?.payment_method,
       total: item.price_at_sale * item.quantity,
+      // orderType/paymentStatus live once per sale (not per unit) — every
+      // row belonging to the same bulk order shares the same values here
+      // simply because they all join in the same parent sales record.
+      orderType: item.sales?.order_type,
+      paymentStatus: item.sales?.payment_status,
       // The device's own status wins when it's since been returned — the
       // sale itself is still "Completed" (no refund happened), but this row
       // represents that specific unit, which is no longer with the customer.
@@ -55,6 +64,14 @@ export async function getSalesHistory() {
           ? "Returned"
           : item.sales?.status,
     }));
+}
+
+// payment_status lives once on the sales row (one invoice), not per
+// sale_item — updating it here is all that's needed for every unit in a
+// bulk order to show Paid, since they all just join in this same row.
+export async function updateSalePaymentStatus(saleId, paymentStatus) {
+  const { error } = await supabase.from("sales").update({ payment_status: paymentStatus }).eq("id", saleId);
+  if (error) throw error;
 }
 
 // cartItems: [{ id (device uuid), price }]. Each cart line is one specific

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Search,
   Download,
@@ -9,10 +9,11 @@ import {
   TrendingUp,
   ChevronLeft,
   ChevronRight,
+  PackageCheck,
 } from "lucide-react";
 import { downloadCsv } from "../../utils/csv";
 import { useServiceData } from "../../hooks/useServiceData";
-import { getSalesHistory } from "../../services/salesService";
+import { getSalesHistory, updateSalePaymentStatus } from "../../services/salesService";
 import { getPaymentMethods } from "../../services/referenceService";
 import { getDeviceById } from "../../services/inventoryService";
 import InitiateReturnModal from "../../components/sales/InitiateReturnModal";
@@ -32,6 +33,8 @@ const csvColumns = [
   { label: "Payment Method", value: (r) => r.payment },
   { label: "Total", value: (r) => r.total },
   { label: "Status", value: (r) => r.status },
+  { label: "Order Type", value: (r) => r.orderType },
+  { label: "Payment Status", value: (r) => r.paymentStatus },
 ];
 
 const statusStyles = {
@@ -45,14 +48,28 @@ const paymentStyles = {
   GCash: "bg-sky-50 text-sky-600",
   "Credit Card": "bg-blue-50 text-blue-600",
   "Bank Transfer": "bg-violet-50 text-violet-600",
+  Check: "bg-amber-50 text-amber-600",
+};
+
+const paymentStatusStyles = {
+  Paid: "bg-green-100 text-green-600",
+  Pending: "bg-orange-100 text-orange-600",
 };
 
 function SalesHistory() {
-  const salesHistory = useServiceData(getSalesHistory, []);
+  const [salesHistory, setSalesHistory] = useState([]);
+  const loadSalesHistory = useCallback(() => {
+    getSalesHistory().then(setSalesHistory);
+  }, []);
+  useEffect(() => {
+    loadSalesHistory();
+  }, [loadSalesHistory]);
+
   const paymentMethods = useServiceData(getPaymentMethods, []);
 
   const [dateRange, setDateRange] = useState();
   const [payment, setPayment] = useState("All");
+  const [paymentStatus, setPaymentStatus] = useState("All");
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [openMenu, setOpenMenu] = useState(null);
@@ -61,6 +78,20 @@ function SalesHistory() {
   const [returnRecord, setReturnRecord] = useState(null);
   const [returnStarted, setReturnStarted] = useState(false);
   const [unitInfoDevice, setUnitInfoDevice] = useState(null);
+  const [markingPaidId, setMarkingPaidId] = useState(null);
+
+  const handleMarkAsPaid = async (row) => {
+    setOpenMenu(null);
+    setMarkingPaidId(row.saleId);
+    try {
+      await updateSalePaymentStatus(row.saleId, "Paid");
+      loadSalesHistory();
+    } catch (err) {
+      alert(err.message || "Failed to update payment status. Please try again.");
+    } finally {
+      setMarkingPaidId(null);
+    }
+  };
 
   const handleViewUnitInfo = async (row) => {
     setOpenMenu(null);
@@ -74,6 +105,7 @@ function SalesHistory() {
 
   const filtered = salesHistory.filter((s) => {
     if (payment !== "All" && s.payment !== payment) return false;
+    if (paymentStatus !== "All" && s.paymentStatus !== paymentStatus) return false;
     if (
       appliedSearch &&
       !s.batchCode.toLowerCase().includes(appliedSearch.toLowerCase()) &&
@@ -105,6 +137,7 @@ function SalesHistory() {
   const handleClear = () => {
     setDateRange(undefined);
     setPayment("All");
+    setPaymentStatus("All");
     setSearch("");
     setAppliedSearch("");
     setPage(1);
@@ -115,7 +148,7 @@ function SalesHistory() {
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <p className="text-sm font-medium text-gray-700 mb-4">Filters</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Date Range</label>
             <DateRangePicker value={dateRange} onChange={setDateRange} />
@@ -132,6 +165,19 @@ function SalesHistory() {
               {paymentMethods.map((p) => (
                 <option key={p} value={p}>{p}</option>
               ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Payment Status</label>
+            <select
+              value={paymentStatus}
+              onChange={(e) => setPaymentStatus(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="All">All</option>
+              <option value="Paid">Paid</option>
+              <option value="Pending">Pending</option>
             </select>
           </div>
 
@@ -228,13 +274,14 @@ function SalesHistory() {
                 <th className="pb-2 font-medium">Payment Method</th>
                 <th className="pb-2 font-medium">Salesperson</th>
                 <th className="pb-2 font-medium">Status</th>
+                <th className="pb-2 font-medium">Payment Status</th>
                 <th className="pb-2 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {paged.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-gray-400">No sales found.</td>
+                  <td colSpan={10} className="py-8 text-center text-gray-400">No sales found.</td>
                 </tr>
               ) : (
                 paged.map((row, index) => (
@@ -260,8 +307,21 @@ function SalesHistory() {
                     </td>
                     <td className="py-3 text-gray-600">{row.salesperson}</td>
                     <td className="py-3">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusStyles[row.status]}`}>
-                        {row.status}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusStyles[row.status]}`}>
+                          {row.status}
+                        </span>
+                        {row.orderType === "Bulk" && (
+                          <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-600">
+                            <PackageCheck size={11} />
+                            Bulk Order
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentStatusStyles[row.paymentStatus] || "bg-gray-100 text-gray-600"}`}>
+                        {row.paymentStatus}
                       </span>
                     </td>
                     <td className="py-3 text-right relative">
@@ -272,13 +332,22 @@ function SalesHistory() {
                         <MoreVertical size={16} />
                       </button>
                       {openMenu === index && (
-                        <div className="absolute right-6 top-8 bg-white border border-gray-200 rounded-lg shadow-md z-10 w-36 text-left">
+                        <div className="absolute right-6 top-8 bg-white border border-gray-200 rounded-lg shadow-md z-10 w-40 text-left">
                           <button
                             onClick={() => handleViewUnitInfo(row)}
                             className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                           >
                             Unit Info
                           </button>
+                          {row.paymentStatus === "Pending" && (
+                            <button
+                              onClick={() => handleMarkAsPaid(row)}
+                              disabled={markingPaidId === row.saleId}
+                              className="block w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-gray-50 disabled:opacity-60"
+                            >
+                              {markingPaidId === row.saleId ? "Updating..." : "Mark as Paid"}
+                            </button>
+                          )}
                           {row.status === "Returned" ? (
                             <p className="px-3 py-2 text-xs text-gray-400">Already returned</p>
                           ) : (
