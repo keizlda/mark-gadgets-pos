@@ -100,20 +100,32 @@ function FilterBar({ filters, setFilters, onApply, onClear, kinds = [] }) {
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 mt-4">
-        <button
-          onClick={onClear}
-          className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
-        >
-          Clear
-        </button>
-        <button
-          onClick={onApply}
-          className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-        >
-          <Filter size={14} />
-          Apply Filters
-        </button>
+      <div className="flex items-center justify-between mt-4 flex-wrap gap-3">
+        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={filters.bulkShipmentOnly}
+            onChange={(e) => update("bulkShipmentOnly", e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          Bulk shipment units only
+        </label>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClear}
+            className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
+          >
+            Clear
+          </button>
+          <button
+            onClick={onApply}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+          >
+            <Filter size={14} />
+            Apply Filters
+          </button>
+        </div>
       </div>
     </div>
   );

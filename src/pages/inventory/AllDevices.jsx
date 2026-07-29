@@ -42,6 +42,7 @@ function AllDevices() {
     storage: "All",
     kind: "All",
     supplier: "All",
+    bulkShipmentOnly: false,
   });
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [viewDevice, setViewDevice] = useState(null);
@@ -82,7 +83,15 @@ function AllDevices() {
   };
 
   const handleClear = () => {
-    const cleared = { search: "", category: "All", status: "All", storage: "All", kind: "All", supplier: "All" };
+    const cleared = {
+      search: "",
+      category: "All",
+      status: "All",
+      storage: "All",
+      kind: "All",
+      supplier: "All",
+      bulkShipmentOnly: false,
+    };
     setFilters(cleared);
     setAppliedFilters(cleared);
   };
@@ -104,7 +113,8 @@ function AllDevices() {
         (f.status === "All" || d.status === f.status) &&
         (f.storage === "All" || d.storage === f.storage) &&
         (f.kind === "All" || getDeviceKind(d.device) === f.kind) &&
-        (f.supplier === "All" || d.supplier === f.supplier)
+        (f.supplier === "All" || d.supplier === f.supplier) &&
+        (!f.bulkShipmentOnly || !!d.bulkOrderShellId)
       );
     });
   }, [appliedFilters, allDevices]);

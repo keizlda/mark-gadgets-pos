@@ -3,7 +3,7 @@ import { formatDate, formatTime } from "../utils/datetime";
 import { expireOverdueReservations } from "./reservationsService";
 
 const DEVICE_SELECT =
-  "id, batch_code, device_name, category, storage, color, status, supplier_id, purchase_price, selling_price, notes, date_added, suppliers:supplier_id ( name )";
+  "id, batch_code, device_name, category, storage, color, status, supplier_id, purchase_price, selling_price, notes, date_added, bulk_order_shell_id, date_arrived, suppliers:supplier_id ( name )";
 
 function mapDevice(d) {
   return {
@@ -20,6 +20,8 @@ function mapDevice(d) {
     notes: d.notes,
     dateAdded: formatDate(d.date_added),
     time: formatTime(d.date_added),
+    bulkOrderShellId: d.bulk_order_shell_id,
+    dateArrived: d.date_arrived,
   };
 }
 
