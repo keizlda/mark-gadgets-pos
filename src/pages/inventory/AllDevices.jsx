@@ -3,6 +3,8 @@ import { Download, PackagePlus } from "lucide-react";
 import InventoryStats from "../../components/inventory/InventoryStats";
 import FilterBar from "../../components/inventory/FilterBar";
 import DeviceTable from "../../components/inventory/DeviceTable";
+import BulkOrderShipmentTable from "../../components/inventory/BulkOrderShipmentTable";
+import ShipmentUnitsModal from "../../components/inventory/ShipmentUnitsModal";
 import DeviceDetailsModal from "../../components/inventory/DeviceDetailsModal";
 import EditDeviceModal from "../../components/inventory/EditDeviceModal";
 import LogShipmentArrivalModal from "../../components/inventory/LogShipmentArrivalModal";
@@ -11,7 +13,7 @@ import { downloadCsv } from "../../utils/csv";
 import { getDeviceKind } from "../../utils/deviceKind";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getAllDevices, getLowStockItems, deleteDevice } from "../../services/inventoryService";
-import { getPendingShellsWithProgress } from "../../services/bulkOrderShellsService";
+import { getPendingShellsWithProgress, getAllShellsWithProgress } from "../../services/bulkOrderShellsService";
 
 const csvColumns = [
   { label: "Batch Code", value: (r) => r.batchCode },
@@ -57,15 +59,28 @@ function AllDevices() {
     loadPendingShells();
   }, [loadPendingShells]);
 
+  const [allShells, setAllShells] = useState([]);
+  const loadAllShells = useCallback(() => {
+    getAllShellsWithProgress().then(setAllShells);
+  }, []);
+  useEffect(() => {
+    loadAllShells();
+  }, [loadAllShells]);
+
+  const [shipmentGroup, setShipmentGroup] = useState(null);
+
   const handleShipmentLogged = () => {
     setShowLogShipment(false);
     loadPendingShells();
+    loadAllShells();
     alert("Shipment logged. Link each unit to it from Add Device as they're entered.");
   };
 
   const handleEditSaved = () => {
     setEditDevice(null);
     loadDevices();
+    loadPendingShells();
+    loadAllShells();
   };
 
   const handleDelete = async (device) => {
@@ -73,6 +88,8 @@ function AllDevices() {
     try {
       await deleteDevice(device.id);
       loadDevices();
+      loadPendingShells();
+      loadAllShells();
     } catch (err) {
       if (err.code === "23503") {
         alert("Can't delete this device — it has sales, reservation, or return history. Consider changing its status instead.");
@@ -119,6 +136,35 @@ function AllDevices() {
     });
   }, [appliedFilters, allDevices]);
 
+  // One group per bulk_order_shell_id (a shell already represents one
+  // supplier's shipment on one day) — only meaningful once the "Bulk
+  // shipment units only" filter has narrowed the list down to linked units.
+  const shellsById = useMemo(() => new Map(allShells.map((s) => [s.id, s])), [allShells]);
+  const shipmentGroups = useMemo(() => {
+    const byShell = new Map();
+    for (const d of filtered) {
+      if (!d.bulkOrderShellId) continue;
+      if (!byShell.has(d.bulkOrderShellId)) byShell.set(d.bulkOrderShellId, []);
+      byShell.get(d.bulkOrderShellId).push(d);
+    }
+    return Array.from(byShell.entries())
+      .map(([shellId, units]) => {
+        const shell = shellsById.get(shellId);
+        return {
+          shellId,
+          supplierName: shell?.supplierName || units[0].supplier,
+          deviceName: shell?.deviceName || units[0].device,
+          storage: shell?.storage || units[0].storage,
+          color: shell?.color,
+          dateArrived: shell?.dateArrived ? shell.dateArrived.slice(0, 10) : units[0].dateAdded,
+          quantityExpected: shell?.quantityExpected,
+          status: shell?.status,
+          units,
+        };
+      })
+      .sort((a, b) => new Date(b.dateArrived) - new Date(a.dateArrived));
+  }, [filtered, shellsById]);
+
   const stats = {
     total: allDevices.length,
     available: allDevices.filter((d) => d.status === "Available").length,
@@ -163,13 +209,28 @@ function AllDevices() {
           </div>
         </div>
 
-        <DeviceTable
-          devices={filtered}
-          onView={setViewDevice}
-          onEdit={setEditDevice}
-          onDelete={handleDelete}
-        />
+        {appliedFilters.bulkShipmentOnly ? (
+          <BulkOrderShipmentTable groups={shipmentGroups} onViewUnits={setShipmentGroup} />
+        ) : (
+          <DeviceTable
+            devices={filtered}
+            onView={setViewDevice}
+            onEdit={setEditDevice}
+            onDelete={handleDelete}
+          />
+        )}
       </div>
+
+      {shipmentGroup && (
+        <ShipmentUnitsModal
+          group={shipmentGroup}
+          onClose={() => setShipmentGroup(null)}
+          onView={(unit) => {
+            setShipmentGroup(null);
+            setViewDevice(unit);
+          }}
+        />
+      )}
 
       {viewDevice && <DeviceDetailsModal device={viewDevice} onClose={() => setViewDevice(null)} />}
 
