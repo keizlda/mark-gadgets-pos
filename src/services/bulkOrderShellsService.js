@@ -34,3 +34,25 @@ export async function createBulkOrderShell({
   });
   if (error) throw error;
 }
+
+// Pending shells with how many units have been linked to each so far — for
+// Add Device's "Link to Pending Shipment" dropdown.
+export async function getPendingShellsWithProgress() {
+  const { data, error } = await supabase
+    .from("bulk_order_shell_progress_view")
+    .select("*")
+    .eq("status", "Pending")
+    .order("date_arrived", { ascending: false });
+
+  if (error) throw error;
+
+  return data.map((s) => ({
+    id: s.id,
+    deviceName: s.device_name,
+    storage: s.storage,
+    color: s.color,
+    quantityExpected: s.quantity_expected,
+    dateArrived: s.date_arrived,
+    linkedCount: s.linked_count,
+  }));
+}

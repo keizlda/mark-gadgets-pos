@@ -131,6 +131,8 @@ export async function addDevice(device) {
     p_notes: device.notes || null,
     p_date_added: device.dateAdded,
     p_issue_description: device.issueDescription || null,
+    p_bulk_order_shell_id: device.bulkOrderShellId || null,
+    p_date_arrived: device.dateArrived || null,
   });
 
   if (error) throw error;

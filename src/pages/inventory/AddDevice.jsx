@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Info, AlertTriangle, ClipboardList, Fingerprint, Eye, Calendar, Apple } from "lucide-react";
+import { Info, AlertTriangle, ClipboardList, Fingerprint, Eye, Calendar, Apple, PackagePlus } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getProductCatalog } from "../../services/referenceService";
 import { addDevice } from "../../services/inventoryService";
+import { getPendingShellsWithProgress } from "../../services/bulkOrderShellsService";
+import { formatDate } from "../../utils/datetime";
 import SupplierSelect from "../../components/inventory/SupplierSelect";
+
+function formatShellLabel(shell) {
+  const variant = [shell.storage, shell.color].filter(Boolean).join(" · ");
+  const arrived = formatDate(shell.dateArrived);
+  return `${shell.deviceName}${variant ? " · " + variant : ""} — arrived ${arrived} (${shell.linkedCount}/${shell.quantityExpected} logged)`;
+}
 
 const statusOptions = [
   { label: "Available", color: "bg-green-500" },
@@ -36,12 +44,21 @@ const blankForm = {
   status: "Available",
   issueDescription: "",
   remarks: "",
+  shellId: "",
 };
 
 function AddDevice() {
   const navigate = useNavigate();
   const productCatalog = useServiceData(getProductCatalog, {});
   const categories = Object.keys(productCatalog);
+
+  const [pendingShells, setPendingShells] = useState([]);
+  const loadPendingShells = useCallback(() => {
+    getPendingShellsWithProgress().then(setPendingShells);
+  }, []);
+  useEffect(() => {
+    loadPendingShells();
+  }, [loadPendingShells]);
 
   const [form, setForm] = useState(blankForm);
   const [submitMode, setSubmitMode] = useState("save");
@@ -53,6 +70,7 @@ function AddDevice() {
   const resolvedModel = isOtherModel ? form.customModel.trim() : form.model;
   const modelColors = !isOtherModel && form.model ? catalog?.modelColors[form.model] || [] : [];
   const isDefective = form.status === "Supplier Defective";
+  const selectedShell = pendingShells.find((s) => s.id === form.shellId);
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -98,11 +116,14 @@ function AddDevice() {
         notes: form.remarks.trim(),
         dateAdded,
         issueDescription: isDefective ? form.issueDescription.trim() : null,
+        bulkOrderShellId: form.shellId || null,
+        dateArrived: selectedShell ? selectedShell.dateArrived : null,
       });
 
       if (submitMode === "addAnother") {
         alert("Device saved. Form reset for the next entry.");
         setForm(blankForm);
+        loadPendingShells();
       } else {
         alert("Device saved.");
         navigate("/inventory/all");
@@ -137,6 +158,29 @@ function AddDevice() {
         <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-start gap-3">
           <AlertTriangle size={18} className="text-red-500 mt-0.5 flex-shrink-0" />
           <p className="text-sm font-medium text-red-700">{error}</p>
+        </div>
+      )}
+
+      {pendingShells.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <label className="flex items-center gap-2 text-xs font-medium text-gray-600 mb-1.5">
+            <PackagePlus size={14} className="text-blue-500" />
+            Link to Pending Shipment <span className="text-gray-400 font-normal">(Optional)</span>
+          </label>
+          <select
+            value={form.shellId}
+            onChange={(e) => update("shellId", e.target.value)}
+            className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Not linked to a shipment</option>
+            {pendingShells.map((s) => (
+              <option key={s.id} value={s.id}>{formatShellLabel(s)}</option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            Links this unit to the shipment and records its actual arrival date. Everything else below still
+            needs to be entered as normal.
+          </p>
         </div>
       )}
 
