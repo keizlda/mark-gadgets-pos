@@ -5,6 +5,8 @@ import { getSalesHistory } from "../services/salesService";
 import { getAllDevices } from "../services/inventoryService";
 import { getAllExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import DateRangePicker from "../components/common/DateRangePicker";
+import UnsoldUnitsModal from "../components/financial/UnsoldUnitsModal";
+import DeviceDetailsModal from "../components/inventory/DeviceDetailsModal";
 
 const REPORT_TYPES = ["Daily", "Weekly", "Monthly", "Quarterly", "Annually", "Custom Range"];
 
@@ -48,9 +50,16 @@ function getPresetRange(type) {
   return null;
 }
 
-function SummaryCard({ icon: Icon, iconBg, label, value, sub, valueClass }) {
+function SummaryCard({ icon: Icon, iconBg, label, value, sub, valueClass, onClick }) {
+  const Tag = onClick ? "button" : "div";
   return (
-    <div className="flex items-center gap-4 bg-white rounded-xl border border-gray-200 p-5">
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className={`flex items-center gap-4 bg-white rounded-xl border border-gray-200 p-5 w-full text-left ${
+        onClick ? "hover:border-purple-300 hover:shadow-sm transition-colors cursor-pointer" : ""
+      }`}
+    >
       <div className={`h-14 w-14 rounded-full flex items-center justify-center shrink-0 ${iconBg}`}>
         <Icon size={22} />
       </div>
@@ -59,7 +68,7 @@ function SummaryCard({ icon: Icon, iconBg, label, value, sub, valueClass }) {
         <p className={`text-2xl font-bold leading-tight ${valueClass}`}>{value}</p>
         <p className="text-xs text-gray-400">{sub}</p>
       </div>
-    </div>
+    </Tag>
   );
 }
 
@@ -73,6 +82,9 @@ function Financial() {
   const [dateFrom, setDateFrom] = useState(initialRange.from);
   const [dateTo, setDateTo] = useState(initialRange.to);
   const [generatedRange, setGeneratedRange] = useState(initialRange);
+
+  const [showUnsoldUnits, setShowUnsoldUnits] = useState(false);
+  const [viewDevice, setViewDevice] = useState(null);
 
   const [expenses, setExpenses] = useState([]);
   const loadExpenses = useCallback(() => {
@@ -522,8 +534,9 @@ function Financial() {
               iconBg="bg-purple-50 text-purple-600"
               label="UNITS IN STOCK"
               value={unsoldTotals.count}
-              sub="Not yet Sold"
+              sub="Not yet Sold — click to view"
               valueClass="text-purple-600"
+              onClick={() => setShowUnsoldUnits(true)}
             />
             <SummaryCard
               icon={Wallet}
@@ -545,6 +558,19 @@ function Financial() {
           until backfilled via Edit Device.
         </span>
       </div>
+
+      {showUnsoldUnits && (
+        <UnsoldUnitsModal
+          units={unsoldUnits}
+          onClose={() => setShowUnsoldUnits(false)}
+          onView={(device) => {
+            setShowUnsoldUnits(false);
+            setViewDevice(device);
+          }}
+        />
+      )}
+
+      {viewDevice && <DeviceDetailsModal device={viewDevice} onClose={() => setViewDevice(null)} />}
     </div>
   );
 }
