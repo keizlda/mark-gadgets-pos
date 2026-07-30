@@ -1,5 +1,12 @@
 import { Menu, Calendar, Bell, User } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import { useServiceData } from "../../hooks/useServiceData";
+import { getCurrentProfile } from "../../services/authService";
+
+const roleLabels = {
+  admin: "Administrator",
+  staff: "Staff",
+};
 
 const PAGE_TITLES = {
   "/dashboard": "Dashboard",
@@ -17,6 +24,7 @@ const PAGE_TITLES = {
 function Topbar({ onMenuClick }) {
   const location = useLocation();
   const pageTitle = PAGE_TITLES[location.pathname] || "Dashboard";
+  const profile = useServiceData(getCurrentProfile, null);
 
   const today = new Date().toLocaleDateString("en-US", {
     year: "numeric",
@@ -51,8 +59,8 @@ function Topbar({ onMenuClick }) {
             <User size={16} className="text-gray-500" />
           </div>
           <div className="text-sm hidden sm:block">
-            <p className="font-medium text-gray-800 leading-none">Admin</p>
-            <p className="text-gray-400 text-xs">Administrator</p>
+            <p className="font-medium text-gray-800 leading-none">{profile?.name || "..."}</p>
+            <p className="text-gray-400 text-xs">{roleLabels[profile?.role] || "Staff"}</p>
           </div>
         </div>
       </div>

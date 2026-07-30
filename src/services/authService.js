@@ -18,6 +18,23 @@ export async function getSession() {
   return data.session;
 }
 
+// The logged-in user's own name/role — RequireAuth guarantees a session
+// exists by the time anything using this actually mounts.
+export async function getCurrentProfile() {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return null;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("name, role")
+    .eq("id", session.user.id)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 // Calls `callback(session)` immediately and on every future auth change.
 // Returns an unsubscribe function for effect cleanup.
 export function onAuthStateChange(callback) {
