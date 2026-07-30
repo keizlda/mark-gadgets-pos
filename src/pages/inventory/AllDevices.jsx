@@ -14,6 +14,7 @@ import { getDeviceKind } from "../../utils/deviceKind";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getAllDevices, getLowStockItems, deleteDevice } from "../../services/inventoryService";
 import { getPendingShellsWithProgress, getAllShellsWithProgress } from "../../services/bulkOrderShellsService";
+import { useToast } from "../../hooks/useToast";
 
 const csvColumns = [
   { label: "Batch Code", value: (r) => r.batchCode },
@@ -27,6 +28,7 @@ const csvColumns = [
 ];
 
 function AllDevices() {
+  const showToast = useToast();
   const lowStockItems = useServiceData(getLowStockItems, []);
 
   const [allDevices, setAllDevices] = useState([]);
@@ -74,7 +76,7 @@ function AllDevices() {
     setShowLogShipment(false);
     loadPendingShells();
     loadAllShells();
-    alert("Shipment logged. Link each unit to it from Add Device as they're entered.");
+    showToast("Shipment logged. Link each unit to it from Add Device as they're entered.");
   };
 
   const handleEditSaved = () => {
@@ -93,9 +95,9 @@ function AllDevices() {
       loadAllShells();
     } catch (err) {
       if (err.code === "23503") {
-        alert("Can't delete this device — it has sales, reservation, or return history. Consider changing its status instead.");
+        showToast("Can't delete this device — it has sales, reservation, or return history. Consider changing its status instead.", "error");
       } else {
-        alert(err.message || "Failed to delete device. Please try again.");
+        showToast(err.message || "Failed to delete device. Please try again.", "error");
       }
     }
   };

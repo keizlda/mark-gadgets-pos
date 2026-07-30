@@ -19,6 +19,7 @@ import { getDeviceById } from "../../services/inventoryService";
 import InitiateReturnModal from "../../components/sales/InitiateReturnModal";
 import DeviceDetailsModal from "../../components/inventory/DeviceDetailsModal";
 import DateRangePicker from "../../components/common/DateRangePicker";
+import { useToast } from "../../hooks/useToast";
 
 const csvColumns = [
   { label: "Batch Code", value: (r) => r.batchCode },
@@ -57,6 +58,7 @@ const paymentStatusStyles = {
 };
 
 function SalesHistory() {
+  const showToast = useToast();
   const [salesHistory, setSalesHistory] = useState([]);
   const loadSalesHistory = useCallback(() => {
     getSalesHistory().then(setSalesHistory);
@@ -87,7 +89,7 @@ function SalesHistory() {
       await updateSalePaymentStatus(row.saleId, "Paid");
       loadSalesHistory();
     } catch (err) {
-      alert(err.message || "Failed to update payment status. Please try again.");
+      showToast(err.message || "Failed to update payment status. Please try again.", "error");
     } finally {
       setMarkingPaidId(null);
     }
@@ -99,7 +101,7 @@ function SalesHistory() {
       const device = await getDeviceById(row.deviceId);
       setUnitInfoDevice(device);
     } catch (err) {
-      alert(err.message || "Failed to load unit info. Please try again.");
+      showToast(err.message || "Failed to load unit info. Please try again.", "error");
     }
   };
 

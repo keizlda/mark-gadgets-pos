@@ -7,6 +7,7 @@ import { addDevice } from "../../services/inventoryService";
 import { getPendingShellsWithProgress } from "../../services/bulkOrderShellsService";
 import { formatDate, todayLocalDateString } from "../../utils/datetime";
 import SupplierSelect from "../../components/inventory/SupplierSelect";
+import { useToast } from "../../hooks/useToast";
 
 // Batch codes follow MMDDYY-### (e.g. 073026-001) — prefilling the date
 // part means staff only ever need to type the sequence number.
@@ -75,6 +76,7 @@ function createBlankForm() {
 
 function AddDevice() {
   const navigate = useNavigate();
+  const showToast = useToast();
   const productCatalog = useServiceData(getProductCatalog, {});
   const categories = Object.keys(productCatalog);
 
@@ -177,11 +179,11 @@ function AddDevice() {
       });
 
       if (submitMode === "addAnother") {
-        alert("Device saved. Form reset for the next entry.");
+        showToast("Device saved. Form reset for the next entry.");
         setForm(createBlankForm());
         loadPendingShells();
       } else {
-        alert("Device saved.");
+        showToast("Device saved.");
         navigate("/inventory/all");
       }
     } catch (err) {

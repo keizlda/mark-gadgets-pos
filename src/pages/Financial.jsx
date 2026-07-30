@@ -7,6 +7,7 @@ import { getAllExpenses, addExpense, deleteExpense } from "../services/expensesS
 import DateRangePicker from "../components/common/DateRangePicker";
 import UnsoldUnitsModal from "../components/financial/UnsoldUnitsModal";
 import DeviceDetailsModal from "../components/inventory/DeviceDetailsModal";
+import { useToast } from "../hooks/useToast";
 
 const REPORT_TYPES = ["Daily", "Weekly", "Monthly", "Quarterly", "Annually", "Custom Range"];
 
@@ -75,6 +76,7 @@ function SummaryCard({ icon: Icon, iconBg, label, value, sub, valueClass, onClic
 const initialRange = getPresetRange("Monthly");
 
 function Financial() {
+  const showToast = useToast();
   const salesHistory = useServiceData(getSalesHistory, []);
   const allDevices = useServiceData(getAllDevices, []);
 
@@ -172,7 +174,7 @@ function Financial() {
       await deleteExpense(id);
       loadExpenses();
     } catch (err) {
-      alert(err.message || "Failed to remove expense. Please try again.");
+      showToast(err.message || "Failed to remove expense. Please try again.", "error");
     }
   };
 

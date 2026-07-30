@@ -16,6 +16,7 @@ import { useIsAdmin } from "../hooks/useIsAdmin";
 import { getSalesHistory } from "../services/salesService";
 import { getExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import DateRangePicker from "../components/common/DateRangePicker";
+import { useToast } from "../hooks/useToast";
 
 const REPORT_TYPES = ["Daily", "Weekly", "Monthly", "Custom Range"];
 
@@ -73,6 +74,7 @@ function computeTotals(rows) {
 function Reports() {
   const salesHistory = useServiceData(getSalesHistory, []);
   const isAdmin = useIsAdmin();
+  const showToast = useToast();
 
   const [reportType, setReportType] = useState("Monthly");
   const [dateFrom, setDateFrom] = useState(initialRange.from);
@@ -185,7 +187,7 @@ function Reports() {
       await deleteExpense(id);
       loadExpenses();
     } catch (err) {
-      alert(err.message || "Failed to remove expense. Please try again.");
+      showToast(err.message || "Failed to remove expense. Please try again.", "error");
     }
   };
 

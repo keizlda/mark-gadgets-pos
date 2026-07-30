@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { ToastProvider } from "./components/common/ToastProvider";
 import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
 import ScrollToTop from "./components/layout/ScrollToTop";
@@ -32,27 +33,29 @@ function AppLayout() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <ScrollToTop />
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/inventory/*" element={<Inventory />} />
-          <Route path="/sales/*" element={<Sales />} />
-          <Route path="/after-sales/*" element={<AfterSales />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route
-            path="/supplier-payables"
-            element={<RequireAdmin><SupplierPayables /></RequireAdmin>}
-          />
-          <Route
-            path="/financial"
-            element={<RequireAdmin><Financial /></RequireAdmin>}
-          />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <ScrollToTop />
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/inventory/*" element={<Inventory />} />
+            <Route path="/sales/*" element={<Sales />} />
+            <Route path="/after-sales/*" element={<AfterSales />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route
+              path="/supplier-payables"
+              element={<RequireAdmin><SupplierPayables /></RequireAdmin>}
+            />
+            <Route
+              path="/financial"
+              element={<RequireAdmin><Financial /></RequireAdmin>}
+            />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }
 

@@ -4,6 +4,7 @@ import { useServiceData } from "../../hooks/useServiceData";
 import { processSale } from "../../services/salesService";
 import { getAvailableDevicesForSale } from "../../services/inventoryService";
 import { getPosCategories } from "../../services/referenceService";
+import { useToast } from "../../hooks/useToast";
 
 const BULK_THRESHOLD = 3;
 
@@ -40,6 +41,7 @@ const categoryColor = {
 };
 
 function NewSale() {
+  const showToast = useToast();
   const posCategories = useServiceData(getPosCategories, []);
 
   const [availableDevices, setAvailableDevices] = useState([]);
@@ -126,7 +128,7 @@ function NewSale() {
         notes,
         cartItems: cart.map((c) => ({ ...c, price: Number(c.actualPrice) || 0 })),
       });
-      alert("Sale processed.");
+      showToast("Sale processed.");
       clearCart();
       setReferenceNumber("N/A");
       setNotes("");

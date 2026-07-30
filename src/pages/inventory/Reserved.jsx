@@ -7,6 +7,7 @@ import { getDeviceKind } from "../../utils/deviceKind";
 import NewReservationModal from "../../components/inventory/NewReservationModal";
 import ReservationDetailsModal from "../../components/inventory/ReservationDetailsModal";
 import ConvertToSaleModal from "../../components/inventory/ConvertToSaleModal";
+import { useToast } from "../../hooks/useToast";
 
 const csvColumns = [
   { label: "Batch Code", value: (r) => r.batchCode },
@@ -51,6 +52,7 @@ const blankFilters = { date: "", kind: "All", search: "" };
 
 function Reserved() {
   const isAdmin = useIsAdmin();
+  const showToast = useToast();
   const [reservedDevices, setReservedDevices] = useState([]);
   const loadReservations = useCallback(() => {
     getReservedDevices().then(setReservedDevices);
@@ -91,7 +93,7 @@ function Reserved() {
       await cancelReservation(record.id, record.deviceId);
       loadReservations();
     } catch (err) {
-      alert(err.message || "Failed to cancel reservation. Please try again.");
+      showToast(err.message || "Failed to cancel reservation. Please try again.", "error");
     } finally {
       setCancellingId(null);
       setOpenMenu(null);

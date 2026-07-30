@@ -20,6 +20,7 @@ import { getReturnReasons } from "../../services/referenceService";
 import ReturnDetailsModal from "../../components/aftersales/ReturnDetailsModal";
 import ReplaceReturnModal from "../../components/aftersales/ReplaceReturnModal";
 import DateRangePicker from "../../components/common/DateRangePicker";
+import { useToast } from "../../hooks/useToast";
 
 const csvColumns = [
   { label: "Batch Code", value: (r) => r.batchCode },
@@ -43,6 +44,7 @@ const statusStyles = {
 };
 
 function CustomerReturns() {
+  const showToast = useToast();
   const returnReasons = useServiceData(getReturnReasons, []);
 
   const [customerReturns, setCustomerReturns] = useState([]);
@@ -123,7 +125,7 @@ function CustomerReturns() {
       await rejectReturn(record.id);
       loadReturns();
     } catch (err) {
-      alert(err.message || "Failed to reject return. Please try again.");
+      showToast(err.message || "Failed to reject return. Please try again.", "error");
     } finally {
       setRejectingId(null);
       setOpenMenu(null);
