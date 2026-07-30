@@ -113,12 +113,15 @@ function Reserved() {
   const start = (page - 1) * perPage;
   const paginated = records.slice(start, start + perPage);
 
-  const totalValue = records
-    .filter((r) => r.status !== "Expired")
-    .reduce((sum, r) => sum + r.totalPrice, 0);
+  // "Currently reserved" means the device is actually held right now —
+  // Cancelled/Expired reservations still show in the list below for
+  // history, but shouldn't count as reserved devices/value here, or these
+  // cards drift from what All Devices' own Reserved count actually shows.
+  const currentlyReserved = records.filter((r) => r.status === "Active" || r.status === "Expiring Soon");
+  const totalValue = currentlyReserved.reduce((sum, r) => sum + r.totalPrice, 0);
 
   const stats = [
-    { label: "Total Reserved Devices", unit: "Units", value: records.length, icon: ShoppingCart, bg: "bg-blue-500", text: "text-blue-600" },
+    { label: "Total Reserved Devices", unit: "Units", value: currentlyReserved.length, icon: ShoppingCart, bg: "bg-blue-500", text: "text-blue-600" },
     { label: "Total Reserved Value", unit: "Estimated Value", value: `₱${totalValue.toLocaleString()}`, icon: Users, bg: "bg-green-500", text: "text-green-600" },
     { label: "Expiring Soon", unit: "Reservations", value: records.filter((r) => r.status === "Expiring Soon").length, icon: Clock, bg: "bg-orange-500", text: "text-orange-600" },
     { label: "Expired Reservations", unit: "Reservations", value: records.filter((r) => r.status === "Expired").length, icon: XCircle, bg: "bg-purple-500", text: "text-purple-600" },

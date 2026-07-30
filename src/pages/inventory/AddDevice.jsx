@@ -25,9 +25,14 @@ function formatShellLabel(shell) {
   return `${shell.deviceName}${variant ? " · " + variant : ""} — arrived ${arrived} (${shell.linkedCount}/${shell.quantityExpected} logged)`;
 }
 
+// "Reserved" isn't offered here — reserving a unit always needs a customer,
+// a reserved-until date, and a price, none of which this form captures.
+// Setting status straight to Reserved would leave a device that LOOKS
+// reserved everywhere else in the app with no reservation record behind
+// it. Use "New Reservation" on the Reserved page instead, once this unit
+// is Available.
 const statusOptions = [
   { label: "Available", color: "bg-green-500" },
-  { label: "Reserved", color: "bg-orange-500" },
   { label: "Supplier Defective", color: "bg-red-500" },
 ];
 

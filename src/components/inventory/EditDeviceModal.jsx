@@ -5,12 +5,18 @@ import { getDeviceCategories } from "../../services/referenceService";
 import { updateDevice } from "../../services/inventoryService";
 import SupplierSelect from "./SupplierSelect";
 
-const statusOptions = ["Available", "Reserved", "Sold", "Customer Returned", "Supplier Defective", "Returned"];
+const baseStatusOptions = ["Available", "Sold", "Customer Returned", "Supplier Defective", "Returned"];
 const conditionOptions = ["Brand New", "Pre-owned"];
 const repairPartConditionOptions = ["Brand New", "Genuine", "Used"];
 
 function EditDeviceModal({ device, onClose, onSaved }) {
   const categories = useServiceData(getDeviceCategories, []);
+  // "Reserved" is only offered if the device already is — it always needs a
+  // matching reservation record (customer, date, price), which only "New
+  // Reservation" on the Reserved page actually creates. Manually switching
+  // a device to Reserved here would leave one with no reservation behind it,
+  // same bug this is closing on Add Device.
+  const statusOptions = device.status === "Reserved" ? ["Reserved", ...baseStatusOptions] : baseStatusOptions;
 
   const [form, setForm] = useState({
     batchCode: device.batchCode || "",
