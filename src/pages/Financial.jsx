@@ -358,78 +358,6 @@ function Financial() {
         </div>
       </div>
 
-      {/* Inventory On Hand — a snapshot of what's still unsold right now,
-          independent of the date range above. Only meaningful for the
-          longer-horizon report types, not a single day/week/month. */}
-      {(reportType === "Quarterly" || reportType === "Annually") && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="font-bold text-gray-800 mb-1">Inventory On Hand (Unsold Units)</p>
-          <p className="text-xs text-gray-400 mb-4">
-            Current snapshot — every unit not yet Sold, regardless of the date range above.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SummaryCard
-              icon={Boxes}
-              iconBg="bg-purple-50 text-purple-600"
-              label="UNITS IN STOCK"
-              value={unsoldTotals.count}
-              sub="Not yet Sold"
-              valueClass="text-purple-600"
-            />
-            <SummaryCard
-              icon={Wallet}
-              iconBg="bg-gray-100 text-gray-600"
-              label="CAPITAL TIED UP"
-              value={peso(unsoldTotals.totalCapital)}
-              sub="Cost basis of unsold stock"
-              valueClass="text-gray-700"
-            />
-          </div>
-
-          {/* Sales performance for the period, ending in a separate line for
-              capital still sitting in unsold stock — kept apart from Net
-              Profit rather than added to it, since unsold inventory isn't
-              realized profit or an expense, just capital not yet turned
-              into cash. */}
-          <div className="mt-6 pt-4 border-t border-gray-100">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              Period Financial Summary
-            </p>
-            <div className="space-y-1.5 text-right">
-              <div className="flex justify-end gap-6 text-sm text-gray-600">
-                <span>Capital (Cost of Units Sold)</span>
-                <span className="w-32">{peso(totals.totalCapital)}</span>
-              </div>
-              <div className="flex justify-end gap-6 text-sm text-gray-600">
-                <span>Disposal Total (Revenue)</span>
-                <span className="w-32">{peso(totals.totalDisposal)}</span>
-              </div>
-              <div className="flex justify-end gap-6 text-sm font-medium text-gray-700 pt-1.5 border-t border-gray-100">
-                <span>Gross Profit</span>
-                <span className="w-32">{peso(totals.totalNetProfit)}</span>
-              </div>
-              <div className="flex justify-end gap-6 text-sm text-red-500">
-                <span>Total Expenses</span>
-                <span className="w-32">-{peso(totalExpenses)}</span>
-              </div>
-              <div className="flex justify-end gap-6 text-base font-bold pt-1.5 border-t border-gray-100">
-                <span className="text-gray-800">Net Profit After Expenses</span>
-                <span className={`w-32 ${netProfitAfterExpenses < 0 ? "text-red-500" : "text-gray-800"}`}>
-                  {peso(netProfitAfterExpenses)}
-                </span>
-              </div>
-              <div className="flex justify-end gap-6 text-sm text-purple-600 pt-3 mt-2 border-t border-gray-100">
-                <span>Capital Tied Up in Unsold Inventory</span>
-                <span className="w-32">{peso(unsoldTotals.totalCapital)}</span>
-              </div>
-            </div>
-            <p className="text-xs text-gray-400 mt-1">
-              Not counted toward profit — this is capital still sitting in stock, not yet sold.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Expenses — includes both what staff logged on Reports and what's
           logged here; entries added from this page are marked Admin Only
           and stay hidden from Reports. */}
@@ -560,10 +488,54 @@ function Financial() {
           </div>
           <div className="flex justify-end gap-6 text-base font-bold text-gray-800 pt-1.5 border-t border-gray-100">
             <span>Net Profit After Expenses</span>
-            <span className="w-32">{peso(netProfitAfterExpenses)}</span>
+            <span className={netProfitAfterExpenses < 0 ? "w-32 text-red-500" : "w-32"}>
+              {peso(netProfitAfterExpenses)}
+            </span>
           </div>
+
+          {/* Same summary, one line further — not a separate breakdown —
+              since unsold stock isn't realized profit or an expense, just
+              capital not yet turned into cash. Only meaningful over a
+              longer horizon, so Quarterly/Annually only. */}
+          {(reportType === "Quarterly" || reportType === "Annually") && (
+            <div className="flex justify-end gap-6 text-sm text-purple-600 pt-3 mt-2 border-t border-gray-100">
+              <span>Capital Tied Up in Unsold Inventory</span>
+              <span className="w-32">{peso(unsoldTotals.totalCapital)}</span>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Inventory On Hand — a snapshot of what's still unsold right now,
+          independent of the date range above. Only meaningful for the
+          longer-horizon report types, not a single day/week/month. */}
+      {(reportType === "Quarterly" || reportType === "Annually") && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <p className="font-bold text-gray-800 mb-1">Inventory On Hand (Unsold Units)</p>
+          <p className="text-xs text-gray-400 mb-4">
+            Current snapshot — every unit not yet Sold, regardless of the date range above. Its capital is
+            carried into the Expenses summary above as its own line, not added to profit.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SummaryCard
+              icon={Boxes}
+              iconBg="bg-purple-50 text-purple-600"
+              label="UNITS IN STOCK"
+              value={unsoldTotals.count}
+              sub="Not yet Sold"
+              valueClass="text-purple-600"
+            />
+            <SummaryCard
+              icon={Wallet}
+              iconBg="bg-gray-100 text-gray-600"
+              label="CAPITAL TIED UP"
+              value={peso(unsoldTotals.totalCapital)}
+              sub="Cost basis of unsold stock"
+              valueClass="text-gray-700"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Note */}
       <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-700 print:hidden">
