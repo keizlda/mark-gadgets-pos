@@ -3,11 +3,13 @@ import { Search, Filter, Settings, AlertTriangle, Package, TrendingUp, RotateCcw
 import { getLowStockItems } from "../../services/inventoryService";
 import { getDeviceCategories } from "../../services/referenceService";
 import { useServiceData } from "../../hooks/useServiceData";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
 import ReorderSettingsModal from "../../components/inventory/ReorderSettingsModal";
 
 const blankFilters = { category: "All", search: "" };
 
 function LowStock() {
+  const isAdmin = useIsAdmin();
   const deviceCategories = useServiceData(getDeviceCategories, []);
 
   const [lowStockItems, setLowStockItems] = useState([]);
@@ -129,15 +131,17 @@ function LowStock() {
           <p className="font-medium text-gray-800">
             Low Stock Items <span className="text-gray-400 font-normal">({records.length})</span>
           </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowSettings(true)}
-              className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
-            >
-              <Settings size={14} />
-              Settings
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowSettings(true)}
+                className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+              >
+                <Settings size={14} />
+                Settings
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="overflow-x-auto">
