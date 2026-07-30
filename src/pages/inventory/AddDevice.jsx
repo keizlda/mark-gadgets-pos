@@ -32,11 +32,15 @@ const statusOptions = [
 
 // productCatalog keys are singular ("iPhone"); devices.category in the DB is
 // plural ("iPhones") to match the CHECK constraint — this maps between them.
+// Accessories/Repair Parts have no singular/plural distinction, so they map
+// to themselves.
 const categoryToDbValue = {
   iPhone: "iPhones",
   iPad: "iPads",
   "Apple Watch": "Apple Watches",
   MacBook: "MacBooks",
+  Accessories: "Accessories",
+  "Repair Parts": "Repair Parts",
 };
 
 const OTHER_MODEL = "__other__";

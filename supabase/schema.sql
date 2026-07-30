@@ -25,7 +25,7 @@ create table public.devices (
   id uuid primary key default gen_random_uuid(),
   batch_code text not null unique,
   device_name text not null,
-  category text not null check (category in ('iPhones', 'iPads', 'Apple Watches', 'MacBooks', 'Accessories')),
+  category text not null check (category in ('iPhones', 'iPads', 'Apple Watches', 'MacBooks', 'Accessories', 'Repair Parts')),
   storage text,
   color text,
   status text not null default 'Available'

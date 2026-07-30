@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle, Wallet, CreditCard, Smartphone, Landmark, FileCheck, CalendarClock, Building2, Tablet, Laptop, Watch, Headphones } from "lucide-react";
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle, Wallet, CreditCard, Smartphone, Landmark, FileCheck, CalendarClock, Building2, Tablet, Laptop, Watch, Headphones, Wrench } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { processSale } from "../../services/salesService";
 import { getAvailableDevicesForSale } from "../../services/inventoryService";
@@ -27,6 +27,7 @@ const categoryIcon = {
   MacBooks: Laptop,
   "Apple Watches": Watch,
   Accessories: Headphones,
+  "Repair Parts": Wrench,
 };
 
 const categoryColor = {
@@ -35,6 +36,7 @@ const categoryColor = {
   MacBooks: "bg-gray-100 text-gray-600",
   "Apple Watches": "bg-red-50 text-red-500",
   Accessories: "bg-purple-50 text-purple-500",
+  "Repair Parts": "bg-amber-50 text-amber-600",
 };
 
 function NewSale() {

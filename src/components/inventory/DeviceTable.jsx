@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Smartphone, Tablet, Watch, Laptop, MoreVertical, ChevronLeft, ChevronRight } from "lucide-react";
+import { Smartphone, Tablet, Watch, Laptop, Headphones, Wrench, MoreVertical, ChevronLeft, ChevronRight } from "lucide-react";
 import { useIsAdmin } from "../../hooks/useIsAdmin";
 
 const statusStyles = {
@@ -16,6 +16,8 @@ const categoryIcon = {
   iPads: Tablet,
   "Apple Watches": Watch,
   MacBooks: Laptop,
+  Accessories: Headphones,
+  "Repair Parts": Wrench,
 };
 
 function DeviceTable({ devices, onView, onEdit, onDelete }) {
