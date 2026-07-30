@@ -6,6 +6,7 @@ import {
   RotateCcw,
   FileText,
   Wallet,
+  Coins,
   LogOut,
   ChevronDown,
   X,
@@ -157,10 +158,16 @@ function Sidebar({ open, onClose }) {
           </NavLink>
 
           {isAdmin && (
-            <NavLink to="/supplier-payables" className={linkClass} onClick={onClose}>
-              <Wallet size={18} />
-              Supplier Payables
-            </NavLink>
+            <>
+              <NavLink to="/supplier-payables" className={linkClass} onClick={onClose}>
+                <Wallet size={18} />
+                Supplier Payables
+              </NavLink>
+              <NavLink to="/financial" className={linkClass} onClick={onClose}>
+                <Coins size={18} />
+                Financial
+              </NavLink>
+            </>
           )}
         </nav>
 

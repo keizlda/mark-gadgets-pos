@@ -20,6 +20,7 @@ const PAGE_TITLES = {
   "/after-sales/customer-returns": "Customer Returns",
   "/reports": "Reports",
   "/supplier-payables": "Supplier Payables",
+  "/financial": "Financial",
 };
 
 function Topbar({ onMenuClick }) {

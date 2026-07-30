@@ -12,6 +12,7 @@ import Sales from "./pages/Sales";
 import AfterSales from "./pages/AfterSales";
 import Reports from "./pages/Reports";
 import SupplierPayables from "./pages/SupplierPayables";
+import Financial from "./pages/Financial";
 
 function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -44,6 +45,10 @@ function App() {
           <Route
             path="/supplier-payables"
             element={<RequireAdmin><SupplierPayables /></RequireAdmin>}
+          />
+          <Route
+            path="/financial"
+            element={<RequireAdmin><Financial /></RequireAdmin>}
           />
         </Route>
       </Routes>

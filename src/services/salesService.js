@@ -24,7 +24,10 @@ export async function getSalesHistory() {
       category,
       storage,
       color,
-      status
+      status,
+      purchase_price,
+      date_added,
+      suppliers:supplier_id ( name )
     )
   `);
 
@@ -33,37 +36,49 @@ export async function getSalesHistory() {
   return data
     .slice()
     .sort((a, b) => new Date(b.sales?.sold_at) - new Date(a.sales?.sold_at))
-    .map((item) => ({
-      saleItemId: item.id,
-      saleId: item.sales?.id,
-      deviceId: item.devices?.id,
-      batchCode: item.devices?.batch_code,
-      date: formatDate(item.sales?.sold_at),
-      time: formatTime(item.sales?.sold_at),
-      customer: item.sales?.customer_name,
-      phone: item.sales?.customer_phone,
-      device: item.devices?.device_name,
-      category: item.devices?.category,
-      storage: item.devices?.storage,
-      color: item.devices?.color,
-      salesperson: item.sales?.profiles?.name,
-      payment: item.sales?.payment_method,
-      total: item.price_at_sale * item.quantity,
-      // orderType/paymentStatus live once per sale (not per unit) — every
-      // row belonging to the same bulk order shares the same values here
-      // simply because they all join in the same parent sales record.
-      orderType: item.sales?.order_type,
-      paymentStatus: item.sales?.payment_status,
-      // The device's own status wins when it's since been returned — the
-      // sale itself is still "Completed" (no refund happened), but this row
-      // represents that specific unit, which is no longer with the customer.
-      // A replaced return sends the original unit straight to Supplier
-      // Defective, so that status also counts as "Returned" here.
-      status:
-        item.devices?.status === "Customer Returned" || item.devices?.status === "Supplier Defective"
-          ? "Returned"
-          : item.sales?.status,
-    }));
+    .map((item) => {
+      const total = item.price_at_sale * item.quantity;
+      const purchasePrice = item.devices?.purchase_price;
+      return {
+        saleItemId: item.id,
+        saleId: item.sales?.id,
+        deviceId: item.devices?.id,
+        batchCode: item.devices?.batch_code,
+        date: formatDate(item.sales?.sold_at),
+        time: formatTime(item.sales?.sold_at),
+        customer: item.sales?.customer_name,
+        phone: item.sales?.customer_phone,
+        device: item.devices?.device_name,
+        category: item.devices?.category,
+        storage: item.devices?.storage,
+        color: item.devices?.color,
+        salesperson: item.sales?.profiles?.name,
+        payment: item.sales?.payment_method,
+        total,
+        // Capital/net profit are per-unit financial figures (Financial
+        // page) — purchase_price wasn't captured for units added before
+        // that field existed, so this stays null rather than pretending
+        // profit is 0.
+        purchasePrice: purchasePrice ?? null,
+        netProfit: purchasePrice != null ? total - purchasePrice : null,
+        supplier: item.devices?.suppliers?.name,
+        dateReceived: formatDate(item.devices?.date_added),
+        // orderType/paymentStatus live once per sale (not per unit) — every
+        // row belonging to the same bulk order shares the same values here
+        // simply because they all join in the same parent sales record.
+        orderType: item.sales?.order_type,
+        paymentStatus: item.sales?.payment_status,
+        // The device's own status wins when it's since been returned — the
+        // sale itself is still "Completed" (no refund happened), but this
+        // row represents that specific unit, which is no longer with the
+        // customer. A replaced return sends the original unit straight to
+        // Supplier Defective, so that status also counts as "Returned".
+        status:
+          item.devices?.status === "Customer Returned" || item.devices?.status === "Supplier Defective"
+            ? "Returned"
+            : item.sales?.status,
+      };
+    });
 }
 
 // payment_status lives once on the sales row (one invoice), not per
