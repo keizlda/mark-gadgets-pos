@@ -152,6 +152,10 @@ create table public.expenses (
   expense_date date not null,
   description text not null,
   amount numeric(12, 2) not null check (amount >= 0),
+  -- Expenses logged from the admin-only Financial page stay out of
+  -- Reports, which any role can open — Reports only shows what staff
+  -- themselves have logged.
+  admin_only boolean not null default false,
   created_at timestamptz not null default now()
 );
 

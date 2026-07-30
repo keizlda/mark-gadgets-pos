@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
 import { getSalesHistory } from "../services/salesService";
-import { getExpenses, addExpense, deleteExpense } from "../services/expensesService";
+import { getAllExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import DateRangePicker from "../components/common/DateRangePicker";
 
 const REPORT_TYPES = ["Daily", "Weekly", "Monthly", "Custom Range"];
@@ -60,7 +60,7 @@ function Financial() {
 
   const [expenses, setExpenses] = useState([]);
   const loadExpenses = useCallback(() => {
-    getExpenses().then(setExpenses);
+    getAllExpenses().then(setExpenses);
   }, []);
   useEffect(() => {
     loadExpenses();
@@ -111,7 +111,12 @@ function Financial() {
     setExpenseError("");
     setSubmittingExpense(true);
     try {
-      await addExpense({ date: expenseDate, description: expenseDesc.trim(), amount: Number(expenseAmount) });
+      await addExpense({
+        date: expenseDate,
+        description: expenseDesc.trim(),
+        amount: Number(expenseAmount),
+        adminOnly: true,
+      });
       setExpenseDesc("");
       setExpenseAmount("");
       loadExpenses();
@@ -325,7 +330,9 @@ function Financial() {
         </div>
       </div>
 
-      {/* Expenses — same shared table as Reports, filtered to this date range */}
+      {/* Expenses — includes both what staff logged on Reports and what's
+          logged here; entries added from this page are marked Admin Only
+          and stay hidden from Reports. */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <p className="font-bold text-gray-800 mb-4">Expenses</p>
 
@@ -349,7 +356,14 @@ function Financial() {
               ) : filteredExpenses.map((e) => (
                 <tr key={e.id} className="border-b border-gray-50 last:border-0">
                   <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{e.date}</td>
-                  <td className="px-3 py-3 text-gray-700">{e.description}</td>
+                  <td className="px-3 py-3 text-gray-700">
+                    {e.description}
+                    {e.adminOnly && (
+                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500 align-middle">
+                        Admin Only
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-3 text-red-500 text-right">-{peso(e.amount)}</td>
                   <td className="px-3 py-3 text-right print:hidden">
                     <button
