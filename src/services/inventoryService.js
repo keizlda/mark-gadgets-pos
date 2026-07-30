@@ -119,6 +119,22 @@ export async function getAvailableDevicesForSale() {
   }));
 }
 
+// Finds the next unused sequence number for a batch code prefix (e.g.
+// "073126-004" when 001-003 already exist for today) — auto-filling the
+// whole code, not just the date part, removes the chance of two staff
+// entries colliding on the same number.
+export async function getNextBatchSequence(prefix) {
+  const { data, error } = await supabase.from("devices").select("batch_code").like("batch_code", `${prefix}%`);
+  if (error) throw error;
+
+  const maxSeq = data.reduce((max, d) => {
+    const n = parseInt(d.batch_code.slice(prefix.length), 10);
+    return Number.isFinite(n) && n > max ? n : max;
+  }, 0);
+
+  return maxSeq + 1;
+}
+
 // Also creates the matching Supplier Defective record in the same atomic
 // call when device.issueDescription is set (see add_device in schema.sql) —
 // a dropped connection between "insert the device" and "create the record"

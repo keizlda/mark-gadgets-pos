@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Info, AlertTriangle, ClipboardList, Fingerprint, Eye, Calendar, Apple, PackagePlus } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getProductCatalog } from "../../services/referenceService";
-import { addDevice } from "../../services/inventoryService";
+import { addDevice, getNextBatchSequence } from "../../services/inventoryService";
 import { getPendingShellsWithProgress } from "../../services/bulkOrderShellsService";
 import { formatDate, todayLocalDateString } from "../../utils/datetime";
 import SupplierSelect from "../../components/inventory/SupplierSelect";
@@ -80,6 +80,11 @@ function AddDevice() {
   const productCatalog = useServiceData(getProductCatalog, {});
   const categories = Object.keys(productCatalog);
 
+  const [form, setForm] = useState(createBlankForm);
+  const [submitMode, setSubmitMode] = useState("save");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
   const [pendingShells, setPendingShells] = useState([]);
   const loadPendingShells = useCallback(() => {
     getPendingShellsWithProgress().then(setPendingShells);
@@ -88,10 +93,22 @@ function AddDevice() {
     loadPendingShells();
   }, [loadPendingShells]);
 
-  const [form, setForm] = useState(createBlankForm);
-  const [submitMode, setSubmitMode] = useState("save");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  // Fills in the full batch code, not just the date prefix — picking the
+  // next unused sequence number removes the chance of two staff entries
+  // colliding on the same code. Falls back to leaving the prefix-only
+  // value in place (staff can still type the rest) if the lookup fails.
+  const generateBatchCode = useCallback(async () => {
+    const prefix = batchCodeDatePrefix();
+    try {
+      const seq = await getNextBatchSequence(prefix);
+      setForm((f) => ({ ...f, batchCode: `${prefix}${String(seq).padStart(3, "0")}` }));
+    } catch {
+      // leave whatever's already in the field
+    }
+  }, []);
+  useEffect(() => {
+    generateBatchCode();
+  }, [generateBatchCode]);
 
   const catalog = productCatalog[form.category];
   const isOtherModel = form.model === OTHER_MODEL;
@@ -182,6 +199,7 @@ function AddDevice() {
         showToast("Device saved. Form reset for the next entry.");
         setForm(createBlankForm());
         loadPendingShells();
+        generateBatchCode();
       } else {
         showToast("Device saved.");
         navigate("/inventory/all");
@@ -408,7 +426,7 @@ function AddDevice() {
                 placeholder="070926-001"
                 className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="text-xs text-gray-400 mt-1">Format example: 070926-001</p>
+              <p className="text-xs text-gray-400 mt-1">Auto-filled with the next available code — edit it if needed</p>
             </div>
 
             <div>
