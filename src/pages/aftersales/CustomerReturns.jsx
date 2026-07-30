@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
-  Download,
   MoreVertical,
   Filter,
   RotateCcw,
@@ -13,7 +12,6 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
-import { downloadCsv } from "../../utils/csv";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getCustomerReturns, rejectReturn } from "../../services/returnsService";
 import { getReturnReasons } from "../../services/referenceService";
@@ -21,21 +19,6 @@ import ReturnDetailsModal from "../../components/aftersales/ReturnDetailsModal";
 import ReplaceReturnModal from "../../components/aftersales/ReplaceReturnModal";
 import DateRangePicker from "../../components/common/DateRangePicker";
 import { useToast } from "../../hooks/useToast";
-
-const csvColumns = [
-  { label: "Batch Code", value: (r) => r.batchCode },
-  { label: "Customer", value: (r) => r.customer },
-  { label: "Phone", value: (r) => r.phone },
-  { label: "Device", value: (r) => r.device },
-  { label: "Storage", value: (r) => r.storage },
-  { label: "Color", value: (r) => r.color },
-  { label: "Category", value: (r) => r.category },
-  { label: "Reason", value: (r) => r.reason },
-  { label: "Return Date", value: (r) => r.returnDate },
-  { label: "Time", value: (r) => r.time },
-  { label: "Status", value: (r) => r.status },
-  { label: "Replacement Batch Code", value: (r) => r.replacementBatchCode },
-];
 
 const statusStyles = {
   Replaced: "bg-green-100 text-green-600",
@@ -259,15 +242,8 @@ function CustomerReturns() {
 
       {/* Returns table */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="mb-4">
           <p className="font-medium text-gray-800">Customer Returns List</p>
-          <button
-            onClick={() => downloadCsv("customer-returns.csv", sorted, csvColumns)}
-            className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
-          >
-            <Download size={14} />
-            Export
-          </button>
         </div>
 
         <div className="overflow-x-auto">

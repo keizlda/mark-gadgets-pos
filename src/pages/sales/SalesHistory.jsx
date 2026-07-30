@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
-  Download,
   MoreVertical,
   Filter,
   Wallet,
@@ -11,7 +10,6 @@ import {
   ChevronRight,
   PackageCheck,
 } from "lucide-react";
-import { downloadCsv } from "../../utils/csv";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getSalesHistory, updateSalePaymentStatus } from "../../services/salesService";
 import { getPaymentMethods } from "../../services/referenceService";
@@ -20,23 +18,6 @@ import InitiateReturnModal from "../../components/sales/InitiateReturnModal";
 import DeviceDetailsModal from "../../components/inventory/DeviceDetailsModal";
 import DateRangePicker from "../../components/common/DateRangePicker";
 import { useToast } from "../../hooks/useToast";
-
-const csvColumns = [
-  { label: "Batch Code", value: (r) => r.batchCode },
-  { label: "Date", value: (r) => r.date },
-  { label: "Time", value: (r) => r.time },
-  { label: "Customer", value: (r) => r.customer },
-  { label: "Phone", value: (r) => r.phone },
-  { label: "Device", value: (r) => r.device },
-  { label: "Storage", value: (r) => r.storage },
-  { label: "Color", value: (r) => r.color },
-  { label: "Salesperson", value: (r) => r.salesperson },
-  { label: "Payment Method", value: (r) => r.payment },
-  { label: "Total", value: (r) => r.total },
-  { label: "Status", value: (r) => r.status },
-  { label: "Order Type", value: (r) => r.orderType },
-  { label: "Payment Status", value: (r) => r.paymentStatus },
-];
 
 const statusStyles = {
   Completed: "bg-green-100 text-green-600",
@@ -253,15 +234,8 @@ function SalesHistory() {
 
       {/* Transactions table */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="mb-4">
           <p className="font-medium text-gray-800">Sales Transactions</p>
-          <button
-            onClick={() => downloadCsv("sales-history.csv", filtered, csvColumns)}
-            className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
-          >
-            <Download size={14} />
-            Export
-          </button>
         </div>
 
         <div className="overflow-x-auto">

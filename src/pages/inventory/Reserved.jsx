@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Filter, Download, MoreVertical, Plus, ShoppingCart, Users, Clock, XCircle } from "lucide-react";
-import { downloadCsv } from "../../utils/csv";
+import { Search, Filter, MoreVertical, Plus, ShoppingCart, Users, Clock, XCircle } from "lucide-react";
 import { useIsAdmin } from "../../hooks/useIsAdmin";
 import { getReservedDevices, cancelReservation } from "../../services/reservationsService";
 import { getDeviceKind } from "../../utils/deviceKind";
@@ -8,23 +7,6 @@ import NewReservationModal from "../../components/inventory/NewReservationModal"
 import ReservationDetailsModal from "../../components/inventory/ReservationDetailsModal";
 import ConvertToSaleModal from "../../components/inventory/ConvertToSaleModal";
 import { useToast } from "../../hooks/useToast";
-
-const csvColumns = [
-  { label: "Batch Code", value: (r) => r.batchCode },
-  { label: "Date Reserved", value: (r) => r.dateReserved },
-  { label: "Time", value: (r) => r.time },
-  { label: "Customer", value: (r) => r.customer },
-  { label: "Phone", value: (r) => r.phone },
-  { label: "Salesperson", value: (r) => r.salesperson },
-  { label: "Device", value: (r) => r.device },
-  { label: "Storage", value: (r) => r.storage },
-  { label: "Color", value: (r) => r.color },
-  { label: "Reserved Until", value: (r) => r.reservedUntil },
-  { label: "Status", value: (r) => r.status },
-  { label: "Total Price", value: (r) => r.totalPrice },
-  { label: "Down Payment", value: (r) => r.downPayment || 0 },
-  { label: "Balance Due", value: (r) => Math.max(0, r.totalPrice - (r.downPayment || 0)) },
-];
 
 const statusStyles = {
   Active: "bg-green-100 text-green-600",
@@ -224,13 +206,6 @@ function Reserved() {
             Reserved Devices List <span className="text-gray-400 font-normal">({records.length})</span>
           </p>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => downloadCsv("reserved-devices.csv", records, csvColumns)}
-              className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
-            >
-              <Download size={14} />
-              Export
-            </button>
             <button
               onClick={() => setShowNewReservation(true)}
               className="flex items-center gap-2 text-sm text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700"

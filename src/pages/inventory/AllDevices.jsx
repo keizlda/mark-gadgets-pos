@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Download, PackagePlus } from "lucide-react";
+import { PackagePlus } from "lucide-react";
 import InventoryStats from "../../components/inventory/InventoryStats";
 import FilterBar from "../../components/inventory/FilterBar";
 import DeviceTable from "../../components/inventory/DeviceTable";
@@ -9,23 +9,11 @@ import DeviceDetailsModal from "../../components/inventory/DeviceDetailsModal";
 import EditDeviceModal from "../../components/inventory/EditDeviceModal";
 import LogShipmentArrivalModal from "../../components/inventory/LogShipmentArrivalModal";
 import PendingShipmentsCard from "../../components/inventory/PendingShipmentsCard";
-import { downloadCsv } from "../../utils/csv";
 import { getDeviceKind } from "../../utils/deviceKind";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getAllDevices, getLowStockItems, deleteDevice } from "../../services/inventoryService";
 import { getPendingShellsWithProgress, getAllShellsWithProgress } from "../../services/bulkOrderShellsService";
 import { useToast } from "../../hooks/useToast";
-
-const csvColumns = [
-  { label: "Batch Code", value: (r) => r.batchCode },
-  { label: "Device", value: (r) => r.device },
-  { label: "Category", value: (r) => r.category },
-  { label: "Storage", value: (r) => r.storage },
-  { label: "Color", value: (r) => r.color },
-  { label: "Status", value: (r) => r.status },
-  { label: "Date Added", value: (r) => r.dateAdded },
-  { label: "Time", value: (r) => r.time },
-];
 
 function AllDevices() {
   const showToast = useToast();
@@ -203,13 +191,6 @@ function AllDevices() {
             >
               <PackagePlus size={14} />
               Log Shipment Arrival
-            </button>
-            <button
-              onClick={() => downloadCsv("all-devices.csv", filtered, csvColumns)}
-              className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
-            >
-              <Download size={14} />
-              Export
             </button>
           </div>
         </div>

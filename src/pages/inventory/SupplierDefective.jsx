@@ -1,24 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Filter, Download, MoreVertical, Wrench, ShoppingBag, Truck, CheckCircle2, Info } from "lucide-react";
-import { downloadCsv } from "../../utils/csv";
+import { Search, Filter, MoreVertical, Wrench, ShoppingBag, Truck, CheckCircle2, Info } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getSupplierDefectiveRecords } from "../../services/inventoryService";
 import { getSuppliers } from "../../services/referenceService";
 import UpdateDefectiveStatusModal from "../../components/inventory/UpdateDefectiveStatusModal";
 import DateRangePicker from "../../components/common/DateRangePicker";
-
-const csvColumns = [
-  { label: "Batch Code", value: (r) => r.batchCode },
-  { label: "Device", value: (r) => r.device },
-  { label: "Storage", value: (r) => r.storage },
-  { label: "Color", value: (r) => r.color },
-  { label: "Supplier", value: (r) => r.supplier },
-  { label: "Date Detected", value: (r) => r.dateDetected },
-  { label: "Time", value: (r) => r.time },
-  { label: "Issue", value: (r) => r.issue },
-  { label: "Status", value: (r) => r.status },
-  { label: "Action Taken", value: (r) => r.actionTaken },
-];
 
 const statusStyles = {
   "Pending Return": "bg-orange-100 text-orange-600",
@@ -181,17 +167,10 @@ function SupplierDefective() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
           <p className="font-medium text-gray-800">
             Supplier Defective List <span className="text-gray-400 font-normal">({records.length})</span>
           </p>
-          <button
-            onClick={() => downloadCsv("supplier-defective.csv", records, csvColumns)}
-            className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
-          >
-            <Download size={14} />
-            Export
-          </button>
         </div>
 
         <div className="overflow-x-auto">

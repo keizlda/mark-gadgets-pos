@@ -1,22 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Filter, Download, Settings, AlertTriangle, Package, TrendingUp, RotateCcw } from "lucide-react";
-import { downloadCsv } from "../../utils/csv";
+import { Search, Filter, Settings, AlertTriangle, Package, TrendingUp, RotateCcw } from "lucide-react";
 import { getLowStockItems } from "../../services/inventoryService";
 import { getDeviceCategories } from "../../services/referenceService";
 import { useServiceData } from "../../hooks/useServiceData";
 import ReorderSettingsModal from "../../components/inventory/ReorderSettingsModal";
 
 const blankFilters = { category: "All", search: "" };
-
-const csvColumns = [
-  { label: "Device", value: (r) => r.device },
-  { label: "Category", value: (r) => r.category },
-  { label: "Available", value: (r) => r.available },
-  { label: "Reorder Level", value: (r) => r.reorderLevel },
-  { label: "Estimated Value", value: (r) => r.estimatedValue },
-  { label: "Last Updated", value: (r) => r.lastUpdated },
-  { label: "Time", value: (r) => r.time },
-];
 
 function LowStock() {
   const deviceCategories = useServiceData(getDeviceCategories, []);
@@ -147,13 +136,6 @@ function LowStock() {
             >
               <Settings size={14} />
               Settings
-            </button>
-            <button
-              onClick={() => downloadCsv("low-stock.csv", records, csvColumns)}
-              className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
-            >
-              <Download size={14} />
-              Export
             </button>
           </div>
         </div>
