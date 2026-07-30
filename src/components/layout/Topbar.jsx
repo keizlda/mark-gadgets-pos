@@ -1,4 +1,4 @@
-import { Menu, Calendar, Bell, User } from "lucide-react";
+import { Menu, Calendar, User } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getCurrentProfile } from "../../services/authService";
@@ -47,13 +47,6 @@ function Topbar({ onMenuClick }) {
         <div className="hidden lg:flex items-center gap-2 text-sm text-gray-500">
           <Calendar size={16} />
           {today}
-        </div>
-
-        <div className="relative">
-          <Bell size={20} className="text-gray-500 cursor-pointer" />
-          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-            3
-          </span>
         </div>
 
         <div className="flex items-center gap-2">
