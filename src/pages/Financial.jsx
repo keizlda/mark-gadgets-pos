@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
-import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
 import { getSalesHistory } from "../services/salesService";
+import { getExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import DateRangePicker from "../components/common/DateRangePicker";
 
 const REPORT_TYPES = ["Daily", "Weekly", "Monthly", "Custom Range"];
@@ -57,6 +58,20 @@ function Financial() {
   const [dateTo, setDateTo] = useState(initialRange.to);
   const [generatedRange, setGeneratedRange] = useState(initialRange);
 
+  const [expenses, setExpenses] = useState([]);
+  const loadExpenses = useCallback(() => {
+    getExpenses().then(setExpenses);
+  }, []);
+  useEffect(() => {
+    loadExpenses();
+  }, [loadExpenses]);
+
+  const [expenseDate, setExpenseDate] = useState(toISODate(new Date()));
+  const [expenseDesc, setExpenseDesc] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseError, setExpenseError] = useState("");
+  const [submittingExpense, setSubmittingExpense] = useState(false);
+
   // Only sold units have a Disposal Price/realized profit — matches how the
   // admin's own spreadsheet is structured (one row per unit actually sold).
   const rows = useMemo(() => {
@@ -74,6 +89,47 @@ function Financial() {
     const totalNetProfit = rows.reduce((sum, r) => sum + (r.netProfit ?? 0), 0);
     return { totalCapital, totalDisposal, totalNetProfit };
   }, [rows]);
+
+  // Same expenses staff log from Reports — this is one shared table, not a
+  // separate admin-only ledger, so whatever staff have entered shows up
+  // here automatically and comes off the bottom line.
+  const filteredExpenses = useMemo(() => {
+    const from = generatedRange.from ? new Date(generatedRange.from) : null;
+    const to = generatedRange.to ? new Date(generatedRange.to) : null;
+    return expenses.filter((e) => {
+      const d = new Date(e.date);
+      return (!from || d >= from) && (!to || d <= to);
+    });
+  }, [expenses, generatedRange]);
+
+  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const netProfitAfterExpenses = totals.totalNetProfit - totalExpenses;
+
+  const handleAddExpense = async (e) => {
+    e.preventDefault();
+    if (!expenseDesc.trim() || !expenseAmount) return;
+    setExpenseError("");
+    setSubmittingExpense(true);
+    try {
+      await addExpense({ date: expenseDate, description: expenseDesc.trim(), amount: Number(expenseAmount) });
+      setExpenseDesc("");
+      setExpenseAmount("");
+      loadExpenses();
+    } catch (err) {
+      setExpenseError(err.message || "Failed to add expense. Please try again.");
+    } finally {
+      setSubmittingExpense(false);
+    }
+  };
+
+  const handleRemoveExpense = async (id) => {
+    try {
+      await deleteExpense(id);
+      loadExpenses();
+    } catch (err) {
+      alert(err.message || "Failed to remove expense. Please try again.");
+    }
+  };
 
   const handleReportTypeChange = (type) => {
     setReportType(type);
@@ -187,6 +243,25 @@ function Financial() {
         />
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 print:hidden">
+        <SummaryCard
+          icon={Wallet}
+          iconBg="bg-red-50 text-red-500"
+          label="TOTAL EXPENSES"
+          value={peso(totalExpenses)}
+          sub="Logged for this period"
+          valueClass="text-red-500"
+        />
+        <SummaryCard
+          icon={Coins}
+          iconBg={netProfitAfterExpenses < 0 ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"}
+          label="NET PROFIT AFTER EXPENSES"
+          value={peso(netProfitAfterExpenses)}
+          sub="Net Profit minus Expenses"
+          valueClass={netProfitAfterExpenses < 0 ? "text-red-500" : "text-green-600"}
+        />
+      </div>
+
       {/* Ledger table */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <p className="font-bold text-gray-800 mb-4">Unit Financial Ledger</p>
@@ -247,6 +322,119 @@ function Financial() {
               </tr>
             </tfoot>
           </table>
+        </div>
+      </div>
+
+      {/* Expenses — same shared table as Reports, filtered to this date range */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <p className="font-bold text-gray-800 mb-4">Expenses</p>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 bg-gray-50">
+                <th className="px-3 py-2.5 font-medium rounded-l-lg">Date</th>
+                <th className="px-3 py-2.5 font-medium">Description</th>
+                <th className="px-3 py-2.5 font-medium text-right">Amount</th>
+                <th className="px-3 py-2.5 font-medium rounded-r-lg text-right print:hidden">Remove</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredExpenses.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-gray-400">
+                    No expenses recorded for this period.
+                  </td>
+                </tr>
+              ) : filteredExpenses.map((e) => (
+                <tr key={e.id} className="border-b border-gray-50 last:border-0">
+                  <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{e.date}</td>
+                  <td className="px-3 py-3 text-gray-700">{e.description}</td>
+                  <td className="px-3 py-3 text-red-500 text-right">-{peso(e.amount)}</td>
+                  <td className="px-3 py-3 text-right print:hidden">
+                    <button
+                      onClick={() => handleRemoveExpense(e.id)}
+                      className="text-gray-400 hover:text-red-500 p-1"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-gray-50 font-bold text-gray-800">
+                <td className="px-3 py-3 rounded-l-lg" colSpan={2}>TOTAL EXPENSES</td>
+                <td className="px-3 py-3 text-right text-red-500">-{peso(totalExpenses)}</td>
+                <td className="px-3 py-3 rounded-r-lg"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        {expenseError && (
+          <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4 print:hidden">
+            <AlertTriangle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-red-700">{expenseError}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleAddExpense} className="flex flex-wrap items-end gap-3 mt-4 print:hidden">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Date</label>
+            <input
+              type="date"
+              value={expenseDate}
+              onChange={(e) => setExpenseDate(e.target.value)}
+              className="w-40 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Description</label>
+            <input
+              type="text"
+              value={expenseDesc}
+              onChange={(e) => setExpenseDesc(e.target.value)}
+              placeholder="e.g. Electricity bill"
+              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Amount</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
+              <input
+                type="number"
+                value={expenseAmount}
+                onChange={(e) => setExpenseAmount(e.target.value)}
+                placeholder="0.00"
+                className="w-32 border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={submittingExpense}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+          >
+            <Plus size={14} />
+            {submittingExpense ? "Adding..." : "Add Expense"}
+          </button>
+        </form>
+
+        <div className="mt-6 pt-4 border-t border-gray-100 space-y-1.5 text-right">
+          <div className="flex justify-end gap-6 text-sm text-gray-600">
+            <span>Total Net Profit</span>
+            <span className="w-32">{peso(totals.totalNetProfit)}</span>
+          </div>
+          <div className="flex justify-end gap-6 text-sm text-red-500">
+            <span>Total Expenses</span>
+            <span className="w-32">-{peso(totalExpenses)}</span>
+          </div>
+          <div className="flex justify-end gap-6 text-base font-bold text-gray-800 pt-1.5 border-t border-gray-100">
+            <span>Net Profit After Expenses</span>
+            <span className="w-32">{peso(netProfitAfterExpenses)}</span>
+          </div>
         </div>
       </div>
 
