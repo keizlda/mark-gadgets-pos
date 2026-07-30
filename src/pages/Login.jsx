@@ -45,7 +45,7 @@ function Login() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-2xl p-8 sm:p-10">
           <h2 className="text-2xl font-bold text-gray-900 text-center">
-            Welcome <span className="text-blue-600">Back!</span>
+            Welcome Back!
           </h2>
           <p className="text-sm text-gray-500 text-center mt-2 mb-8">
             Please login to continue to your account.
@@ -109,7 +109,7 @@ function Login() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-300 mt-6">
+        <p className="text-center text-xs text-black mt-6">
           © 2026 Mark Gadgets. All rights reserved.
         </p>
       </div>
