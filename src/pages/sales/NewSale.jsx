@@ -22,6 +22,11 @@ const installmentOptions = [
   { id: "Home Credit", label: "Home Credit", icon: Building2 },
 ];
 
+// Installment financing is for actual devices — a phone case or a battery
+// isn't something a lender finances, and mixing one into a cart that's
+// otherwise on installment doesn't make sense either.
+const NON_INSTALLMENT_CATEGORIES = ["Accessories", "Repair Parts"];
+
 const categoryIcon = {
   iPhones: Smartphone,
   iPads: Tablet,
@@ -93,15 +98,22 @@ function NewSale() {
 
   const clearCart = () => setCart([]);
 
-  // Check only shows up once the order qualifies as Bulk — if the cart
-  // drops back to 3 or fewer units while Check is selected, fall back to
-  // Cash so a hidden, stale selection can't silently go through.
+  const installmentEligible = cart.length > 0 && cart.every((c) => !NON_INSTALLMENT_CATEGORIES.includes(c.category));
+
+  // Check only shows up once the order qualifies as Bulk, and Installment
+  // only once every item in the cart is an actual device — if either
+  // selection stops qualifying, fall back to Cash so a hidden, stale
+  // selection can't silently go through.
   useEffect(() => {
     if (payment === "Check" && cart.length <= BULK_THRESHOLD) {
       setPayment("Cash");
       setReferenceNumber("N/A");
     }
-  }, [cart.length, payment]);
+    if (installmentOptions.some((opt) => opt.id === payment) && !installmentEligible) {
+      setPayment("Cash");
+      setReferenceNumber("N/A");
+    }
+  }, [cart.length, payment, installmentEligible]);
 
   const totalCapital = cart.reduce((sum, c) => sum + (Number(c.purchasePrice) || 0), 0);
   const total = cart.reduce((sum, c) => sum + (Number(c.actualPrice) || 0), 0);
@@ -406,27 +418,37 @@ function NewSale() {
             </button>
           )}
 
-          <p className="text-xs font-medium text-gray-600 mt-4 mb-2">Installment</p>
-          <div className="grid grid-cols-2 gap-2">
-            {installmentOptions.map((opt) => {
-              const Icon = opt.icon;
-              const active = payment === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => handlePaymentChange(opt.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border ${
-                    active
-                      ? "border-blue-500 bg-blue-50 text-blue-600"
-                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  <Icon size={14} />
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
+          {installmentEligible ? (
+            <>
+              <p className="text-xs font-medium text-gray-600 mt-4 mb-2">Installment</p>
+              <div className="grid grid-cols-2 gap-2">
+                {installmentOptions.map((opt) => {
+                  const Icon = opt.icon;
+                  const active = payment === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => handlePaymentChange(opt.id)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border ${
+                        active
+                          ? "border-blue-500 bg-blue-50 text-blue-600"
+                          : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <Icon size={14} />
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            cart.length > 0 && (
+              <p className="text-xs text-gray-400 mt-4">
+                Installment isn't available — remove any accessories or repair parts from the cart to unlock it.
+              </p>
+            )
+          )}
         </div>
 
         {/* Reference Number — only needed for non-cash payments */}
