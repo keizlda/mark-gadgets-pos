@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle, Wallet, CreditCard, Smartphone, Landmark, FileCheck, CalendarClock, Building2, Tablet, Laptop, Watch, Headphones, Wrench } from "lucide-react";
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle, Wallet, CreditCard, Smartphone, Landmark, FileCheck, CalendarClock, Building2, Tablet, Laptop, Watch, Headphones, Wrench, PackagePlus } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { processSale } from "../../services/salesService";
 import { getAvailableDevicesForSale } from "../../services/inventoryService";
 import { getPosCategories } from "../../services/referenceService";
 import { useToast } from "../../hooks/useToast";
+import QuickAddDeviceModal from "../../components/sales/QuickAddDeviceModal";
 
 const BULK_THRESHOLD = 3;
 
@@ -66,6 +67,7 @@ function NewSale() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   const cartIds = useMemo(() => new Set(cart.map((c) => c.id)), [cart]);
 
@@ -94,6 +96,16 @@ function NewSale() {
 
   const updateActualPrice = (id, value) => {
     setCart((prev) => prev.map((c) => (c.id === id ? { ...c, actualPrice: value } : c)));
+  };
+
+  // A unit that didn't exist in inventory a moment ago — goes straight into
+  // the cart instead of back into "browse and add", since that's the whole
+  // point of logging it mid-sale.
+  const handleQuickAdded = (product) => {
+    setShowQuickAdd(false);
+    addToCart(product);
+    loadAvailableDevices();
+    showToast("Device saved and added to cart.");
   };
 
   const clearCart = () => setCart([]);
@@ -196,6 +208,13 @@ function NewSale() {
             <button className="flex items-center gap-1.5 px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 whitespace-nowrap">
               <Filter size={14} />
               Filters
+            </button>
+            <button
+              onClick={() => setShowQuickAdd(true)}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 whitespace-nowrap"
+            >
+              <PackagePlus size={14} />
+              New Item
             </button>
           </div>
 
@@ -493,6 +512,10 @@ function NewSale() {
           {submitting ? "Processing..." : "Process Sale"}
         </button>
       </div>
+
+      {showQuickAdd && (
+        <QuickAddDeviceModal onClose={() => setShowQuickAdd(false)} onCreated={handleQuickAdded} />
+      )}
     </div>
   );
 }
