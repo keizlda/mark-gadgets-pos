@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Smartphone, Tablet, Watch, Laptop, Headphones, Wrench, MoreVertical, ChevronLeft, ChevronRight } from "lucide-react";
+import { Smartphone, Tablet, Watch, Laptop, Headphones, Wrench, MoreVertical, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { useIsAdmin } from "../../hooks/useIsAdmin";
 
 const statusStyles = {
@@ -80,22 +80,22 @@ function DeviceTable({ devices, onView, onEdit, onDelete }) {
                       <p className="text-xs text-gray-400">{row.time}</p>
                     </td>
                     <td className="py-3 text-right relative">
-                      <button
-                        onClick={() => setOpenMenu(openMenu === index ? null : index)}
-                        className="text-gray-400 hover:text-gray-700 p-1"
-                      >
-                        <MoreVertical size={16} />
-                      </button>
-                      {openMenu === index && (
-                        <div className="absolute right-6 top-8 bg-white border border-gray-200 rounded-lg shadow-md z-10 w-32 text-left">
+                      {isAdmin ? (
+                        <>
                           <button
-                            onClick={() => { onView(row); setOpenMenu(null); }}
-                            className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                            onClick={() => setOpenMenu(openMenu === index ? null : index)}
+                            className="text-gray-400 hover:text-gray-700 p-1"
                           >
-                            View
+                            <MoreVertical size={16} />
                           </button>
-                          {isAdmin && (
-                            <>
+                          {openMenu === index && (
+                            <div className="absolute right-6 top-8 bg-white border border-gray-200 rounded-lg shadow-md z-10 w-32 text-left">
+                              <button
+                                onClick={() => { onView(row); setOpenMenu(null); }}
+                                className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                              >
+                                View
+                              </button>
                               <button
                                 onClick={() => { onEdit(row); setOpenMenu(null); }}
                                 className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
@@ -108,9 +108,20 @@ function DeviceTable({ devices, onView, onEdit, onDelete }) {
                               >
                                 Delete
                               </button>
-                            </>
+                            </div>
                           )}
-                        </div>
+                        </>
+                      ) : (
+                        // Staff only ever have View available — a kebab menu
+                        // hiding a single option is worse than just showing
+                        // the action directly.
+                        <button
+                          onClick={() => onView(row)}
+                          className="text-gray-400 hover:text-gray-700 p-1"
+                          aria-label="View"
+                        >
+                          <Eye size={16} />
+                        </button>
                       )}
                     </td>
                   </tr>
