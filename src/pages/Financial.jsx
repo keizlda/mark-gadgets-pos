@@ -504,7 +504,10 @@ function Financial() {
               what's actually being deducted and who logged it. */}
           {filteredExpenses.map((e) => (
             <div key={e.id} className="flex justify-end gap-6 text-xs text-gray-400">
-              <span>{e.description}</span>
+              <span>
+                {e.description}
+                {e.adminOnly && <span className="ml-1 text-gray-300">(Admin Only)</span>}
+              </span>
               <span className="w-32 text-red-400">-{peso(e.amount)}</span>
             </div>
           ))}
