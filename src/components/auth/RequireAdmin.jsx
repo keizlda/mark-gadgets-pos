@@ -8,7 +8,13 @@ function RequireAdmin({ children }) {
   const [profile, setProfile] = useState(undefined); // undefined = still checking
 
   useEffect(() => {
-    getCurrentProfile().then(setProfile);
+    // A failed fetch (network blip, etc.) must not leave this stuck on
+    // "undefined" forever — that would render a blank page with no
+    // feedback instead of either granting or denying access. Default to
+    // denied, same as any other role mismatch.
+    getCurrentProfile()
+      .then(setProfile)
+      .catch(() => setProfile(null));
   }, []);
 
   if (profile === undefined) {
