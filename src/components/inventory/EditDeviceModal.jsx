@@ -7,6 +7,7 @@ import SupplierSelect from "./SupplierSelect";
 
 const statusOptions = ["Available", "Reserved", "Sold", "Customer Returned", "Supplier Defective", "Returned"];
 const conditionOptions = ["Brand New", "Pre-owned"];
+const repairPartConditionOptions = ["Brand New", "Genuine", "Used"];
 
 function EditDeviceModal({ device, onClose, onSaved }) {
   const categories = useServiceData(getDeviceCategories, []);
@@ -29,6 +30,7 @@ function EditDeviceModal({ device, onClose, onSaved }) {
   const [error, setError] = useState("");
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const isRepairPart = form.category === "Repair Parts";
 
   // Setting status to Supplier Defective needs an issue description so it
   // actually creates a record on the Supplier Defective page — not just a
@@ -47,8 +49,8 @@ function EditDeviceModal({ device, onClose, onSaved }) {
         batchCode: form.batchCode.trim(),
         deviceName: form.deviceName.trim(),
         category: form.category,
-        storage: form.storage.trim(),
-        color: form.color.trim(),
+        storage: isRepairPart ? null : form.storage.trim(),
+        color: isRepairPart ? null : form.color.trim(),
         status: form.status,
         supplierName: form.supplierName,
         condition: form.condition || null,
@@ -119,27 +121,29 @@ function EditDeviceModal({ device, onClose, onSaved }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Storage</label>
-              <input
-                type="text"
-                value={form.storage}
-                onChange={(e) => update("storage", e.target.value)}
-                placeholder="256GB or -"
-                className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+          {!isRepairPart && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Storage</label>
+                <input
+                  type="text"
+                  value={form.storage}
+                  onChange={(e) => update("storage", e.target.value)}
+                  placeholder="256GB or -"
+                  className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Color</label>
+                <input
+                  type="text"
+                  value={form.color}
+                  onChange={(e) => update("color", e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Color</label>
-              <input
-                type="text"
-                value={form.color}
-                onChange={(e) => update("color", e.target.value)}
-                className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -150,7 +154,9 @@ function EditDeviceModal({ device, onClose, onSaved }) {
                 className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Not set</option>
-                {conditionOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                {(isRepairPart ? repairPartConditionOptions : conditionOptions).map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
               </select>
             </div>
           </div>

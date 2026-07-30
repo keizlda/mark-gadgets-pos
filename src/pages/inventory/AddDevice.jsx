@@ -45,6 +45,10 @@ const categoryToDbValue = {
 
 const OTHER_MODEL = "__other__";
 const conditionOptions = ["Brand New", "Pre-owned"];
+// Repair parts use a different condition vocabulary — a screen or battery
+// isn't "Pre-owned", it's either factory-sealed, a genuine pulled Apple
+// part, or a used/aftermarket one.
+const repairPartConditionOptions = ["Brand New", "Genuine", "Used"];
 
 // A function (not a static object) so every fresh form — including the one
 // after "Save & Add Another" — picks up the current date rather than
@@ -92,6 +96,7 @@ function AddDevice() {
   const resolvedModel = isOtherModel ? form.customModel.trim() : form.model;
   const modelColors = !isOtherModel && form.model ? catalog?.modelColors[form.model] || [] : [];
   const isDefective = form.status === "Supplier Defective";
+  const isRepairPart = form.category === "Repair Parts";
   const selectedShell = pendingShells.find((s) => s.id === form.shellId);
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
@@ -104,6 +109,9 @@ function AddDevice() {
       customModel: "",
       color: "",
       storage: "",
+      // "Brand New" is valid in both condition vocabularies, so switching
+      // category never leaves a stale, now-invalid condition selected.
+      condition: "Brand New",
     }));
   };
 
@@ -154,8 +162,8 @@ function AddDevice() {
         batchCode: form.batchCode.trim(),
         deviceName: resolvedModel,
         category: categoryToDbValue[form.category],
-        storage: form.storage,
-        color: form.color,
+        storage: isRepairPart ? null : form.storage,
+        color: isRepairPart ? null : form.color,
         status: form.status,
         supplierName: form.supplier,
         condition: form.condition,
@@ -290,47 +298,51 @@ function AddDevice() {
               )}
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Color <span className="text-red-500">*</span>
-              </label>
-              {isOtherModel ? (
-                <input
-                  type="text"
-                  value={form.color}
-                  onChange={(e) => update("color", e.target.value)}
-                  required
-                  placeholder="Enter color"
-                  className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              ) : (
-                <select
-                  value={form.color}
-                  onChange={(e) => update("color", e.target.value)}
-                  required
-                  disabled={!form.model}
-                  className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
-                >
-                  <option value="">{form.model ? "Select color" : "Select a model first"}</option>
-                  {modelColors.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              )}
-            </div>
+            {!isRepairPart && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Color <span className="text-red-500">*</span>
+                </label>
+                {isOtherModel ? (
+                  <input
+                    type="text"
+                    value={form.color}
+                    onChange={(e) => update("color", e.target.value)}
+                    required
+                    placeholder="Enter color"
+                    className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <select
+                    value={form.color}
+                    onChange={(e) => update("color", e.target.value)}
+                    required
+                    disabled={!form.model}
+                    className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+                  >
+                    <option value="">{form.model ? "Select color" : "Select a model first"}</option>
+                    {modelColors.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                )}
+              </div>
+            )}
 
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Storage <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={form.storage}
-                onChange={(e) => update("storage", e.target.value)}
-                required
-                className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select storage</option>
-                {catalog.storages.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
+            {!isRepairPart && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Storage <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={form.storage}
+                  onChange={(e) => update("storage", e.target.value)}
+                  required
+                  className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select storage</option>
+                  {catalog.storages.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -342,7 +354,9 @@ function AddDevice() {
                 required
                 className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {conditionOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                {(isRepairPart ? repairPartConditionOptions : conditionOptions).map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
               </select>
             </div>
 
@@ -479,8 +493,12 @@ function AddDevice() {
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-800">{resolvedModel || "—"}</p>
-              <p className="text-xs text-gray-500">{form.storage || "—"}</p>
-              <p className="text-xs text-gray-500">{form.color || "—"}</p>
+              {!isRepairPart && (
+                <>
+                  <p className="text-xs text-gray-500">{form.storage || "—"}</p>
+                  <p className="text-xs text-gray-500">{form.color || "—"}</p>
+                </>
+              )}
             </div>
           </div>
 
@@ -493,14 +511,18 @@ function AddDevice() {
               <span className="text-gray-400">Model</span>
               <span className="text-gray-700">{resolvedModel || "—"}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Color</span>
-              <span className="text-gray-700">{form.color || "—"}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Storage</span>
-              <span className="text-gray-700">{form.storage || "—"}</span>
-            </div>
+            {!isRepairPart && (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Color</span>
+                  <span className="text-gray-700">{form.color || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Storage</span>
+                  <span className="text-gray-700">{form.storage || "—"}</span>
+                </div>
+              </>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-400">Condition</span>
               <span className="text-gray-700">{form.condition || "—"}</span>

@@ -33,7 +33,7 @@ create table public.devices (
   supplier_id uuid references public.suppliers (id),
   purchase_price numeric(12, 2) check (purchase_price is null or purchase_price >= 0),
   selling_price numeric(12, 2) not null check (selling_price >= 0),
-  condition text check (condition in ('Brand New', 'Pre-owned')),
+  condition text check (condition in ('Brand New', 'Pre-owned', 'Genuine', 'Used')),
   notes text,
   date_added timestamptz not null default now(),
   created_at timestamptz not null default now()
