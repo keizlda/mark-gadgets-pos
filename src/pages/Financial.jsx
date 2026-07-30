@@ -1,11 +1,17 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, Trash2, AlertTriangle, Boxes } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
 import { getSalesHistory } from "../services/salesService";
+import { getAllDevices } from "../services/inventoryService";
 import { getAllExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import DateRangePicker from "../components/common/DateRangePicker";
 
-const REPORT_TYPES = ["Daily", "Weekly", "Monthly", "Custom Range"];
+const REPORT_TYPES = ["Daily", "Weekly", "Monthly", "Quarterly", "Annually", "Custom Range"];
+
+// Still on hand — held for sale or currently reserved for a customer, as
+// opposed to Sold/Customer Returned/Supplier Defective, which either aren't
+// sellable stock right now or already had their capital counted once.
+const UNSOLD_STATUSES = ["Available", "Reserved"];
 
 const peso = (n) =>
   "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -30,6 +36,15 @@ function getPresetRange(type) {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     return { from: toISODate(monthStart), to: toISODate(today) };
   }
+  if (type === "Quarterly") {
+    const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3;
+    const quarterStart = new Date(today.getFullYear(), quarterStartMonth, 1);
+    return { from: toISODate(quarterStart), to: toISODate(today) };
+  }
+  if (type === "Annually") {
+    const yearStart = new Date(today.getFullYear(), 0, 1);
+    return { from: toISODate(yearStart), to: toISODate(today) };
+  }
   return null;
 }
 
@@ -52,6 +67,7 @@ const initialRange = getPresetRange("Monthly");
 
 function Financial() {
   const salesHistory = useServiceData(getSalesHistory, []);
+  const allDevices = useServiceData(getAllDevices, []);
 
   const [reportType, setReportType] = useState("Monthly");
   const [dateFrom, setDateFrom] = useState(initialRange.from);
@@ -104,6 +120,19 @@ function Financial() {
 
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
   const netProfitAfterExpenses = totals.totalNetProfit - totalExpenses;
+
+  // A present-moment snapshot of stock still on hand — not scoped to the
+  // selected date range, since "what's tied up in unsold inventory right
+  // now" doesn't depend on which period the sales/expenses report covers.
+  const unsoldUnits = useMemo(
+    () => allDevices.filter((d) => UNSOLD_STATUSES.includes(d.status)),
+    [allDevices]
+  );
+  const unsoldTotals = useMemo(() => {
+    const totalCapital = unsoldUnits.reduce((sum, d) => sum + (d.purchasePrice ?? 0), 0);
+    const totalValue = unsoldUnits.reduce((sum, d) => sum + (d.price ?? 0), 0);
+    return { count: unsoldUnits.length, totalCapital, totalValue };
+  }, [unsoldUnits]);
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
@@ -327,6 +356,42 @@ function Financial() {
               </tr>
             </tfoot>
           </table>
+        </div>
+      </div>
+
+      {/* Inventory On Hand — a snapshot of what's still unsold right now,
+          independent of the date range above, so admin can see capital
+          tied up in stock alongside what's already been realized as profit. */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <p className="font-bold text-gray-800 mb-1">Inventory On Hand (Unsold Units)</p>
+        <p className="text-xs text-gray-400 mb-4">
+          Current snapshot — Available and Reserved units, regardless of the date range above.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <SummaryCard
+            icon={Boxes}
+            iconBg="bg-purple-50 text-purple-600"
+            label="UNITS IN STOCK"
+            value={unsoldTotals.count}
+            sub="Available + Reserved"
+            valueClass="text-purple-600"
+          />
+          <SummaryCard
+            icon={Wallet}
+            iconBg="bg-gray-100 text-gray-600"
+            label="CAPITAL TIED UP"
+            value={peso(unsoldTotals.totalCapital)}
+            sub="Cost basis of unsold stock"
+            valueClass="text-gray-700"
+          />
+          <SummaryCard
+            icon={PiggyBank}
+            iconBg="bg-blue-50 text-blue-600"
+            label="POTENTIAL SALE VALUE"
+            value={peso(unsoldTotals.totalValue)}
+            sub="At current selling price"
+            valueClass="text-blue-600"
+          />
         </div>
       </div>
 
