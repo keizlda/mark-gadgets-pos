@@ -427,7 +427,17 @@ function Financial() {
             <span>Total Net Profit</span>
             <span className="w-32">{peso(totals.totalNetProfit)}</span>
           </div>
-          <div className="flex justify-end gap-6 text-sm text-red-500">
+
+          {/* Each expense broken out, not just the lump total, so it's clear
+              what's actually being deducted and who logged it. */}
+          {filteredExpenses.map((e) => (
+            <div key={e.id} className="flex justify-end gap-6 text-xs text-gray-400">
+              <span>{e.description}</span>
+              <span className="w-32 text-red-400">-{peso(e.amount)}</span>
+            </div>
+          ))}
+
+          <div className="flex justify-end gap-6 text-sm text-red-500 pt-1.5 border-t border-gray-100">
             <span>Total Expenses</span>
             <span className="w-32">-{peso(totalExpenses)}</span>
           </div>
