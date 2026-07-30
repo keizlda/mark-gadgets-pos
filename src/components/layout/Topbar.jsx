@@ -54,7 +54,7 @@ function Topbar({ onMenuClick }) {
             <User size={16} className="text-gray-500" />
           </div>
           <div className="text-sm hidden sm:block">
-            <p className="font-medium text-gray-800 leading-none">{profile?.name || "..."}</p>
+            <p className="font-medium text-gray-800 leading-none">{profile?.email || "..."}</p>
             <p className="text-gray-400 text-xs">{roleLabels[profile?.role] || "Staff"}</p>
           </div>
         </div>

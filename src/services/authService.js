@@ -32,7 +32,7 @@ export async function getCurrentProfile() {
     .eq("id", session.user.id)
     .single();
   if (error) throw error;
-  return data;
+  return { ...data, email: session.user.email };
 }
 
 // Calls `callback(session)` immediately and on every future auth change.
