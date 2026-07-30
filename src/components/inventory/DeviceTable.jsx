@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Smartphone, Tablet, Watch, Laptop, MoreVertical, ChevronLeft, ChevronRight } from "lucide-react";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
 
 const statusStyles = {
   Sold: "bg-blue-100 text-blue-600",
@@ -18,6 +19,7 @@ const categoryIcon = {
 };
 
 function DeviceTable({ devices, onView, onEdit, onDelete }) {
+  const isAdmin = useIsAdmin();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [openMenu, setOpenMenu] = useState(null);
@@ -90,18 +92,22 @@ function DeviceTable({ devices, onView, onEdit, onDelete }) {
                           >
                             View
                           </button>
-                          <button
-                            onClick={() => { onEdit(row); setOpenMenu(null); }}
-                            className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => { onDelete(row); setOpenMenu(null); }}
-                            className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-50"
-                          >
-                            Delete
-                          </button>
+                          {isAdmin && (
+                            <>
+                              <button
+                                onClick={() => { onEdit(row); setOpenMenu(null); }}
+                                className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => { onDelete(row); setOpenMenu(null); }}
+                                className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-50"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
                         </div>
                       )}
                     </td>

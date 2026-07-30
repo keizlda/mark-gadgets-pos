@@ -12,6 +12,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
+import { useIsAdmin } from "../hooks/useIsAdmin";
 import { getSalesHistory } from "../services/salesService";
 import { getExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import DateRangePicker from "../components/common/DateRangePicker";
@@ -71,6 +72,7 @@ function computeTotals(rows) {
 
 function Reports() {
   const salesHistory = useServiceData(getSalesHistory, []);
+  const isAdmin = useIsAdmin();
 
   const [reportType, setReportType] = useState("Monthly");
   const [dateFrom, setDateFrom] = useState(initialRange.from);
@@ -363,13 +365,15 @@ function Reports() {
                     <th className="px-3 py-2.5 font-medium rounded-l-lg">Date</th>
                     <th className="px-3 py-2.5 font-medium">Description</th>
                     <th className="px-3 py-2.5 font-medium text-right">Amount</th>
-                    <th className="px-3 py-2.5 font-medium rounded-r-lg text-right print:hidden">Remove</th>
+                    {isAdmin && (
+                      <th className="px-3 py-2.5 font-medium rounded-r-lg text-right print:hidden">Remove</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredExpenses.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-6 text-center text-gray-400">
+                      <td colSpan={isAdmin ? 4 : 3} className="py-6 text-center text-gray-400">
                         No expenses recorded for this period.
                       </td>
                     </tr>
@@ -378,22 +382,26 @@ function Reports() {
                       <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{e.date}</td>
                       <td className="px-3 py-3 text-gray-700">{e.description}</td>
                       <td className="px-3 py-3 text-red-500 text-right">-{peso(e.amount)}</td>
-                      <td className="px-3 py-3 text-right print:hidden">
-                        <button
-                          onClick={() => handleRemoveExpense(e.id)}
-                          className="text-gray-400 hover:text-red-500 p-1"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
+                      {isAdmin && (
+                        <td className="px-3 py-3 text-right print:hidden">
+                          <button
+                            onClick={() => handleRemoveExpense(e.id)}
+                            className="text-gray-400 hover:text-red-500 p-1"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50 font-bold text-gray-800">
                     <td className="px-3 py-3 rounded-l-lg" colSpan={2}>TOTAL EXPENSES</td>
-                    <td className="px-3 py-3 text-right text-red-500">-{peso(totalExpenses)}</td>
-                    <td className="px-3 py-3 rounded-r-lg"></td>
+                    <td className={`px-3 py-3 text-right text-red-500 ${isAdmin ? "" : "rounded-r-lg"}`}>
+                      -{peso(totalExpenses)}
+                    </td>
+                    {isAdmin && <td className="px-3 py-3 rounded-r-lg"></td>}
                   </tr>
                 </tfoot>
               </table>

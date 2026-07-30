@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, Filter, Download, MoreVertical, Plus, ShoppingCart, Users, Clock, XCircle } from "lucide-react";
 import { downloadCsv } from "../../utils/csv";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
 import { getReservedDevices, cancelReservation } from "../../services/reservationsService";
 import { getDeviceKind } from "../../utils/deviceKind";
 import NewReservationModal from "../../components/inventory/NewReservationModal";
@@ -49,6 +50,7 @@ function daysLeftLabel(days) {
 const blankFilters = { date: "", kind: "All", search: "" };
 
 function Reserved() {
+  const isAdmin = useIsAdmin();
   const [reservedDevices, setReservedDevices] = useState([]);
   const loadReservations = useCallback(() => {
     getReservedDevices().then(setReservedDevices);
@@ -312,13 +314,15 @@ function Reserved() {
                             >
                               Convert to Sale
                             </button>
-                            <button
-                              onClick={() => handleCancelReservation(row)}
-                              disabled={cancellingId === row.id}
-                              className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-50 disabled:opacity-60"
-                            >
-                              {cancellingId === row.id ? "Cancelling..." : "Cancel Reservation"}
-                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleCancelReservation(row)}
+                                disabled={cancellingId === row.id}
+                                className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-50 disabled:opacity-60"
+                              >
+                                {cancellingId === row.id ? "Cancelling..." : "Cancel Reservation"}
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
