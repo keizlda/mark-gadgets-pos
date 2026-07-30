@@ -8,10 +8,10 @@ import DateRangePicker from "../components/common/DateRangePicker";
 
 const REPORT_TYPES = ["Daily", "Weekly", "Monthly", "Quarterly", "Annually", "Custom Range"];
 
-// Still on hand — held for sale or currently reserved for a customer, as
-// opposed to Sold/Customer Returned/Supplier Defective, which either aren't
-// sellable stock right now or already had their capital counted once.
-const UNSOLD_STATUSES = ["Available", "Reserved"];
+// Anything not yet Sold — capital still sitting in the business one way or
+// another, whether it's sellable stock, held for a customer, or stuck in a
+// defective/return pipeline.
+const UNSOLD_STATUSES = ["Available", "Reserved", "Supplier Defective", "Customer Returned", "Returned"];
 
 const peso = (n) =>
   "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -130,8 +130,7 @@ function Financial() {
   );
   const unsoldTotals = useMemo(() => {
     const totalCapital = unsoldUnits.reduce((sum, d) => sum + (d.purchasePrice ?? 0), 0);
-    const totalValue = unsoldUnits.reduce((sum, d) => sum + (d.price ?? 0), 0);
-    return { count: unsoldUnits.length, totalCapital, totalValue };
+    return { count: unsoldUnits.length, totalCapital };
   }, [unsoldUnits]);
 
   const handleAddExpense = async (e) => {
@@ -360,40 +359,34 @@ function Financial() {
       </div>
 
       {/* Inventory On Hand — a snapshot of what's still unsold right now,
-          independent of the date range above, so admin can see capital
-          tied up in stock alongside what's already been realized as profit. */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <p className="font-bold text-gray-800 mb-1">Inventory On Hand (Unsold Units)</p>
-        <p className="text-xs text-gray-400 mb-4">
-          Current snapshot — Available and Reserved units, regardless of the date range above.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <SummaryCard
-            icon={Boxes}
-            iconBg="bg-purple-50 text-purple-600"
-            label="UNITS IN STOCK"
-            value={unsoldTotals.count}
-            sub="Available + Reserved"
-            valueClass="text-purple-600"
-          />
-          <SummaryCard
-            icon={Wallet}
-            iconBg="bg-gray-100 text-gray-600"
-            label="CAPITAL TIED UP"
-            value={peso(unsoldTotals.totalCapital)}
-            sub="Cost basis of unsold stock"
-            valueClass="text-gray-700"
-          />
-          <SummaryCard
-            icon={PiggyBank}
-            iconBg="bg-blue-50 text-blue-600"
-            label="POTENTIAL SALE VALUE"
-            value={peso(unsoldTotals.totalValue)}
-            sub="At current selling price"
-            valueClass="text-blue-600"
-          />
+          independent of the date range above. Only meaningful for the
+          longer-horizon report types, not a single day/week/month. */}
+      {(reportType === "Quarterly" || reportType === "Annually") && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <p className="font-bold text-gray-800 mb-1">Inventory On Hand (Unsold Units)</p>
+          <p className="text-xs text-gray-400 mb-4">
+            Current snapshot — every unit not yet Sold, regardless of the date range above.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SummaryCard
+              icon={Boxes}
+              iconBg="bg-purple-50 text-purple-600"
+              label="UNITS IN STOCK"
+              value={unsoldTotals.count}
+              sub="Not yet Sold"
+              valueClass="text-purple-600"
+            />
+            <SummaryCard
+              icon={Wallet}
+              iconBg="bg-gray-100 text-gray-600"
+              label="CAPITAL TIED UP"
+              value={peso(unsoldTotals.totalCapital)}
+              sub="Cost basis of unsold stock"
+              valueClass="text-gray-700"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Expenses — includes both what staff logged on Reports and what's
           logged here; entries added from this page are marked Admin Only
