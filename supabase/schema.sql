@@ -51,6 +51,12 @@ create table public.bulk_order_shells (
   date_arrived timestamptz not null,
   status text not null default 'Pending' check (status in ('Pending', 'Completed')),
   notes text,
+  -- What Mark Gadgets owes the supplier for this shipment — unit_cost times
+  -- the agreed quantity_expected, not however many units have been logged
+  -- so far (see bulk_order_shell_progress_view.amount_payable).
+  unit_cost numeric(12, 2) check (unit_cost is null or unit_cost >= 0),
+  supplier_payment_status text not null default 'Unpaid' check (supplier_payment_status in ('Unpaid', 'Paid')),
+  supplier_paid_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -188,7 +194,11 @@ select
   s.quantity_expected,
   s.date_arrived,
   s.status,
-  count(d.id) as linked_count
+  count(d.id) as linked_count,
+  s.unit_cost,
+  s.unit_cost * s.quantity_expected as amount_payable,
+  s.supplier_payment_status,
+  s.supplier_paid_at
 from public.bulk_order_shells s
 left join public.suppliers sup on sup.id = s.supplier_id
 left join public.devices d on d.bulk_order_shell_id = s.id
@@ -480,6 +490,35 @@ begin
       end if;
     end if;
   end if;
+end;
+$$;
+
+create function public.mark_bulk_order_shell_paid(p_id uuid)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  update public.bulk_order_shells
+  set supplier_payment_status = 'Paid', supplier_paid_at = now()
+  where id = p_id;
+end;
+$$;
+
+-- Mirrors the "un-resolve" pattern already used for supplier defective
+-- records — corrects a mistaken Mark as Paid without losing history on the
+-- shell itself.
+create function public.mark_bulk_order_shell_unpaid(p_id uuid)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  update public.bulk_order_shells
+  set supplier_payment_status = 'Unpaid', supplier_paid_at = null
+  where id = p_id;
 end;
 $$;
 

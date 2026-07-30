@@ -9,6 +9,7 @@ export async function createBulkOrderShell({
   storage,
   color,
   quantityExpected,
+  unitCost,
   dateArrived,
   notes,
 }) {
@@ -29,6 +30,7 @@ export async function createBulkOrderShell({
     storage: storage || null,
     color: color || null,
     quantity_expected: quantityExpected,
+    unit_cost: unitCost ?? null,
     date_arrived: dateArrived,
     notes: notes || null,
   });
@@ -74,4 +76,34 @@ export async function getAllShellsWithProgress() {
 
   if (error) throw error;
   return data.map(mapShellProgress);
+}
+
+// What's owed to each supplier per shipment — amount_payable is computed in
+// the view as unit_cost * quantity_expected (the agreed quantity), not how
+// many units have actually been logged so far. Admin-only page.
+export async function getSupplierPayables() {
+  const { data, error } = await supabase
+    .from("bulk_order_shell_progress_view")
+    .select("*")
+    .order("date_arrived", { ascending: false });
+
+  if (error) throw error;
+
+  return data.map((s) => ({
+    ...mapShellProgress(s),
+    unitCost: s.unit_cost,
+    amountPayable: s.amount_payable,
+    supplierPaymentStatus: s.supplier_payment_status,
+    supplierPaidAt: s.supplier_paid_at,
+  }));
+}
+
+export async function markShellPaid(shellId) {
+  const { error } = await supabase.rpc("mark_bulk_order_shell_paid", { p_id: shellId });
+  if (error) throw error;
+}
+
+export async function markShellUnpaid(shellId) {
+  const { error } = await supabase.rpc("mark_bulk_order_shell_unpaid", { p_id: shellId });
+  if (error) throw error;
 }

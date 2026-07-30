@@ -5,17 +5,21 @@ import {
   ShoppingCart,
   RotateCcw,
   FileText,
+  Wallet,
   LogOut,
   ChevronDown,
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { signOut } from "../../services/authService";
+import { signOut, getCurrentProfile } from "../../services/authService";
+import { useServiceData } from "../../hooks/useServiceData";
 
 function Sidebar({ open, onClose }) {
   const navigate = useNavigate();
   const [inventoryOpen, setInventoryOpen] = useState(true);
   const [salesOpen, setSalesOpen] = useState(true);
+  const profile = useServiceData(getCurrentProfile, null);
+  const isAdmin = profile?.role === "admin";
 
   const handleLogout = async () => {
     try {
@@ -151,6 +155,13 @@ function Sidebar({ open, onClose }) {
             <FileText size={18} />
             Reports
           </NavLink>
+
+          {isAdmin && (
+            <NavLink to="/supplier-payables" className={linkClass} onClick={onClose}>
+              <Wallet size={18} />
+              Supplier Payables
+            </NavLink>
+          )}
         </nav>
 
         {/* Bottom */}

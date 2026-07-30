@@ -3,20 +3,27 @@ import { X, AlertTriangle } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getProductCatalog } from "../../services/referenceService";
 import { createBulkOrderShell } from "../../services/bulkOrderShellsService";
+import { todayLocalDateString } from "../../utils/datetime";
 import SupplierSelect from "./SupplierSelect";
 
 const OTHER_MODEL = "__other__";
 
-const blankForm = {
-  category: "iPhone",
-  model: "",
-  customModel: "",
-  color: "",
-  storage: "",
-  supplier: "",
-  quantityExpected: "",
-  dateArrived: new Date().toISOString().slice(0, 10),
-};
+// A function (not a static object) so the modal picks up today's date each
+// time it's opened, rather than whatever date happened to be current when
+// the module first loaded.
+function createBlankForm() {
+  return {
+    category: "iPhone",
+    model: "",
+    customModel: "",
+    color: "",
+    storage: "",
+    supplier: "",
+    quantityExpected: "",
+    unitCost: "",
+    dateArrived: todayLocalDateString(),
+  };
+}
 
 // Quick overnight placeholder for a bulk shipment — staff log "20 iPhone 15
 // Pros arrived from iStudio" without entering a single unit, then link each
@@ -25,7 +32,7 @@ function LogShipmentArrivalModal({ onClose, onCreated }) {
   const productCatalog = useServiceData(getProductCatalog, {});
   const categories = Object.keys(productCatalog);
 
-  const [form, setForm] = useState(blankForm);
+  const [form, setForm] = useState(createBlankForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -67,6 +74,7 @@ function LogShipmentArrivalModal({ onClose, onCreated }) {
         storage: form.storage,
         color: form.color,
         quantityExpected: Number(form.quantityExpected),
+        unitCost: form.unitCost === "" ? null : Number(form.unitCost),
         dateArrived: new Date(`${form.dateArrived}T00:00:00`).toISOString(),
       });
       onCreated();
@@ -200,6 +208,25 @@ function LogShipmentArrivalModal({ onClose, onCreated }) {
                   className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  Unit Cost (Capital) <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
+                  <input
+                    type="number"
+                    value={form.unitCost}
+                    onChange={(e) => update("unitCost", e.target.value)}
+                    placeholder="Per unit"
+                    className="w-full border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">What we pay the supplier per unit, for the payables total</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
                   Date Arrived <span className="text-red-500">*</span>

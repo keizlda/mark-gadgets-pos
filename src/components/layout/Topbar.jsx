@@ -19,6 +19,7 @@ const PAGE_TITLES = {
   "/sales/history": "Sales History",
   "/after-sales/customer-returns": "Customer Returns",
   "/reports": "Reports",
+  "/supplier-payables": "Supplier Payables",
 };
 
 function Topbar({ onMenuClick }) {

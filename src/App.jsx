@@ -4,12 +4,14 @@ import Sidebar from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
 import ScrollToTop from "./components/layout/ScrollToTop";
 import RequireAuth from "./components/auth/RequireAuth";
+import RequireAdmin from "./components/auth/RequireAdmin";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
 import Sales from "./pages/Sales";
 import AfterSales from "./pages/AfterSales";
 import Reports from "./pages/Reports";
+import SupplierPayables from "./pages/SupplierPayables";
 
 function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -39,6 +41,10 @@ function App() {
           <Route path="/sales/*" element={<Sales />} />
           <Route path="/after-sales/*" element={<AfterSales />} />
           <Route path="/reports" element={<Reports />} />
+          <Route
+            path="/supplier-payables"
+            element={<RequireAdmin><SupplierPayables /></RequireAdmin>}
+          />
         </Route>
       </Routes>
     </BrowserRouter>
