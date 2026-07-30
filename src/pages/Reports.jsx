@@ -108,6 +108,7 @@ function Reports() {
         txn: s.batchCode,
         date: s.date,
         time: s.time,
+        device: s.device,
         items: 1,
         amount: s.total,
         payment: s.payment,
@@ -317,7 +318,7 @@ function Reports() {
                   <th className="px-3 py-2.5 font-medium rounded-l-lg">#</th>
                   <th className="px-3 py-2.5 font-medium">Date &amp; Time</th>
                   <th className="px-3 py-2.5 font-medium">Batch Code</th>
-                  <th className="px-3 py-2.5 font-medium text-center">Items Sold</th>
+                  <th className="px-3 py-2.5 font-medium">Unit Sold</th>
                   <th className="px-3 py-2.5 font-medium text-right">Total Amount</th>
                   <th className="px-3 py-2.5 font-medium rounded-r-lg">Payment Method</th>
                 </tr>
@@ -336,7 +337,7 @@ function Reports() {
                       {row.date} {row.time}
                     </td>
                     <td className="px-3 py-3 text-gray-700">{row.txn}</td>
-                    <td className="px-3 py-3 text-gray-700 text-center">{row.items}</td>
+                    <td className="px-3 py-3 text-gray-700">{row.device}</td>
                     <td className="px-3 py-3 text-gray-800 text-right">{peso(row.amount)}</td>
                     <td className="px-3 py-3 text-gray-700">{row.payment}</td>
                   </tr>
