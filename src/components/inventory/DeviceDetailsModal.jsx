@@ -48,6 +48,7 @@ function DeviceDetailsModal({ device, onClose }) {
           <Row label="Category">{device.category}</Row>
           <Row label="Storage">{device.storage || "—"}</Row>
           <Row label="Color">{device.color || "—"}</Row>
+          <Row label="Condition">{device.condition || "—"}</Row>
           <Row label="Supplier">{device.supplier || "—"}</Row>
           <Row label="Selling Price">₱{Number(device.price || 0).toLocaleString()}</Row>
           {device.purchasePrice != null && (

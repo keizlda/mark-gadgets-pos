@@ -6,6 +6,7 @@ import { updateDevice } from "../../services/inventoryService";
 import SupplierSelect from "./SupplierSelect";
 
 const statusOptions = ["Available", "Reserved", "Sold", "Customer Returned", "Supplier Defective", "Returned"];
+const conditionOptions = ["Brand New", "Pre-owned"];
 
 function EditDeviceModal({ device, onClose, onSaved }) {
   const categories = useServiceData(getDeviceCategories, []);
@@ -17,6 +18,7 @@ function EditDeviceModal({ device, onClose, onSaved }) {
     storage: device.storage || "",
     color: device.color || "",
     status: device.status,
+    condition: device.condition || "",
     supplierName: device.supplier || "",
     purchasePrice: device.purchasePrice ?? "",
     price: device.price ?? "",
@@ -49,6 +51,7 @@ function EditDeviceModal({ device, onClose, onSaved }) {
         color: form.color.trim(),
         status: form.status,
         supplierName: form.supplierName,
+        condition: form.condition || null,
         purchasePrice: form.purchasePrice === "" ? null : Number(form.purchasePrice),
         price: Number(form.price) || 0,
         notes: form.notes.trim(),
@@ -135,6 +138,20 @@ function EditDeviceModal({ device, onClose, onSaved }) {
                 onChange={(e) => update("color", e.target.value)}
                 className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Condition</label>
+              <select
+                value={form.condition}
+                onChange={(e) => update("condition", e.target.value)}
+                className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Not set</option>
+                {conditionOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
           </div>
 

@@ -40,6 +40,7 @@ const categoryToDbValue = {
 };
 
 const OTHER_MODEL = "__other__";
+const conditionOptions = ["Brand New", "Pre-owned"];
 
 // A function (not a static object) so every fresh form — including the one
 // after "Save & Add Another" — picks up the current date rather than
@@ -51,6 +52,7 @@ function createBlankForm() {
     customModel: "",
     color: "",
     storage: "",
+    condition: "Brand New",
     supplier: "",
     dateReceived: todayLocalDateString(),
     batchCode: batchCodeDatePrefix(),
@@ -152,6 +154,7 @@ function AddDevice() {
         color: form.color,
         status: form.status,
         supplierName: form.supplier,
+        condition: form.condition,
         purchasePrice: Number(form.purchasePrice),
         price: Number(form.price),
         notes: form.remarks.trim(),
@@ -327,6 +330,20 @@ function AddDevice() {
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
+                Condition <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={form.condition}
+                onChange={(e) => update("condition", e.target.value)}
+                required
+                className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {conditionOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
                 Supplier <span className="text-red-500">*</span>
               </label>
               <SupplierSelect
@@ -479,6 +496,10 @@ function AddDevice() {
             <div className="flex justify-between">
               <span className="text-gray-400">Storage</span>
               <span className="text-gray-700">{form.storage || "—"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Condition</span>
+              <span className="text-gray-700">{form.condition || "—"}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Batch Code</span>

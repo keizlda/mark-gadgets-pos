@@ -7,6 +7,7 @@ function FilterBar({ filters, setFilters, onApply, onClear, kinds = [] }) {
   const deviceStorages = useServiceData(getDeviceStorages, []);
   const suppliers = useServiceData(getSuppliers, []);
   const statuses = ["Available", "Sold", "Reserved", "Customer Returned", "Supplier Defective", "Returned"];
+  const conditions = ["Brand New", "Pre-owned"];
 
   const update = (key, value) => setFilters({ ...filters, [key]: value });
 
@@ -96,6 +97,20 @@ function FilterBar({ filters, setFilters, onApply, onClear, kinds = [] }) {
           >
             <option value="All">All Suppliers</option>
             {suppliers.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label className="flex items-end min-h-[2.25rem] text-xs font-medium text-gray-500 mb-1.5">
+            Condition
+          </label>
+          <select
+            value={filters.condition}
+            onChange={(e) => update("condition", e.target.value)}
+            className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="All">All Conditions</option>
+            {conditions.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
       </div>

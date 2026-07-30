@@ -44,6 +44,7 @@ function AllDevices() {
     storage: "All",
     kind: "All",
     supplier: "All",
+    condition: "All",
     bulkShipmentOnly: false,
   });
   const [appliedFilters, setAppliedFilters] = useState(filters);
@@ -107,6 +108,7 @@ function AllDevices() {
       storage: "All",
       kind: "All",
       supplier: "All",
+      condition: "All",
       bulkShipmentOnly: false,
     };
     setFilters(cleared);
@@ -131,6 +133,7 @@ function AllDevices() {
         (f.storage === "All" || d.storage === f.storage) &&
         (f.kind === "All" || getDeviceKind(d.device) === f.kind) &&
         (f.supplier === "All" || d.supplier === f.supplier) &&
+        (f.condition === "All" || d.condition === f.condition) &&
         (!f.bulkShipmentOnly || !!d.bulkOrderShellId)
       );
     });
