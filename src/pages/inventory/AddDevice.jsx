@@ -81,7 +81,6 @@ function AddDevice() {
   const categories = Object.keys(productCatalog);
 
   const [form, setForm] = useState(createBlankForm);
-  const [submitMode, setSubmitMode] = useState("save");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -195,15 +194,10 @@ function AddDevice() {
         dateArrived: selectedShell ? selectedShell.dateArrived : null,
       });
 
-      if (submitMode === "addAnother") {
-        showToast("Device saved. Form reset for the next entry.");
-        setForm(createBlankForm());
-        loadPendingShells();
-        generateBatchCode();
-      } else {
-        showToast("Device saved.");
-        navigate("/inventory/all");
-      }
+      showToast("Device saved.");
+      setForm(createBlankForm());
+      loadPendingShells();
+      generateBatchCode();
     } catch (err) {
       if (err.code === "23505") {
         setError("A device with this batch code already exists.");
@@ -598,15 +592,6 @@ function AddDevice() {
         </button>
         <button
           type="submit"
-          onClick={() => setSubmitMode("addAnother")}
-          disabled={submitting}
-          className="px-5 py-2.5 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          Save & Add Another
-        </button>
-        <button
-          type="submit"
-          onClick={() => setSubmitMode("save")}
           disabled={submitting}
           className="px-5 py-2.5 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
         >
