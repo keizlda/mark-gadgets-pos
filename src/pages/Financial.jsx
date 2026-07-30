@@ -197,6 +197,7 @@ function Financial() {
               <tr className="text-left text-gray-500 bg-gray-50">
                 <th className="px-3 py-2.5 font-medium rounded-l-lg">#</th>
                 <th className="px-3 py-2.5 font-medium">Date Sold</th>
+                <th className="px-3 py-2.5 font-medium">Batch Code</th>
                 <th className="px-3 py-2.5 font-medium">Unit / Model / Gb / Color</th>
                 <th className="px-3 py-2.5 font-medium text-right">Capital</th>
                 <th className="px-3 py-2.5 font-medium text-right">Disposal Price</th>
@@ -207,7 +208,7 @@ function Financial() {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-gray-400">
+                  <td colSpan={8} className="py-8 text-center text-gray-400">
                     No sold units found for the selected date range.
                   </td>
                 </tr>
@@ -216,6 +217,7 @@ function Financial() {
                   <tr key={row.saleItemId} className="border-b border-gray-50 last:border-0">
                     <td className="px-3 py-3 text-gray-500">{index + 1}</td>
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.date}</td>
+                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.batchCode}</td>
                     <td className="px-3 py-3 text-gray-800 font-medium">
                       {[row.device, row.storage, row.color].filter(Boolean).join(" · ")}
                     </td>
@@ -230,16 +232,14 @@ function Financial() {
                     >
                       {row.netProfit != null ? peso(row.netProfit) : "—"}
                     </td>
-                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">
-                      {row.supplier ? `${row.supplier} ${row.dateReceived}` : "—"}
-                    </td>
+                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.supplier || "—"}</td>
                   </tr>
                 ))
               )}
             </tbody>
             <tfoot>
               <tr className="bg-gray-50 font-bold text-gray-800">
-                <td className="px-3 py-3 rounded-l-lg" colSpan={3}>TOTAL</td>
+                <td className="px-3 py-3 rounded-l-lg" colSpan={4}>TOTAL</td>
                 <td className="px-3 py-3 text-right">{peso(totals.totalCapital)}</td>
                 <td className="px-3 py-3 text-right">{peso(totals.totalDisposal)}</td>
                 <td className="px-3 py-3 text-right text-green-600">{peso(totals.totalNetProfit)}</td>
