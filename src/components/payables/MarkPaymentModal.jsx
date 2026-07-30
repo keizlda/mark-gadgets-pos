@@ -47,12 +47,15 @@ function MarkPaymentModal({ shell, action, onClose, onUpdated }) {
             {isMarkingPaid ? (
               <>
                 Confirm that <strong>₱{(shell.amountPayable || 0).toLocaleString()}</strong> has been paid to
-                this supplier for this shipment.
+                this supplier for this shipment.{" "}
+                {shell.unitCost != null
+                  ? "This also logs it as an expense on today's date in Financial."
+                  : "No Unit Cost was recorded when this shipment was logged, so this won't create an expense entry."}
               </>
             ) : (
               <>
-                This will reset the shipment back to <strong>Unpaid</strong> and clear its paid date — use this
-                to correct a mistaken "Mark as Paid".
+                This will reset the shipment back to <strong>Unpaid</strong>, clear its paid date, and remove
+                the expense it logged — use this to correct a mistaken "Mark as Paid".
               </>
             )}
           </p>

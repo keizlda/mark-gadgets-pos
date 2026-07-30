@@ -385,6 +385,48 @@ function Financial() {
               valueClass="text-gray-700"
             />
           </div>
+
+          {/* Sales performance for the period, ending in a separate line for
+              capital still sitting in unsold stock — kept apart from Net
+              Profit rather than added to it, since unsold inventory isn't
+              realized profit or an expense, just capital not yet turned
+              into cash. */}
+          <div className="mt-6 pt-4 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              Period Financial Summary
+            </p>
+            <div className="space-y-1.5 text-right">
+              <div className="flex justify-end gap-6 text-sm text-gray-600">
+                <span>Capital (Cost of Units Sold)</span>
+                <span className="w-32">{peso(totals.totalCapital)}</span>
+              </div>
+              <div className="flex justify-end gap-6 text-sm text-gray-600">
+                <span>Disposal Total (Revenue)</span>
+                <span className="w-32">{peso(totals.totalDisposal)}</span>
+              </div>
+              <div className="flex justify-end gap-6 text-sm font-medium text-gray-700 pt-1.5 border-t border-gray-100">
+                <span>Gross Profit</span>
+                <span className="w-32">{peso(totals.totalNetProfit)}</span>
+              </div>
+              <div className="flex justify-end gap-6 text-sm text-red-500">
+                <span>Total Expenses</span>
+                <span className="w-32">-{peso(totalExpenses)}</span>
+              </div>
+              <div className="flex justify-end gap-6 text-base font-bold pt-1.5 border-t border-gray-100">
+                <span className="text-gray-800">Net Profit After Expenses</span>
+                <span className={`w-32 ${netProfitAfterExpenses < 0 ? "text-red-500" : "text-gray-800"}`}>
+                  {peso(netProfitAfterExpenses)}
+                </span>
+              </div>
+              <div className="flex justify-end gap-6 text-sm text-purple-600 pt-3 mt-2 border-t border-gray-100">
+                <span>Capital Tied Up in Unsold Inventory</span>
+                <span className="w-32">{peso(unsoldTotals.totalCapital)}</span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Not counted toward profit — this is capital still sitting in stock, not yet sold.
+            </p>
+          </div>
         </div>
       )}
 
