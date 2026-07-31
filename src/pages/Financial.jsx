@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, Trash2, AlertTriangle, Boxes, Truck } from "lucide-react";
+import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, AlertTriangle, Boxes, Truck } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
 import { getSalesHistory } from "../services/salesService";
 import { getAllDevices } from "../services/inventoryService";
 import { getAllExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import DateRangePicker from "../components/common/DateRangePicker";
 import UnsoldUnitsModal from "../components/financial/UnsoldUnitsModal";
+import ExpenseCategoryModal from "../components/financial/ExpenseCategoryModal";
 import DeviceDetailsModal from "../components/inventory/DeviceDetailsModal";
 import { useToast } from "../hooks/useToast";
 
@@ -87,6 +88,7 @@ function Financial() {
 
   const [showUnsoldUnits, setShowUnsoldUnits] = useState(false);
   const [viewDevice, setViewDevice] = useState(null);
+  const [expenseModalCategory, setExpenseModalCategory] = useState(null); // null | "General" | "Cargo" | "Prulife"
 
   const [expenses, setExpenses] = useState([]);
   const loadExpenses = useCallback(() => {
@@ -133,14 +135,25 @@ function Financial() {
     });
   }, [expenses, generatedRange]);
 
-  // Cargo (shipping/rider/courier fees) is tracked as its own category so it
-  // gets its own total instead of being buried in the lump Total Expenses
-  // figure — but it's still a real cost, so it still comes off Net Profit.
-  const generalExpenses = filteredExpenses.filter((e) => e.category !== "Cargo");
-  const cargoExpenses = filteredExpenses.filter((e) => e.category === "Cargo");
+  // Cargo (shipping/rider/courier) and Prulife (life insurance premiums) are
+  // tracked as their own categories so each gets its own total instead of
+  // being buried in the lump Expenses figure — but they're still real
+  // costs, so they still come off Net Profit.
+  const expensesByCategory = useMemo(
+    () => ({
+      General: filteredExpenses.filter((e) => e.category !== "Cargo" && e.category !== "Prulife"),
+      Cargo: filteredExpenses.filter((e) => e.category === "Cargo"),
+      Prulife: filteredExpenses.filter((e) => e.category === "Prulife"),
+    }),
+    [filteredExpenses]
+  );
+  const generalExpenses = expensesByCategory.General;
+  const cargoExpenses = expensesByCategory.Cargo;
+  const prulifeExpenses = expensesByCategory.Prulife;
   const totalExpenses = generalExpenses.reduce((sum, e) => sum + e.amount, 0);
   const totalCargo = cargoExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const netProfitAfterExpenses = totals.totalNetProfit - totalExpenses - totalCargo;
+  const totalPrulife = prulifeExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const netProfitAfterExpenses = totals.totalNetProfit - totalExpenses - totalCargo - totalPrulife;
 
   // A present-moment snapshot of stock still on hand — not scoped to the
   // selected date range, since "what's tied up in unsold inventory right
@@ -299,32 +312,43 @@ function Financial() {
         />
       </div>
 
-      <div className="grid grid-cols-1 print:hidden">
-        <SummaryCard
-          icon={Truck}
-          iconBg="bg-amber-50 text-amber-600"
-          label="TOTAL CARGO"
-          value={peso(totalCargo)}
-          sub="Shipping / rider / courier fees for this period"
-          valueClass="text-amber-600"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 print:hidden">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 print:hidden">
         <SummaryCard
           icon={Wallet}
           iconBg="bg-red-50 text-red-500"
-          label="TOTAL EXPENSES"
-          value={peso(totalExpenses)}
-          sub="Logged for this period"
+          label="EXPENSES"
+          value={"-" + peso(totalExpenses)}
+          sub="Click to view breakdown"
           valueClass="text-red-500"
+          onClick={() => setExpenseModalCategory("General")}
         />
+        <SummaryCard
+          icon={Truck}
+          iconBg="bg-amber-50 text-amber-600"
+          label="CARGO"
+          value={"-" + peso(totalCargo)}
+          sub="Click to view breakdown"
+          valueClass="text-amber-600"
+          onClick={() => setExpenseModalCategory("Cargo")}
+        />
+        <SummaryCard
+          icon={Coins}
+          iconBg="bg-indigo-50 text-indigo-600"
+          label="PRULIFE"
+          value={"-" + peso(totalPrulife)}
+          sub="Click to view breakdown"
+          valueClass="text-indigo-600"
+          onClick={() => setExpenseModalCategory("Prulife")}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 print:hidden">
         <SummaryCard
           icon={Coins}
           iconBg={netProfitAfterExpenses < 0 ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"}
           label="NET PROFIT AFTER EXPENSES"
           value={peso(netProfitAfterExpenses)}
-          sub="Net Profit minus Expenses and Cargo"
+          sub="Net Profit minus Expenses, Cargo, and Prulife"
           valueClass={netProfitAfterExpenses < 0 ? "text-red-500" : "text-green-600"}
         />
       </div>
@@ -392,66 +416,12 @@ function Financial() {
         </div>
       </div>
 
-      {/* Expenses — includes both what staff logged on Reports and what's
+      {/* Add Expense — includes both what staff logged on Reports and what's
           logged here; entries added from this page are marked Admin Only
-          and stay hidden from Reports. */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <p className="font-bold text-gray-800 mb-4">Expenses</p>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-500 bg-gray-50">
-                <th className="px-3 py-2.5 font-medium rounded-l-lg">Date</th>
-                <th className="px-3 py-2.5 font-medium">Description</th>
-                <th className="px-3 py-2.5 font-medium text-right">Amount</th>
-                <th className="px-3 py-2.5 font-medium rounded-r-lg text-right print:hidden">Remove</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredExpenses.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="py-6 text-center text-gray-400">
-                    No expenses recorded for this period.
-                  </td>
-                </tr>
-              ) : filteredExpenses.map((e) => (
-                <tr key={e.id} className="border-b border-gray-50 last:border-0">
-                  <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{e.date}</td>
-                  <td className="px-3 py-3 text-gray-700">
-                    {e.description}
-                    {e.category === "Cargo" && (
-                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 align-middle">
-                        Cargo
-                      </span>
-                    )}
-                    {e.adminOnly && (
-                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500 align-middle">
-                        Admin Only
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 text-red-500 text-right">-{peso(e.amount)}</td>
-                  <td className="px-3 py-3 text-right print:hidden">
-                    <button
-                      onClick={() => handleRemoveExpense(e.id)}
-                      className="text-gray-400 hover:text-red-500 p-1"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="bg-gray-50 font-bold text-gray-800">
-                <td className="px-3 py-3 rounded-l-lg" colSpan={2}>TOTAL EXPENSES</td>
-                <td className="px-3 py-3 text-right text-red-500">-{peso(totalExpenses)}</td>
-                <td className="px-3 py-3 rounded-r-lg"></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+          and stay hidden from Reports. Line items live behind the
+          Expenses/Cargo/Prulife cards above — click one to drill in. */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 print:hidden">
+        <p className="font-bold text-gray-800 mb-4">Add Expense</p>
 
         {expenseError && (
           <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4 print:hidden">
@@ -502,6 +472,7 @@ function Financial() {
             >
               <option value="General">General</option>
               <option value="Cargo">Cargo</option>
+              <option value="Prulife">Prulife</option>
             </select>
           </div>
           <button
@@ -513,62 +484,6 @@ function Financial() {
             {submittingExpense ? "Adding..." : "Add Expense"}
           </button>
         </form>
-
-        <div className="mt-6 pt-4 border-t border-gray-100 space-y-1.5 text-right">
-          <div className="flex justify-end gap-6 text-sm text-gray-600">
-            <span>Total Net Profit</span>
-            <span className="w-32">{peso(totals.totalNetProfit)}</span>
-          </div>
-
-          {/* Each expense broken out, not just the lump total, so it's clear
-              what's actually being deducted and who logged it. */}
-          {generalExpenses.map((e) => (
-            <div key={e.id} className="flex justify-end gap-6 text-xs text-gray-400">
-              <span>
-                {e.description}
-                {e.adminOnly && <span className="ml-1 text-gray-300">(Admin Only)</span>}
-              </span>
-              <span className="w-32 text-red-400">-{peso(e.amount)}</span>
-            </div>
-          ))}
-
-          <div className="flex justify-end gap-6 text-sm text-red-500 pt-1.5 border-t border-gray-100">
-            <span>Total Expenses</span>
-            <span className="w-32">-{peso(totalExpenses)}</span>
-          </div>
-
-          {cargoExpenses.map((e) => (
-            <div key={e.id} className="flex justify-end gap-6 text-xs text-gray-400 pt-1.5">
-              <span>
-                {e.description}
-                {e.adminOnly && <span className="ml-1 text-gray-300">(Admin Only)</span>}
-              </span>
-              <span className="w-32 text-amber-500">-{peso(e.amount)}</span>
-            </div>
-          ))}
-          <div className="flex justify-end gap-6 text-sm text-amber-600 pt-1.5 border-t border-gray-100">
-            <span>Total Cargo</span>
-            <span className="w-32">-{peso(totalCargo)}</span>
-          </div>
-
-          <div className="flex justify-end gap-6 text-base font-bold text-gray-800 pt-1.5 border-t border-gray-100">
-            <span>Net Profit After Expenses</span>
-            <span className={netProfitAfterExpenses < 0 ? "w-32 text-red-500" : "w-32"}>
-              {peso(netProfitAfterExpenses)}
-            </span>
-          </div>
-
-          {/* Same summary, one line further — not a separate breakdown —
-              since unsold stock isn't realized profit or an expense, just
-              capital not yet turned into cash. Only meaningful over a
-              longer horizon, so Quarterly/Annually only. */}
-          {(reportType === "Quarterly" || reportType === "Annually") && (
-            <div className="flex justify-end gap-6 text-sm text-purple-600 pt-3 mt-2 border-t border-gray-100">
-              <span>Capital Tied Up in Unsold Inventory</span>
-              <span className="w-32">{peso(unsoldTotals.totalCapital)}</span>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Inventory On Hand — a snapshot of what's still unsold right now,
@@ -624,6 +539,16 @@ function Financial() {
       )}
 
       {viewDevice && <DeviceDetailsModal device={viewDevice} onClose={() => setViewDevice(null)} />}
+
+      {expenseModalCategory && (
+        <ExpenseCategoryModal
+          category={expenseModalCategory === "General" ? "Expenses" : expenseModalCategory}
+          entries={expensesByCategory[expenseModalCategory]}
+          isAdmin
+          onRemove={handleRemoveExpense}
+          onClose={() => setExpenseModalCategory(null)}
+        />
+      )}
     </div>
   );
 }
