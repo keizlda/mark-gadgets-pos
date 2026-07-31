@@ -452,72 +452,68 @@ function Reports() {
               </table>
             </div>
 
-            {isAdmin && (
-              <>
-                <p className="font-semibold text-gray-700 mt-6 mb-3">Add Expense</p>
+            <p className="font-semibold text-gray-700 mt-6 mb-3">Add Expense</p>
 
-                {expenseError && (
-                  <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-4 print:hidden">
-                    <AlertTriangle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-red-700">{expenseError}</p>
-                  </div>
-                )}
-
-                <form onSubmit={handleAddExpense} className="flex flex-wrap items-end gap-3 print:hidden">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Date</label>
-                    <input
-                      type="date"
-                      value={expenseDate}
-                      onChange={(e) => setExpenseDate(e.target.value)}
-                      className="w-40 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-[180px]">
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Description</label>
-                    <input
-                      type="text"
-                      value={expenseDesc}
-                      onChange={(e) => setExpenseDesc(e.target.value)}
-                      placeholder="e.g. Electricity bill"
-                      className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Amount</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
-                      <input
-                        type="number"
-                        value={expenseAmount}
-                        onChange={(e) => setExpenseAmount(e.target.value)}
-                        placeholder="0.00"
-                        className="w-32 border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Category</label>
-                    <select
-                      value={expenseCategory}
-                      onChange={(e) => setExpenseCategory(e.target.value)}
-                      className="w-32 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="General">General</option>
-                      <option value="Cargo">Cargo</option>
-                    </select>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={submittingExpense}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
-                  >
-                    <Plus size={14} />
-                    {submittingExpense ? "Adding..." : "Add Expense"}
-                  </button>
-                </form>
-              </>
+            {expenseError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-4 print:hidden">
+                <AlertTriangle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-red-700">{expenseError}</p>
+              </div>
             )}
+
+            <form onSubmit={handleAddExpense} className="flex flex-wrap items-end gap-3 print:hidden">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Date</label>
+                <input
+                  type="date"
+                  value={expenseDate}
+                  onChange={(e) => setExpenseDate(e.target.value)}
+                  className="w-40 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex-1 min-w-[180px]">
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Description</label>
+                <input
+                  type="text"
+                  value={expenseDesc}
+                  onChange={(e) => setExpenseDesc(e.target.value)}
+                  placeholder="e.g. Electricity bill"
+                  className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Amount</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
+                  <input
+                    type="number"
+                    value={expenseAmount}
+                    onChange={(e) => setExpenseAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-32 border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Category</label>
+                <select
+                  value={expenseCategory}
+                  onChange={(e) => setExpenseCategory(e.target.value)}
+                  className="w-32 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="General">General</option>
+                  <option value="Cargo">Cargo</option>
+                </select>
+              </div>
+              <button
+                type="submit"
+                disabled={submittingExpense}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+              >
+                <Plus size={14} />
+                {submittingExpense ? "Adding..." : "Add Expense"}
+              </button>
+            </form>
 
             {/* Vertical breakdown, below the form — same layout as Financial's:
                 a fixed-width column keeps every value flush regardless of

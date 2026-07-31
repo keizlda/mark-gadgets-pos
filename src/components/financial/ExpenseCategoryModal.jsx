@@ -8,10 +8,11 @@ const toISODate = (d) => {
   return new Date(d.getTime() - offset * 60000).toISOString().slice(0, 10);
 };
 
-// Line-item breakdown behind one of Financial's Expenses/Cargo/Prulife
-// summary rows — mirrors UnsoldUnitsModal's click-to-drill-in pattern, plus
-// an inline Add form so admin doesn't have to back out and re-pick the
-// category from the main page's dropdown.
+// Line-item breakdown behind one of Financial's/Reports' Expenses/Cargo/
+// Prulife summary rows — mirrors UnsoldUnitsModal's click-to-drill-in
+// pattern, plus an inline Add form (everyone can add) so no one has to back
+// out and re-pick the category from the main page's dropdown. Removing an
+// entry stays admin-only.
 function ExpenseCategoryModal({ category, entries, isAdmin, onRemove, onAdd, onClose }) {
   const displayLabel = category === "General" ? "Expenses" : category;
   const total = entries.reduce((sum, e) => sum + e.amount, 0);
@@ -89,58 +90,56 @@ function ExpenseCategoryModal({ category, entries, isAdmin, onRemove, onAdd, onC
           )}
         </div>
 
-        {isAdmin && (
-          <div className="px-5 py-4 border-t border-gray-100">
-            {error && (
-              <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-3">
-                <AlertTriangle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            )}
-            <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Date</label>
+        <div className="px-5 py-4 border-t border-gray-100">
+          {error && (
+            <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-3">
+              <AlertTriangle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+          <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Date</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-40 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex-1 min-w-[160px]">
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Description</label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={`e.g. ${displayLabel} entry`}
+                className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Amount</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
                 <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-40 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="w-28 border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="flex-1 min-w-[160px]">
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Description</label>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={`e.g. ${displayLabel} entry`}
-                  className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Amount</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
-                  <input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="w-28 border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
-              >
-                <Plus size={14} />
-                {submitting ? "Adding..." : `Add ${displayLabel}`}
-              </button>
-            </form>
-          </div>
-        )}
+            </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+            >
+              <Plus size={14} />
+              {submitting ? "Adding..." : `Add ${displayLabel}`}
+            </button>
+          </form>
+        </div>
 
         <div className="px-5 py-4 border-t border-gray-100 flex justify-between items-center">
           <p className="text-sm font-semibold text-gray-800">
