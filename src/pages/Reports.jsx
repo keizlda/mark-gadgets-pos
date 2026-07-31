@@ -16,6 +16,7 @@ import { useIsAdmin } from "../hooks/useIsAdmin";
 import { getSalesHistory } from "../services/salesService";
 import { getExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import DateRangePicker from "../components/common/DateRangePicker";
+import ExpenseCategoryModal from "../components/financial/ExpenseCategoryModal";
 import { useToast } from "../hooks/useToast";
 
 const REPORT_TYPES = ["Daily", "Weekly", "Monthly", "Custom Range"];
@@ -61,28 +62,6 @@ function SummaryCard({ icon: Icon, iconBg, label, value, sub, valueClass }) {
   );
 }
 
-// A category totals only, not the line items — clicking one of the
-// expense categories reveals its breakdown below instead of always
-// showing every line item at once.
-function StatTile({ label, value, valueClass, onClick, active }) {
-  const Tag = onClick ? "button" : "div";
-  return (
-    <Tag
-      type={onClick ? "button" : undefined}
-      onClick={onClick}
-      className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors ${
-        active ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white"
-      } ${onClick ? "hover:border-blue-300 cursor-pointer" : ""}`}
-    >
-      <span className="text-xs font-medium text-gray-500">{label}</span>
-      <span className={`text-lg font-bold ${valueClass}`}>{value}</span>
-      {onClick && (
-        <span className="text-[10px] text-blue-500 print:hidden">{active ? "Hide breakdown" : "Click to view"}</span>
-      )}
-    </Tag>
-  );
-}
-
 const initialRange = getPresetRange("Monthly");
 
 function computeTotals(rows) {
@@ -118,7 +97,7 @@ function Reports() {
   const [expenseCategory, setExpenseCategory] = useState("General");
   const [expenseError, setExpenseError] = useState("");
   const [submittingExpense, setSubmittingExpense] = useState(false);
-  const [activeCategory, setActiveCategory] = useState(null); // null | "General" | "Cargo"
+  const [expenseModalCategory, setExpenseModalCategory] = useState(null); // null | "General" | "Cargo"
 
   const rows = useMemo(() => {
     const from = generatedRange.from ? new Date(generatedRange.from + "T00:00:00") : null;
@@ -229,6 +208,14 @@ function Reports() {
     } finally {
       setSubmittingExpense(false);
     }
+  };
+
+  // Lets admin add straight from the Expenses/Cargo breakdown modal, already
+  // scoped to that category — stays staff-visible (adminOnly defaults
+  // false), same as the main Add Expense form on this page.
+  const handleAddExpenseFromModal = async ({ date, description, amount, category }) => {
+    await addExpense({ date, description, amount, category });
+    loadExpenses();
   };
 
   const handleRemoveExpense = async (id) => {
@@ -407,92 +394,76 @@ function Reports() {
 
         {viewMode !== "cash" && (
           <div className={viewMode === "expenses" ? "" : "mt-6 pt-6 border-t border-gray-100"}>
-            <p className="font-semibold text-gray-700 mb-3">Expenses Summary</p>
+            <p className="font-semibold text-gray-700 mb-3">Expenses</p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatTile label="Profit" value={peso(totals.totalSales)} valueClass="text-green-600" />
-              <StatTile
-                label="Expenses"
-                value={"-" + peso(categoryTotals.General)}
-                valueClass="text-red-500"
-                active={activeCategory === "General"}
-                onClick={() => setActiveCategory(activeCategory === "General" ? null : "General")}
-              />
-              <StatTile
-                label="Cargo"
-                value={"-" + peso(categoryTotals.Cargo)}
-                valueClass="text-amber-600"
-                active={activeCategory === "Cargo"}
-                onClick={() => setActiveCategory(activeCategory === "Cargo" ? null : "Cargo")}
-              />
-              <StatTile
-                label="New Profit"
-                value={peso(newProfit)}
-                valueClass={newProfit < 0 ? "text-red-500" : "text-gray-900"}
-              />
-            </div>
-
-            {activeCategory && (
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-gray-500 bg-gray-50">
-                      <th className="px-3 py-2.5 font-medium rounded-l-lg">Date</th>
-                      <th className="px-3 py-2.5 font-medium">Description</th>
-                      <th className="px-3 py-2.5 font-medium text-right">Amount</th>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 bg-gray-50">
+                    <th className="px-3 py-2.5 font-medium rounded-l-lg">Date</th>
+                    <th className="px-3 py-2.5 font-medium">Description</th>
+                    <th className="px-3 py-2.5 font-medium text-right">Amount</th>
+                    {isAdmin && (
+                      <th className="px-3 py-2.5 font-medium rounded-r-lg text-right print:hidden">Remove</th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredExpenses.length === 0 ? (
+                    <tr>
+                      <td colSpan={isAdmin ? 4 : 3} className="py-6 text-center text-gray-400">
+                        No expenses recorded for this period.
+                      </td>
+                    </tr>
+                  ) : filteredExpenses.map((e) => (
+                    <tr key={e.id} className="border-b border-gray-50 last:border-0">
+                      <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{e.date}</td>
+                      <td className="px-3 py-3 text-gray-800 font-medium">
+                        {e.description}
+                        {e.category === "Cargo" && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 align-middle">
+                            Cargo
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-red-500 text-right">-{peso(e.amount)}</td>
                       {isAdmin && (
-                        <th className="px-3 py-2.5 font-medium rounded-r-lg text-right print:hidden">Remove</th>
+                        <td className="px-3 py-3 text-right print:hidden">
+                          <button
+                            onClick={() => handleRemoveExpense(e.id)}
+                            className="text-gray-400 hover:text-red-500 p-1"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
                       )}
                     </tr>
-                  </thead>
-                  <tbody>
-                    {expensesByCategory[activeCategory].length === 0 ? (
-                      <tr>
-                        <td colSpan={isAdmin ? 4 : 3} className="py-6 text-center text-gray-400">
-                          No {activeCategory} expenses recorded for this period.
-                        </td>
-                      </tr>
-                    ) : expensesByCategory[activeCategory].map((e) => (
-                      <tr key={e.id} className="border-b border-gray-50 last:border-0">
-                        <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{e.date}</td>
-                        <td className="px-3 py-3 text-gray-700">{e.description}</td>
-                        <td className="px-3 py-3 text-red-500 text-right">-{peso(e.amount)}</td>
-                        {isAdmin && (
-                          <td className="px-3 py-3 text-right print:hidden">
-                            <button
-                              onClick={() => handleRemoveExpense(e.id)}
-                              className="text-gray-400 hover:text-red-500 p-1"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-gray-50 font-bold text-gray-800">
-                      <td className="px-3 py-3 rounded-l-lg" colSpan={2}>TOTAL {activeCategory.toUpperCase()}</td>
-                      <td className={`px-3 py-3 text-right text-red-500 ${isAdmin ? "" : "rounded-r-lg"}`}>
-                        -{peso(categoryTotals[activeCategory])}
-                      </td>
-                      {isAdmin && <td className="px-3 py-3 rounded-r-lg"></td>}
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            )}
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-50 font-bold text-gray-800">
+                    <td className="px-3 py-3 rounded-l-lg" colSpan={2}>TOTAL EXPENSES</td>
+                    <td className={`px-3 py-3 text-right text-red-500 ${isAdmin ? "" : "rounded-r-lg"}`}>
+                      -{peso(categoryTotals.General + categoryTotals.Cargo)}
+                    </td>
+                    {isAdmin && <td className="px-3 py-3 rounded-r-lg"></td>}
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
 
             {isAdmin && (
               <>
+                <p className="font-semibold text-gray-700 mt-6 mb-3">Add Expense</p>
+
                 {expenseError && (
-                  <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4 print:hidden">
+                  <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-4 print:hidden">
                     <AlertTriangle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
                     <p className="text-sm text-red-700">{expenseError}</p>
                   </div>
                 )}
 
-                <form onSubmit={handleAddExpense} className="flex flex-wrap items-end gap-3 mt-4 print:hidden">
+                <form onSubmit={handleAddExpense} className="flex flex-wrap items-end gap-3 print:hidden">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1.5">Date</label>
                     <input
@@ -547,6 +518,42 @@ function Reports() {
                 </form>
               </>
             )}
+
+            {/* Vertical breakdown, below the form — same layout as Financial's:
+                a fixed-width column keeps every value flush regardless of
+                label length. Expenses/Cargo open the same breakdown modal. */}
+            <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end print:hidden">
+              <div className="w-full max-w-xs space-y-1">
+                <div className="flex justify-between text-sm text-gray-600 px-2 py-1.5">
+                  <span>Profit</span>
+                  <span className="font-medium tabular-nums">{peso(totals.totalSales)}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExpenseModalCategory("General")}
+                  className="flex justify-between w-full text-sm text-red-500 px-2 py-1.5 rounded-lg hover:bg-red-50"
+                >
+                  <span>Expenses</span>
+                  <span className="font-medium tabular-nums">-{peso(categoryTotals.General)}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExpenseModalCategory("Cargo")}
+                  className="flex justify-between w-full text-sm text-amber-600 px-2 py-1.5 rounded-lg hover:bg-amber-50"
+                >
+                  <span>Cargo</span>
+                  <span className="font-medium tabular-nums">-{peso(categoryTotals.Cargo)}</span>
+                </button>
+                <div
+                  className={`flex justify-between text-base font-bold px-2 py-2 mt-1 border-t border-gray-100 ${
+                    newProfit < 0 ? "text-red-500" : "text-gray-800"
+                  }`}
+                >
+                  <span>New Profit</span>
+                  <span className="tabular-nums">{peso(newProfit)}</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -556,6 +563,17 @@ function Reports() {
         <span className="font-medium">Note:</span>
         <span>This report is based on the selected date range.</span>
       </div>
+
+      {expenseModalCategory && (
+        <ExpenseCategoryModal
+          category={expenseModalCategory}
+          entries={expensesByCategory[expenseModalCategory]}
+          isAdmin={isAdmin}
+          onRemove={handleRemoveExpense}
+          onAdd={handleAddExpenseFromModal}
+          onClose={() => setExpenseModalCategory(null)}
+        />
+      )}
     </div>
   );
 }
