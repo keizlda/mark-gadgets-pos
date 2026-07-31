@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, AlertTriangle, Boxes } from "lucide-react";
+import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, Trash2, AlertTriangle, Boxes } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
 import { getSalesHistory } from "../services/salesService";
 import { getAllDevices } from "../services/inventoryService";
@@ -375,53 +375,75 @@ function Financial() {
         </div>
       </div>
 
-      {/* Add Expense — includes both what staff logged on Reports and what's
-          logged here; entries added from this page are marked Admin Only
-          and stay hidden from Reports. Expenses/Cargo/Prulife line items
-          live behind their row below — click one to drill in. */}
+      {/* Expenses — every entry, all categories, includes both what staff
+          logged on Reports and what's logged here (entries added from this
+          page are marked Admin Only and stay hidden from Reports). */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 print:hidden">
         <p className="font-bold text-gray-800 mb-4">Expenses</p>
 
-        {/* Vertical ledger summary, mirroring the shop's own spreadsheet
-            format — Profit, then each deduction, then the bottom line. */}
-        <div className="space-y-1.5 text-right mb-5 pb-4 border-b border-gray-100">
-          <div className="flex justify-end gap-6 text-sm text-gray-600">
-            <span>Profit</span>
-            <span className="w-32">{peso(totals.totalNetProfit)}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setExpenseModalCategory("General")}
-            className="flex justify-end gap-6 text-sm text-red-500 w-full hover:underline"
-          >
-            <span>Expenses</span>
-            <span className="w-32">-{peso(totalExpenses)}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setExpenseModalCategory("Cargo")}
-            className="flex justify-end gap-6 text-sm text-amber-600 w-full hover:underline"
-          >
-            <span>Cargo</span>
-            <span className="w-32">-{peso(totalCargo)}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setExpenseModalCategory("Prulife")}
-            className="flex justify-end gap-6 text-sm text-indigo-600 w-full hover:underline"
-          >
-            <span>Prulife</span>
-            <span className="w-32">-{peso(totalPrulife)}</span>
-          </button>
-          <div className="flex justify-end gap-6 text-base font-bold text-gray-800 pt-1.5 border-t border-gray-100">
-            <span>Net Profit</span>
-            <span className={netProfitAfterExpenses < 0 ? "w-32 text-red-500" : "w-32"}>
-              {peso(netProfitAfterExpenses)}
-            </span>
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 bg-gray-50">
+                <th className="px-3 py-2.5 font-medium rounded-l-lg">Date</th>
+                <th className="px-3 py-2.5 font-medium">Description</th>
+                <th className="px-3 py-2.5 font-medium text-right">Amount</th>
+                <th className="px-3 py-2.5 font-medium rounded-r-lg text-right">Remove</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredExpenses.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-gray-400">
+                    No expenses recorded for this period.
+                  </td>
+                </tr>
+              ) : filteredExpenses.map((e) => (
+                <tr key={e.id} className="border-b border-gray-50 last:border-0">
+                  <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{e.date}</td>
+                  <td className="px-3 py-3 text-gray-700">
+                    {e.description}
+                    {e.category === "Cargo" && (
+                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 align-middle">
+                        Cargo
+                      </span>
+                    )}
+                    {e.category === "Prulife" && (
+                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700 align-middle">
+                        Prulife
+                      </span>
+                    )}
+                    {e.adminOnly && (
+                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500 align-middle">
+                        Admin Only
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-red-500 text-right">-{peso(e.amount)}</td>
+                  <td className="px-3 py-3 text-right">
+                    <button
+                      onClick={() => handleRemoveExpense(e.id)}
+                      className="text-gray-400 hover:text-red-500 p-1"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-gray-50 font-bold text-gray-800">
+                <td className="px-3 py-3 rounded-l-lg" colSpan={2}>TOTAL EXPENSES</td>
+                <td className="px-3 py-3 text-right text-red-500">
+                  -{peso(totalExpenses + totalCargo + totalPrulife)}
+                </td>
+                <td className="px-3 py-3 rounded-r-lg"></td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
 
-        <p className="font-semibold text-gray-700 mb-3">Add Expense</p>
+        <p className="font-semibold text-gray-700 mt-6 mb-3">Add Expense</p>
 
         {expenseError && (
           <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4 print:hidden">
@@ -484,6 +506,45 @@ function Financial() {
             {submittingExpense ? "Adding..." : "Add Expense"}
           </button>
         </form>
+
+        {/* Breakdown, below the form — mirrors the shop's own spreadsheet
+            summary format: Profit, then each deduction, then the bottom line. */}
+        <div className="space-y-1.5 text-right mt-6 pt-4 border-t border-gray-100">
+          <div className="flex justify-end gap-6 text-sm text-gray-600">
+            <span>Profit</span>
+            <span className="w-32">{peso(totals.totalNetProfit)}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExpenseModalCategory("General")}
+            className="flex justify-end gap-6 text-sm text-red-500 w-full hover:underline"
+          >
+            <span>Expenses</span>
+            <span className="w-32">-{peso(totalExpenses)}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpenseModalCategory("Cargo")}
+            className="flex justify-end gap-6 text-sm text-amber-600 w-full hover:underline"
+          >
+            <span>Cargo</span>
+            <span className="w-32">-{peso(totalCargo)}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpenseModalCategory("Prulife")}
+            className="flex justify-end gap-6 text-sm text-indigo-600 w-full hover:underline"
+          >
+            <span>Prulife</span>
+            <span className="w-32">-{peso(totalPrulife)}</span>
+          </button>
+          <div className="flex justify-end gap-6 text-base font-bold text-gray-800 pt-1.5 border-t border-gray-100">
+            <span>Net Profit</span>
+            <span className={netProfitAfterExpenses < 0 ? "w-32 text-red-500" : "w-32"}>
+              {peso(netProfitAfterExpenses)}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Inventory On Hand — a snapshot of what's still unsold right now,
