@@ -336,29 +336,30 @@ function Financial() {
         </div>
       </div>
 
-      {/* Summary cards */}
+      {/* Summary cards — switch with the Store/CGN ledger toggle so they
+          never show a different scope than the table below them. */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 print:hidden">
         <SummaryCard
           icon={Wallet}
           iconBg="bg-gray-100 text-gray-600"
-          label="TOTAL CAPITAL"
-          value={peso(totals.totalCapital)}
+          label={ledgerView === "cgn" ? "CGN CAPITAL" : "TOTAL CAPITAL"}
+          value={peso(ledgerView === "cgn" ? cgnTotals.totalCapital : totals.totalCapital)}
           sub="Total Cost of Units Sold"
           valueClass="text-gray-700"
         />
         <SummaryCard
           icon={PiggyBank}
           iconBg="bg-blue-50 text-blue-600"
-          label="TOTAL DISPOSAL PRICE"
-          value={peso(totals.totalDisposal)}
+          label={ledgerView === "cgn" ? "CGN DISPOSAL PRICE" : "TOTAL DISPOSAL PRICE"}
+          value={peso(ledgerView === "cgn" ? cgnTotals.totalDisposal : totals.totalDisposal)}
           sub="Total Amount Sold For"
           valueClass="text-blue-600"
         />
         <SummaryCard
           icon={TrendingUp}
           iconBg="bg-green-50 text-green-600"
-          label="TOTAL NET PROFIT"
-          value={peso(totals.totalNetProfit)}
+          label={ledgerView === "cgn" ? "CGN NET PROFIT" : "TOTAL NET PROFIT"}
+          value={peso(ledgerView === "cgn" ? cgnTotals.totalNetProfit : totals.totalNetProfit)}
           sub="Disposal Price minus Capital"
           valueClass="text-green-600"
         />
