@@ -443,10 +443,12 @@ function Financial() {
       {/* Expenses — every entry, all categories, includes both what staff
           logged on Reports and what's logged here (entries added from this
           page are marked Admin Only and stay hidden from Reports). */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 print:hidden">
-        <p className="font-bold text-gray-800 mb-4">Expenses</p>
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <p className="font-bold text-gray-800 mb-4 print:hidden">Expenses</p>
 
-        <div className="overflow-x-auto">
+        {/* The raw line-item list is a screen thing — the printed report
+            just needs the totals, which the breakdown below already covers. */}
+        <div className="overflow-x-auto print:hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-500 bg-gray-50">
@@ -513,7 +515,7 @@ function Financial() {
           </table>
         </div>
 
-        <p className="font-semibold text-gray-700 mt-6 mb-3">Add Expense</p>
+        <p className="font-semibold text-gray-700 mt-6 mb-3 print:hidden">Add Expense</p>
 
         {expenseError && (
           <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4 print:hidden">
