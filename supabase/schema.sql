@@ -18,7 +18,25 @@ create table public.suppliers (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
   contact_info text,
+  -- Archived (not deleted) once the admin removes it — suppliers are
+  -- referenced by id from devices/bulk_order_shells/supplier_defective_records,
+  -- so a hard delete would either fail on the FK or orphan history. Archiving
+  -- just hides it from future picks in SupplierSelect.
+  active boolean not null default true,
   created_at timestamptz not null default now()
+);
+
+-- The Add Device / Quick Add catalog — models and their colors, editable by
+-- the admin at runtime instead of requiring a code deploy. device_name/color
+-- on devices are free text, not foreign keys, so removing a model or color
+-- here never touches existing inventory rows, only future selections.
+create table public.product_models (
+  id uuid primary key default gen_random_uuid(),
+  category text not null check (category in ('iPhone', 'iPad', 'Apple Watch', 'MacBook', 'Accessories', 'Repair Parts')),
+  name text not null,
+  colors text[] not null default '{}',
+  created_at timestamptz not null default now(),
+  unique (category, name)
 );
 
 create table public.devices (
@@ -156,6 +174,10 @@ create table public.expenses (
   -- Reports, which any role can open — Reports only shows what staff
   -- themselves have logged.
   admin_only boolean not null default false,
+  -- Cargo (shipping/rider/courier fees) is tracked separately from general
+  -- expenses so Financial can total it on its own line instead of it being
+  -- buried in the lump Total Expenses figure.
+  category text not null default 'General' check (category in ('General', 'Cargo', 'Prulife')),
   created_at timestamptz not null default now()
 );
 
@@ -675,6 +697,7 @@ create trigger on_auth_user_created
 
 alter table public.profiles enable row level security;
 alter table public.suppliers enable row level security;
+alter table public.product_models enable row level security;
 alter table public.devices enable row level security;
 alter table public.reorder_settings enable row level security;
 alter table public.sales enable row level security;
@@ -694,6 +717,9 @@ create policy "profiles_update_own" on public.profiles
 
 -- Every other table: full CRUD for any authenticated user, for now.
 create policy "suppliers_all_authenticated" on public.suppliers
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+create policy "product_models_all_authenticated" on public.product_models
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
 create policy "devices_all_authenticated" on public.devices
@@ -722,3 +748,69 @@ create policy "expenses_all_authenticated" on public.expenses
 
 create policy "bulk_order_shells_all_authenticated" on public.bulk_order_shells
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+-- ============================================================
+-- SEED — default product catalog (models + colors)
+-- ============================================================
+insert into public.product_models (category, name, colors) values
+  ('iPhone', 'iPhone XR', ARRAY['Black','White','Blue','Coral','Yellow','(Product)Red']),
+  ('iPhone', 'iPhone 11', ARRAY['Black','Green','Yellow','Purple','White','(Product)Red']),
+  ('iPhone', 'iPhone 11 Pro', ARRAY['Midnight Green','Space Gray','Silver','Gold']),
+  ('iPhone', 'iPhone 11 Pro Max', ARRAY['Midnight Green','Space Gray','Silver','Gold']),
+  ('iPhone', 'iPhone 12 mini', ARRAY['Black','White','(Product)Red','Green','Blue','Purple']),
+  ('iPhone', 'iPhone 12', ARRAY['Black','White','(Product)Red','Green','Blue','Purple']),
+  ('iPhone', 'iPhone 12 Pro', ARRAY['Graphite','Silver','Gold','Pacific Blue']),
+  ('iPhone', 'iPhone 12 Pro Max', ARRAY['Graphite','Silver','Gold','Pacific Blue']),
+  ('iPhone', 'iPhone 13 mini', ARRAY['Pink','Blue','Midnight','Starlight','(Product)Red','Green']),
+  ('iPhone', 'iPhone 13', ARRAY['Pink','Blue','Midnight','Starlight','(Product)Red','Green']),
+  ('iPhone', 'iPhone 13 Pro', ARRAY['Graphite','Gold','Silver','Sierra Blue','Alpine Green']),
+  ('iPhone', 'iPhone 13 Pro Max', ARRAY['Graphite','Gold','Silver','Sierra Blue','Alpine Green']),
+  ('iPhone', 'iPhone 14', ARRAY['Midnight','Starlight','(Product)Red','Blue','Purple','Yellow']),
+  ('iPhone', 'iPhone 14 Plus', ARRAY['Midnight','Starlight','(Product)Red','Blue','Purple','Yellow']),
+  ('iPhone', 'iPhone 14 Pro', ARRAY['Space Black','Silver','Gold','Deep Purple']),
+  ('iPhone', 'iPhone 14 Pro Max', ARRAY['Space Black','Silver','Gold','Deep Purple']),
+  ('iPhone', 'iPhone 15', ARRAY['Black','Blue','Green','Yellow','Pink']),
+  ('iPhone', 'iPhone 15 Plus', ARRAY['Black','Blue','Green','Yellow','Pink']),
+  ('iPhone', 'iPhone 15 Pro', ARRAY['Black Titanium','White Titanium','Blue Titanium','Natural Titanium']),
+  ('iPhone', 'iPhone 15 Pro Max', ARRAY['Black Titanium','White Titanium','Blue Titanium','Natural Titanium']),
+  ('iPhone', 'iPhone 16', ARRAY['Black','White','Pink','Teal','Ultramarine']),
+  ('iPhone', 'iPhone 16 Plus', ARRAY['Black','White','Pink','Teal','Ultramarine']),
+  ('iPhone', 'iPhone 16 Pro', ARRAY['Black Titanium','White Titanium','Natural Titanium','Desert Titanium']),
+  ('iPhone', 'iPhone 16 Pro Max', ARRAY['Black Titanium','White Titanium','Natural Titanium','Desert Titanium']),
+  ('iPhone', 'iPhone 16e', ARRAY['Black','White']),
+  ('iPhone', 'iPhone 17', ARRAY['Black','White','Lavender','Sage','Mist Blue']),
+  ('iPhone', 'iPhone Air', ARRAY['Space Black','Cloud White','Sky Blue','Light Gold']),
+  ('iPhone', 'iPhone 17 Pro', ARRAY['Silver','Cosmic Orange','Deep Blue']),
+  ('iPhone', 'iPhone 17 Pro Max', ARRAY['Silver','Cosmic Orange','Deep Blue']),
+
+  ('iPad', 'iPad Pro M4', ARRAY['Space Black','Silver']),
+  ('iPad', 'iPad Air 6', ARRAY['Space Gray','Blue','Purple','Starlight']),
+  ('iPad', 'iPad 10th Gen', ARRAY['Blue','Pink','Yellow','Silver']),
+
+  ('Apple Watch', 'Apple Watch Series 9', ARRAY['Midnight','Starlight','Silver','Pink','(Product)Red']),
+  ('Apple Watch', 'Apple Watch Ultra 2', ARRAY['Natural Titanium']),
+  ('Apple Watch', 'Apple Watch SE', ARRAY['Midnight','Starlight','Silver']),
+
+  ('MacBook', 'MacBook Air M4', ARRAY['Sky Blue','Silver','Starlight','Midnight']),
+  ('MacBook', 'MacBook Air M3', ARRAY['Midnight','Starlight','Space Gray','Silver']),
+  ('MacBook', 'MacBook Pro 14" M4', ARRAY['Space Black','Silver']),
+  ('MacBook', 'MacBook Pro 16" M4', ARRAY['Space Black','Silver']),
+
+  ('Accessories', 'Phone Case', ARRAY['Black','Clear','Blue','Pink','Red','White']),
+  ('Accessories', 'Screen Protector (Tempered Glass)', ARRAY['N/A']),
+  ('Accessories', 'Charger / Power Adapter', ARRAY['White','Black']),
+  ('Accessories', 'Lightning Cable', ARRAY['White','Black']),
+  ('Accessories', 'USB-C Cable', ARRAY['White','Black']),
+  ('Accessories', 'Wireless Earbuds', ARRAY['White','Black']),
+  ('Accessories', 'Power Bank', ARRAY['Black','White']),
+  ('Accessories', 'Wireless Charger', ARRAY['Black','White']),
+
+  ('Repair Parts', 'iPhone LCD Screen', ARRAY['N/A']),
+  ('Repair Parts', 'iPhone Battery', ARRAY['N/A']),
+  ('Repair Parts', 'iPhone Charging Port Flex', ARRAY['N/A']),
+  ('Repair Parts', 'iPhone Back Glass', ARRAY['N/A']),
+  ('Repair Parts', 'iPad LCD Screen', ARRAY['N/A']),
+  ('Repair Parts', 'iPad Battery', ARRAY['N/A']),
+  ('Repair Parts', 'MacBook Battery', ARRAY['N/A']),
+  ('Repair Parts', 'Apple Watch Battery', ARRAY['N/A'])
+on conflict (category, name) do nothing;
