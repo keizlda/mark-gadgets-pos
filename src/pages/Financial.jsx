@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, Trash2, AlertTriangle, Boxes } from "lucide-react";
+import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, Trash2, AlertTriangle, Boxes, Truck } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
 import { getSalesHistory } from "../services/salesService";
 import { getAllDevices } from "../services/inventoryService";
@@ -99,6 +99,7 @@ function Financial() {
   const [expenseDate, setExpenseDate] = useState(toISODate(new Date()));
   const [expenseDesc, setExpenseDesc] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseCategory, setExpenseCategory] = useState("General");
   const [expenseError, setExpenseError] = useState("");
   const [submittingExpense, setSubmittingExpense] = useState(false);
 
@@ -132,8 +133,14 @@ function Financial() {
     });
   }, [expenses, generatedRange]);
 
-  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const netProfitAfterExpenses = totals.totalNetProfit - totalExpenses;
+  // Cargo (shipping/rider/courier fees) is tracked as its own category so it
+  // gets its own total instead of being buried in the lump Total Expenses
+  // figure — but it's still a real cost, so it still comes off Net Profit.
+  const generalExpenses = filteredExpenses.filter((e) => e.category !== "Cargo");
+  const cargoExpenses = filteredExpenses.filter((e) => e.category === "Cargo");
+  const totalExpenses = generalExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalCargo = cargoExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const netProfitAfterExpenses = totals.totalNetProfit - totalExpenses - totalCargo;
 
   // A present-moment snapshot of stock still on hand — not scoped to the
   // selected date range, since "what's tied up in unsold inventory right
@@ -158,9 +165,11 @@ function Financial() {
         description: expenseDesc.trim(),
         amount: Number(expenseAmount),
         adminOnly: true,
+        category: expenseCategory,
       });
       setExpenseDesc("");
       setExpenseAmount("");
+      setExpenseCategory("General");
       loadExpenses();
     } catch (err) {
       setExpenseError(err.message || "Failed to add expense. Please try again.");
@@ -290,6 +299,17 @@ function Financial() {
         />
       </div>
 
+      <div className="grid grid-cols-1 print:hidden">
+        <SummaryCard
+          icon={Truck}
+          iconBg="bg-amber-50 text-amber-600"
+          label="TOTAL CARGO"
+          value={peso(totalCargo)}
+          sub="Shipping / rider / courier fees for this period"
+          valueClass="text-amber-600"
+        />
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 print:hidden">
         <SummaryCard
           icon={Wallet}
@@ -304,7 +324,7 @@ function Financial() {
           iconBg={netProfitAfterExpenses < 0 ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"}
           label="NET PROFIT AFTER EXPENSES"
           value={peso(netProfitAfterExpenses)}
-          sub="Net Profit minus Expenses"
+          sub="Net Profit minus Expenses and Cargo"
           valueClass={netProfitAfterExpenses < 0 ? "text-red-500" : "text-green-600"}
         />
       </div>
@@ -400,6 +420,11 @@ function Financial() {
                   <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{e.date}</td>
                   <td className="px-3 py-3 text-gray-700">
                     {e.description}
+                    {e.category === "Cargo" && (
+                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 align-middle">
+                        Cargo
+                      </span>
+                    )}
                     {e.adminOnly && (
                       <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500 align-middle">
                         Admin Only
@@ -468,6 +493,17 @@ function Financial() {
               />
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Category</label>
+            <select
+              value={expenseCategory}
+              onChange={(e) => setExpenseCategory(e.target.value)}
+              className="w-32 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="General">General</option>
+              <option value="Cargo">Cargo</option>
+            </select>
+          </div>
           <button
             type="submit"
             disabled={submittingExpense}
@@ -486,7 +522,7 @@ function Financial() {
 
           {/* Each expense broken out, not just the lump total, so it's clear
               what's actually being deducted and who logged it. */}
-          {filteredExpenses.map((e) => (
+          {generalExpenses.map((e) => (
             <div key={e.id} className="flex justify-end gap-6 text-xs text-gray-400">
               <span>
                 {e.description}
@@ -500,6 +536,21 @@ function Financial() {
             <span>Total Expenses</span>
             <span className="w-32">-{peso(totalExpenses)}</span>
           </div>
+
+          {cargoExpenses.map((e) => (
+            <div key={e.id} className="flex justify-end gap-6 text-xs text-gray-400 pt-1.5">
+              <span>
+                {e.description}
+                {e.adminOnly && <span className="ml-1 text-gray-300">(Admin Only)</span>}
+              </span>
+              <span className="w-32 text-amber-500">-{peso(e.amount)}</span>
+            </div>
+          ))}
+          <div className="flex justify-end gap-6 text-sm text-amber-600 pt-1.5 border-t border-gray-100">
+            <span>Total Cargo</span>
+            <span className="w-32">-{peso(totalCargo)}</span>
+          </div>
+
           <div className="flex justify-end gap-6 text-base font-bold text-gray-800 pt-1.5 border-t border-gray-100">
             <span>Net Profit After Expenses</span>
             <span className={netProfitAfterExpenses < 0 ? "w-32 text-red-500" : "w-32"}>

@@ -61,6 +61,28 @@ function SummaryCard({ icon: Icon, iconBg, label, value, sub, valueClass }) {
   );
 }
 
+// A category totals only, not the line items — clicking one of the
+// expense categories reveals its breakdown below instead of always
+// showing every line item at once.
+function StatTile({ label, value, valueClass, onClick, active }) {
+  const Tag = onClick ? "button" : "div";
+  return (
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors ${
+        active ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white"
+      } ${onClick ? "hover:border-blue-300 cursor-pointer" : ""}`}
+    >
+      <span className="text-xs font-medium text-gray-500">{label}</span>
+      <span className={`text-lg font-bold ${valueClass}`}>{value}</span>
+      {onClick && (
+        <span className="text-[10px] text-blue-500 print:hidden">{active ? "Hide breakdown" : "Click to view"}</span>
+      )}
+    </Tag>
+  );
+}
+
 const initialRange = getPresetRange("Monthly");
 
 function computeTotals(rows) {
@@ -93,8 +115,10 @@ function Reports() {
   const [expenseDate, setExpenseDate] = useState(toISODate(new Date()));
   const [expenseDesc, setExpenseDesc] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseCategory, setExpenseCategory] = useState("General");
   const [expenseError, setExpenseError] = useState("");
   const [submittingExpense, setSubmittingExpense] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(null); // null | "General" | "Cargo" | "Prulife"
 
   const rows = useMemo(() => {
     const from = generatedRange.from ? new Date(generatedRange.from + "T00:00:00") : null;
@@ -132,8 +156,24 @@ function Reports() {
     });
   }, [expenses, generatedRange]);
 
-  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const netTotal = totals.totalSales - totalExpenses;
+  const expensesByCategory = useMemo(() => {
+    const buckets = { General: [], Cargo: [], Prulife: [] };
+    for (const e of filteredExpenses) {
+      (buckets[e.category] || buckets.General).push(e);
+    }
+    return buckets;
+  }, [filteredExpenses]);
+
+  const categoryTotals = useMemo(
+    () => ({
+      General: expensesByCategory.General.reduce((sum, e) => sum + e.amount, 0),
+      Cargo: expensesByCategory.Cargo.reduce((sum, e) => sum + e.amount, 0),
+      Prulife: expensesByCategory.Prulife.reduce((sum, e) => sum + e.amount, 0),
+    }),
+    [expensesByCategory]
+  );
+
+  const newProfit = totals.totalSales - categoryTotals.General - categoryTotals.Cargo - categoryTotals.Prulife;
 
   const handleReportTypeChange = (type) => {
     setReportType(type);
@@ -172,9 +212,15 @@ function Reports() {
     setExpenseError("");
     setSubmittingExpense(true);
     try {
-      await addExpense({ date: expenseDate, description: expenseDesc.trim(), amount: Number(expenseAmount) });
+      await addExpense({
+        date: expenseDate,
+        description: expenseDesc.trim(),
+        amount: Number(expenseAmount),
+        category: expenseCategory,
+      });
       setExpenseDesc("");
       setExpenseAmount("");
+      setExpenseCategory("General");
       loadExpenses();
     } catch (err) {
       setExpenseError(err.message || "Failed to add expense. Please try again.");
@@ -359,123 +405,154 @@ function Reports() {
 
         {viewMode !== "cash" && (
           <div className={viewMode === "expenses" ? "" : "mt-6 pt-6 border-t border-gray-100"}>
-            <p className="font-semibold text-gray-700 mb-3">Expenses</p>
+            <p className="font-semibold text-gray-700 mb-3">Expenses Summary</p>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-gray-500 bg-gray-50">
-                    <th className="px-3 py-2.5 font-medium rounded-l-lg">Date</th>
-                    <th className="px-3 py-2.5 font-medium">Description</th>
-                    <th className="px-3 py-2.5 font-medium text-right">Amount</th>
-                    {isAdmin && (
-                      <th className="px-3 py-2.5 font-medium rounded-r-lg text-right print:hidden">Remove</th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredExpenses.length === 0 ? (
-                    <tr>
-                      <td colSpan={isAdmin ? 4 : 3} className="py-6 text-center text-gray-400">
-                        No expenses recorded for this period.
-                      </td>
-                    </tr>
-                  ) : filteredExpenses.map((e) => (
-                    <tr key={e.id} className="border-b border-gray-50 last:border-0">
-                      <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{e.date}</td>
-                      <td className="px-3 py-3 text-gray-700">{e.description}</td>
-                      <td className="px-3 py-3 text-red-500 text-right">-{peso(e.amount)}</td>
-                      {isAdmin && (
-                        <td className="px-3 py-3 text-right print:hidden">
-                          <button
-                            onClick={() => handleRemoveExpense(e.id)}
-                            className="text-gray-400 hover:text-red-500 p-1"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50 font-bold text-gray-800">
-                    <td className="px-3 py-3 rounded-l-lg" colSpan={2}>TOTAL EXPENSES</td>
-                    <td className={`px-3 py-3 text-right text-red-500 ${isAdmin ? "" : "rounded-r-lg"}`}>
-                      -{peso(totalExpenses)}
-                    </td>
-                    {isAdmin && <td className="px-3 py-3 rounded-r-lg"></td>}
-                  </tr>
-                </tfoot>
-              </table>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <StatTile label="Profit" value={peso(totals.totalSales)} valueClass="text-green-600" />
+              <StatTile
+                label="Expenses"
+                value={"-" + peso(categoryTotals.General)}
+                valueClass="text-red-500"
+                active={activeCategory === "General"}
+                onClick={() => setActiveCategory(activeCategory === "General" ? null : "General")}
+              />
+              <StatTile
+                label="Cargo"
+                value={"-" + peso(categoryTotals.Cargo)}
+                valueClass="text-amber-600"
+                active={activeCategory === "Cargo"}
+                onClick={() => setActiveCategory(activeCategory === "Cargo" ? null : "Cargo")}
+              />
+              <StatTile
+                label="Prulife"
+                value={"-" + peso(categoryTotals.Prulife)}
+                valueClass="text-indigo-600"
+                active={activeCategory === "Prulife"}
+                onClick={() => setActiveCategory(activeCategory === "Prulife" ? null : "Prulife")}
+              />
+              <StatTile
+                label="New Profit"
+                value={peso(newProfit)}
+                valueClass={newProfit < 0 ? "text-red-500" : "text-gray-900"}
+              />
             </div>
 
-            {expenseError && (
-              <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4 print:hidden">
-                <AlertTriangle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-red-700">{expenseError}</p>
+            {activeCategory && (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 bg-gray-50">
+                      <th className="px-3 py-2.5 font-medium rounded-l-lg">Date</th>
+                      <th className="px-3 py-2.5 font-medium">Description</th>
+                      <th className="px-3 py-2.5 font-medium text-right">Amount</th>
+                      {isAdmin && (
+                        <th className="px-3 py-2.5 font-medium rounded-r-lg text-right print:hidden">Remove</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expensesByCategory[activeCategory].length === 0 ? (
+                      <tr>
+                        <td colSpan={isAdmin ? 4 : 3} className="py-6 text-center text-gray-400">
+                          No {activeCategory} expenses recorded for this period.
+                        </td>
+                      </tr>
+                    ) : expensesByCategory[activeCategory].map((e) => (
+                      <tr key={e.id} className="border-b border-gray-50 last:border-0">
+                        <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{e.date}</td>
+                        <td className="px-3 py-3 text-gray-700">{e.description}</td>
+                        <td className="px-3 py-3 text-red-500 text-right">-{peso(e.amount)}</td>
+                        {isAdmin && (
+                          <td className="px-3 py-3 text-right print:hidden">
+                            <button
+                              onClick={() => handleRemoveExpense(e.id)}
+                              className="text-gray-400 hover:text-red-500 p-1"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gray-50 font-bold text-gray-800">
+                      <td className="px-3 py-3 rounded-l-lg" colSpan={2}>TOTAL {activeCategory.toUpperCase()}</td>
+                      <td className={`px-3 py-3 text-right text-red-500 ${isAdmin ? "" : "rounded-r-lg"}`}>
+                        -{peso(categoryTotals[activeCategory])}
+                      </td>
+                      {isAdmin && <td className="px-3 py-3 rounded-r-lg"></td>}
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             )}
 
-            <form onSubmit={handleAddExpense} className="flex flex-wrap items-end gap-3 mt-4 print:hidden">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Date</label>
-                <input
-                  type="date"
-                  value={expenseDate}
-                  onChange={(e) => setExpenseDate(e.target.value)}
-                  className="w-40 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="flex-1 min-w-[180px]">
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Description</label>
-                <input
-                  type="text"
-                  value={expenseDesc}
-                  onChange={(e) => setExpenseDesc(e.target.value)}
-                  placeholder="e.g. Electricity bill"
-                  className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Amount</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
-                  <input
-                    type="number"
-                    value={expenseAmount}
-                    onChange={(e) => setExpenseAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="w-32 border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={submittingExpense}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
-              >
-                <Plus size={14} />
-                {submittingExpense ? "Adding..." : "Add Expense"}
-              </button>
-            </form>
-          </div>
-        )}
+            {isAdmin && (
+              <>
+                {expenseError && (
+                  <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4 print:hidden">
+                    <AlertTriangle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-red-700">{expenseError}</p>
+                  </div>
+                )}
 
-        {viewMode === "all" && (
-          <div className="mt-6 pt-4 border-t border-gray-100 space-y-1.5 text-right">
-            <div className="flex justify-end gap-6 text-sm text-gray-600">
-              <span>Total Sales</span>
-              <span className="w-32">{peso(totals.totalSales)}</span>
-            </div>
-            <div className="flex justify-end gap-6 text-sm text-red-500">
-              <span>Total Expenses</span>
-              <span className="w-32">-{peso(totalExpenses)}</span>
-            </div>
-            <div className="flex justify-end gap-6 text-base font-bold text-gray-800 pt-1.5 border-t border-gray-100">
-              <span>Net Total</span>
-              <span className="w-32">{peso(netTotal)}</span>
-            </div>
+                <form onSubmit={handleAddExpense} className="flex flex-wrap items-end gap-3 mt-4 print:hidden">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Date</label>
+                    <input
+                      type="date"
+                      value={expenseDate}
+                      onChange={(e) => setExpenseDate(e.target.value)}
+                      className="w-40 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-[180px]">
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Description</label>
+                    <input
+                      type="text"
+                      value={expenseDesc}
+                      onChange={(e) => setExpenseDesc(e.target.value)}
+                      placeholder="e.g. Electricity bill"
+                      className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Amount</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
+                      <input
+                        type="number"
+                        value={expenseAmount}
+                        onChange={(e) => setExpenseAmount(e.target.value)}
+                        placeholder="0.00"
+                        className="w-32 border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Category</label>
+                    <select
+                      value={expenseCategory}
+                      onChange={(e) => setExpenseCategory(e.target.value)}
+                      className="w-32 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="General">General</option>
+                      <option value="Cargo">Cargo</option>
+                      <option value="Prulife">Prulife</option>
+                    </select>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={submittingExpense}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    <Plus size={14} />
+                    {submittingExpense ? "Adding..." : "Add Expense"}
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         )}
       </div>

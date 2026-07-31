@@ -7,6 +7,7 @@ function mapExpense(e) {
     description: e.description,
     amount: e.amount,
     adminOnly: e.admin_only,
+    category: e.category,
   };
 }
 
@@ -15,7 +16,7 @@ function mapExpense(e) {
 export async function getExpenses() {
   const { data, error } = await supabase
     .from("expenses")
-    .select("id, expense_date, description, amount, admin_only")
+    .select("id, expense_date, description, amount, admin_only, category")
     .eq("admin_only", false)
     .order("expense_date", { ascending: false });
 
@@ -28,19 +29,20 @@ export async function getExpenses() {
 export async function getAllExpenses() {
   const { data, error } = await supabase
     .from("expenses")
-    .select("id, expense_date, description, amount, admin_only")
+    .select("id, expense_date, description, amount, admin_only, category")
     .order("expense_date", { ascending: false });
 
   if (error) throw error;
   return data.map(mapExpense);
 }
 
-export async function addExpense({ date, description, amount, adminOnly = false }) {
+export async function addExpense({ date, description, amount, adminOnly = false, category = "General" }) {
   const { error } = await supabase.from("expenses").insert({
     expense_date: date,
     description,
     amount,
     admin_only: adminOnly,
+    category,
   });
   if (error) throw error;
 }
