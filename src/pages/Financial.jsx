@@ -312,17 +312,6 @@ function Financial() {
         />
       </div>
 
-      <div className="grid grid-cols-1 print:hidden">
-        <SummaryCard
-          icon={Coins}
-          iconBg={netProfitAfterExpenses < 0 ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"}
-          label="NET PROFIT AFTER EXPENSES"
-          value={peso(netProfitAfterExpenses)}
-          sub="Net Profit minus Expenses, Cargo, and Prulife"
-          valueClass={netProfitAfterExpenses < 0 ? "text-red-500" : "text-green-600"}
-        />
-      </div>
-
       {/* Ledger table */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <p className="font-bold text-gray-800 mb-4">Unit Financial Ledger</p>
@@ -388,10 +377,51 @@ function Financial() {
 
       {/* Add Expense — includes both what staff logged on Reports and what's
           logged here; entries added from this page are marked Admin Only
-          and stay hidden from Reports. Line items live behind the
-          Expenses/Cargo/Prulife cards above — click one to drill in. */}
+          and stay hidden from Reports. Expenses/Cargo/Prulife line items
+          live behind their row below — click one to drill in. */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 print:hidden">
-        <p className="font-bold text-gray-800 mb-4">Add Expense</p>
+        <p className="font-bold text-gray-800 mb-4">Expenses</p>
+
+        {/* Vertical ledger summary, mirroring the shop's own spreadsheet
+            format — Profit, then each deduction, then the bottom line. */}
+        <div className="space-y-1.5 text-right mb-5 pb-4 border-b border-gray-100">
+          <div className="flex justify-end gap-6 text-sm text-gray-600">
+            <span>Profit</span>
+            <span className="w-32">{peso(totals.totalNetProfit)}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExpenseModalCategory("General")}
+            className="flex justify-end gap-6 text-sm text-red-500 w-full hover:underline"
+          >
+            <span>Expenses</span>
+            <span className="w-32">-{peso(totalExpenses)}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpenseModalCategory("Cargo")}
+            className="flex justify-end gap-6 text-sm text-amber-600 w-full hover:underline"
+          >
+            <span>Cargo</span>
+            <span className="w-32">-{peso(totalCargo)}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpenseModalCategory("Prulife")}
+            className="flex justify-end gap-6 text-sm text-indigo-600 w-full hover:underline"
+          >
+            <span>Prulife</span>
+            <span className="w-32">-{peso(totalPrulife)}</span>
+          </button>
+          <div className="flex justify-end gap-6 text-base font-bold text-gray-800 pt-1.5 border-t border-gray-100">
+            <span>Net Profit</span>
+            <span className={netProfitAfterExpenses < 0 ? "w-32 text-red-500" : "w-32"}>
+              {peso(netProfitAfterExpenses)}
+            </span>
+          </div>
+        </div>
+
+        <p className="font-semibold text-gray-700 mb-3">Add Expense</p>
 
         {expenseError && (
           <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4 print:hidden">
@@ -454,32 +484,6 @@ function Financial() {
             {submittingExpense ? "Adding..." : "Add Expense"}
           </button>
         </form>
-
-        {/* Plain text category links, not cards — click one to open its
-            line-item breakdown in a floating window. */}
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-5 pt-4 border-t border-gray-100 print:hidden">
-          <button
-            type="button"
-            onClick={() => setExpenseModalCategory("General")}
-            className="text-sm text-gray-700 hover:text-blue-600 hover:underline"
-          >
-            Expenses <span className="text-red-500 font-medium">-{peso(totalExpenses)}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setExpenseModalCategory("Cargo")}
-            className="text-sm text-gray-700 hover:text-blue-600 hover:underline"
-          >
-            Cargo <span className="text-amber-600 font-medium">-{peso(totalCargo)}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setExpenseModalCategory("Prulife")}
-            className="text-sm text-gray-700 hover:text-blue-600 hover:underline"
-          >
-            Prulife <span className="text-indigo-600 font-medium">-{peso(totalPrulife)}</span>
-          </button>
-        </div>
       </div>
 
       {/* Inventory On Hand — a snapshot of what's still unsold right now,
