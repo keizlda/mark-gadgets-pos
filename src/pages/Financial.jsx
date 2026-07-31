@@ -88,7 +88,7 @@ function Financial() {
 
   const [showUnsoldUnits, setShowUnsoldUnits] = useState(false);
   const [viewDevice, setViewDevice] = useState(null);
-  const [expenseModalCategory, setExpenseModalCategory] = useState(null); // null | "General" | "Cargo" | "Prulife"
+  const [expenseModalCategory, setExpenseModalCategory] = useState(null); // null | "General" | "Cargo" | "Prulife" | "Personal"
 
   const [expenses, setExpenses] = useState([]);
   const loadExpenses = useCallback(() => {
@@ -135,25 +135,31 @@ function Financial() {
     });
   }, [expenses, generatedRange]);
 
-  // Cargo (shipping/rider/courier) and Prulife (life insurance premiums) are
-  // tracked as their own categories so each gets its own total instead of
-  // being buried in the lump Expenses figure — but they're still real
-  // costs, so they still come off Net Profit.
+  // Cargo (shipping/rider/courier), Prulife (life insurance premiums), and
+  // Personal (owner's personal draws) are tracked as their own categories so
+  // each gets its own total instead of being buried in the lump Expenses
+  // figure — but they're still real costs, so they still come off Net Profit.
   const expensesByCategory = useMemo(
     () => ({
-      General: filteredExpenses.filter((e) => e.category !== "Cargo" && e.category !== "Prulife"),
+      General: filteredExpenses.filter(
+        (e) => e.category !== "Cargo" && e.category !== "Prulife" && e.category !== "Personal"
+      ),
       Cargo: filteredExpenses.filter((e) => e.category === "Cargo"),
       Prulife: filteredExpenses.filter((e) => e.category === "Prulife"),
+      Personal: filteredExpenses.filter((e) => e.category === "Personal"),
     }),
     [filteredExpenses]
   );
   const generalExpenses = expensesByCategory.General;
   const cargoExpenses = expensesByCategory.Cargo;
   const prulifeExpenses = expensesByCategory.Prulife;
+  const personalExpenses = expensesByCategory.Personal;
   const totalExpenses = generalExpenses.reduce((sum, e) => sum + e.amount, 0);
   const totalCargo = cargoExpenses.reduce((sum, e) => sum + e.amount, 0);
   const totalPrulife = prulifeExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const netProfitAfterExpenses = totals.totalNetProfit - totalExpenses - totalCargo - totalPrulife;
+  const totalPersonal = personalExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const netProfitAfterExpenses =
+    totals.totalNetProfit - totalExpenses - totalCargo - totalPrulife - totalPersonal;
 
   // A present-moment snapshot of stock still on hand — not scoped to the
   // selected date range, since "what's tied up in unsold inventory right
@@ -421,6 +427,11 @@ function Financial() {
                         Prulife
                       </span>
                     )}
+                    {e.category === "Personal" && (
+                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-pink-100 text-pink-700 align-middle">
+                        Personal
+                      </span>
+                    )}
                     {e.adminOnly && (
                       <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500 align-middle">
                         Admin Only
@@ -443,7 +454,7 @@ function Financial() {
               <tr className="bg-gray-50 font-bold text-gray-800">
                 <td className="px-3 py-3 rounded-l-lg" colSpan={2}>TOTAL EXPENSES</td>
                 <td className="px-3 py-3 text-right text-red-500">
-                  -{peso(totalExpenses + totalCargo + totalPrulife)}
+                  -{peso(totalExpenses + totalCargo + totalPrulife + totalPersonal)}
                 </td>
                 <td className="px-3 py-3 rounded-r-lg"></td>
               </tr>
@@ -503,6 +514,7 @@ function Financial() {
               <option value="General">General</option>
               <option value="Cargo">Cargo</option>
               <option value="Prulife">Prulife</option>
+              <option value="Personal">Personal</option>
             </select>
           </div>
           <button
@@ -548,6 +560,14 @@ function Financial() {
             >
               <span>Prulife</span>
               <span className="font-medium tabular-nums">-{peso(totalPrulife)}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setExpenseModalCategory("Personal")}
+              className="flex justify-between w-full text-sm text-pink-600 px-2 py-1.5 rounded-lg hover:bg-pink-50"
+            >
+              <span>Personal</span>
+              <span className="font-medium tabular-nums">-{peso(totalPersonal)}</span>
             </button>
             <div
               className={`flex justify-between text-base font-bold px-2 py-2 mt-1 border-t border-gray-100 ${

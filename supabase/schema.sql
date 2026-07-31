@@ -177,7 +177,7 @@ create table public.expenses (
   -- Cargo (shipping/rider/courier fees) is tracked separately from general
   -- expenses so Financial can total it on its own line instead of it being
   -- buried in the lump Total Expenses figure.
-  category text not null default 'General' check (category in ('General', 'Cargo', 'Prulife')),
+  category text not null default 'General' check (category in ('General', 'Cargo', 'Prulife', 'Personal')),
   created_at timestamptz not null default now()
 );
 

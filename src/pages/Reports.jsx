@@ -118,7 +118,7 @@ function Reports() {
   const [expenseCategory, setExpenseCategory] = useState("General");
   const [expenseError, setExpenseError] = useState("");
   const [submittingExpense, setSubmittingExpense] = useState(false);
-  const [activeCategory, setActiveCategory] = useState(null); // null | "General" | "Cargo" | "Prulife"
+  const [activeCategory, setActiveCategory] = useState(null); // null | "General" | "Cargo"
 
   const rows = useMemo(() => {
     const from = generatedRange.from ? new Date(generatedRange.from + "T00:00:00") : null;
@@ -156,8 +156,11 @@ function Reports() {
     });
   }, [expenses, generatedRange]);
 
+  // Reports only ever offers General/Cargo — Prulife/Personal are
+  // Financial-only (admin) categories, so any stray Prulife/Personal entry
+  // just falls back into General here rather than getting its own bucket.
   const expensesByCategory = useMemo(() => {
-    const buckets = { General: [], Cargo: [], Prulife: [] };
+    const buckets = { General: [], Cargo: [] };
     for (const e of filteredExpenses) {
       (buckets[e.category] || buckets.General).push(e);
     }
@@ -168,12 +171,11 @@ function Reports() {
     () => ({
       General: expensesByCategory.General.reduce((sum, e) => sum + e.amount, 0),
       Cargo: expensesByCategory.Cargo.reduce((sum, e) => sum + e.amount, 0),
-      Prulife: expensesByCategory.Prulife.reduce((sum, e) => sum + e.amount, 0),
     }),
     [expensesByCategory]
   );
 
-  const newProfit = totals.totalSales - categoryTotals.General - categoryTotals.Cargo - categoryTotals.Prulife;
+  const newProfit = totals.totalSales - categoryTotals.General - categoryTotals.Cargo;
 
   const handleReportTypeChange = (type) => {
     setReportType(type);
@@ -407,7 +409,7 @@ function Reports() {
           <div className={viewMode === "expenses" ? "" : "mt-6 pt-6 border-t border-gray-100"}>
             <p className="font-semibold text-gray-700 mb-3">Expenses Summary</p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <StatTile label="Profit" value={peso(totals.totalSales)} valueClass="text-green-600" />
               <StatTile
                 label="Expenses"
@@ -422,13 +424,6 @@ function Reports() {
                 valueClass="text-amber-600"
                 active={activeCategory === "Cargo"}
                 onClick={() => setActiveCategory(activeCategory === "Cargo" ? null : "Cargo")}
-              />
-              <StatTile
-                label="Prulife"
-                value={"-" + peso(categoryTotals.Prulife)}
-                valueClass="text-indigo-600"
-                active={activeCategory === "Prulife"}
-                onClick={() => setActiveCategory(activeCategory === "Prulife" ? null : "Prulife")}
               />
               <StatTile
                 label="New Profit"
@@ -539,7 +534,6 @@ function Reports() {
                     >
                       <option value="General">General</option>
                       <option value="Cargo">Cargo</option>
-                      <option value="Prulife">Prulife</option>
                     </select>
                   </div>
                   <button
