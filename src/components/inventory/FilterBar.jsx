@@ -138,7 +138,7 @@ function FilterBar({ filters, setFilters, onApply, onClear, kinds = [] }) {
             className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
           >
             <Filter size={14} />
-            Apply Filters
+            Search
           </button>
         </div>
       </div>
