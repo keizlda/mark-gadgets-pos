@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, AlertTriangle, Boxes, Truck } from "lucide-react";
+import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, AlertTriangle, Boxes } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
 import { getSalesHistory } from "../services/salesService";
 import { getAllDevices } from "../services/inventoryService";
@@ -312,36 +312,6 @@ function Financial() {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 print:hidden">
-        <SummaryCard
-          icon={Wallet}
-          iconBg="bg-red-50 text-red-500"
-          label="EXPENSES"
-          value={"-" + peso(totalExpenses)}
-          sub="Click to view breakdown"
-          valueClass="text-red-500"
-          onClick={() => setExpenseModalCategory("General")}
-        />
-        <SummaryCard
-          icon={Truck}
-          iconBg="bg-amber-50 text-amber-600"
-          label="CARGO"
-          value={"-" + peso(totalCargo)}
-          sub="Click to view breakdown"
-          valueClass="text-amber-600"
-          onClick={() => setExpenseModalCategory("Cargo")}
-        />
-        <SummaryCard
-          icon={Coins}
-          iconBg="bg-indigo-50 text-indigo-600"
-          label="PRULIFE"
-          value={"-" + peso(totalPrulife)}
-          sub="Click to view breakdown"
-          valueClass="text-indigo-600"
-          onClick={() => setExpenseModalCategory("Prulife")}
-        />
-      </div>
-
       <div className="grid grid-cols-1 print:hidden">
         <SummaryCard
           icon={Coins}
@@ -484,6 +454,32 @@ function Financial() {
             {submittingExpense ? "Adding..." : "Add Expense"}
           </button>
         </form>
+
+        {/* Plain text category links, not cards — click one to open its
+            line-item breakdown in a floating window. */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-5 pt-4 border-t border-gray-100 print:hidden">
+          <button
+            type="button"
+            onClick={() => setExpenseModalCategory("General")}
+            className="text-sm text-gray-700 hover:text-blue-600 hover:underline"
+          >
+            Expenses <span className="text-red-500 font-medium">-{peso(totalExpenses)}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpenseModalCategory("Cargo")}
+            className="text-sm text-gray-700 hover:text-blue-600 hover:underline"
+          >
+            Cargo <span className="text-amber-600 font-medium">-{peso(totalCargo)}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpenseModalCategory("Prulife")}
+            className="text-sm text-gray-700 hover:text-blue-600 hover:underline"
+          >
+            Prulife <span className="text-indigo-600 font-medium">-{peso(totalPrulife)}</span>
+          </button>
+        </div>
       </div>
 
       {/* Inventory On Hand — a snapshot of what's still unsold right now,
