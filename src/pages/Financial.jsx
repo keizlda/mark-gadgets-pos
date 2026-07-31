@@ -123,6 +123,22 @@ function Financial() {
     return { totalCapital, totalDisposal, totalNetProfit };
   }, [rows]);
 
+  // CGN is the admin's other branch — every sale made to them (bulk or
+  // individual) gets its own ledger here, on top of the regular one above,
+  // so the admin can see what was sold to CGN specifically without it
+  // being buried in the full sales list. Matched on the same customer
+  // name field the sale was rung up under, case/whitespace-insensitive.
+  const cgnRows = useMemo(
+    () => rows.filter((r) => r.customer && r.customer.trim().toLowerCase() === "cgn"),
+    [rows]
+  );
+  const cgnTotals = useMemo(() => {
+    const totalCapital = cgnRows.reduce((sum, r) => sum + (r.purchasePrice ?? 0), 0);
+    const totalDisposal = cgnRows.reduce((sum, r) => sum + r.total, 0);
+    const totalNetProfit = cgnRows.reduce((sum, r) => sum + (r.netProfit ?? 0), 0);
+    return { totalCapital, totalDisposal, totalNetProfit };
+  }, [cgnRows]);
+
   // Same expenses staff log from Reports — this is one shared table, not a
   // separate admin-only ledger, so whatever staff have entered shows up
   // here automatically and comes off the bottom line.
@@ -389,6 +405,75 @@ function Financial() {
         </div>
       </div>
 
+      {/* CGN Ledger — every sale rung up under customer name "CGN" (the
+          admin's other branch), same columns as the main ledger, so the
+          admin can see what was sold to that branch, at what price, and
+          the profit on it, separate from the regular sales list. */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <p className="font-bold text-gray-800 mb-1">CGN Ledger</p>
+        <p className="text-xs text-gray-400 mb-4">
+          Every unit sold to CGN (customer name "CGN"), bulk or individual.
+        </p>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 bg-gray-50">
+                <th className="px-3 py-2.5 font-medium rounded-l-lg">#</th>
+                <th className="px-3 py-2.5 font-medium">Date Sold</th>
+                <th className="px-3 py-2.5 font-medium">Batch Code</th>
+                <th className="px-3 py-2.5 font-medium">Unit / Model / Gb / Color</th>
+                <th className="px-3 py-2.5 font-medium text-right">Capital</th>
+                <th className="px-3 py-2.5 font-medium text-right">Sold to CGN For</th>
+                <th className="px-3 py-2.5 font-medium text-right">Net Profit</th>
+                <th className="px-3 py-2.5 font-medium rounded-r-lg">Supplier</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cgnRows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-gray-400">
+                    No units sold to CGN for the selected date range.
+                  </td>
+                </tr>
+              ) : (
+                cgnRows.map((row, index) => (
+                  <tr key={row.saleItemId} className="border-b border-gray-50 last:border-0">
+                    <td className="px-3 py-3 text-gray-500">{index + 1}</td>
+                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.date}</td>
+                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.batchCode}</td>
+                    <td className="px-3 py-3 text-gray-800 font-medium">
+                      {[row.device, row.storage, row.color].filter(Boolean).join(" · ")}
+                    </td>
+                    <td className="px-3 py-3 text-right text-gray-700">
+                      {row.purchasePrice != null ? peso(row.purchasePrice) : "—"}
+                    </td>
+                    <td className="px-3 py-3 text-right text-gray-800">{peso(row.total)}</td>
+                    <td
+                      className={`px-3 py-3 text-right font-medium ${
+                        row.netProfit == null ? "text-gray-400" : row.netProfit < 0 ? "text-red-500" : "text-green-600"
+                      }`}
+                    >
+                      {row.netProfit != null ? peso(row.netProfit) : "—"}
+                    </td>
+                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.supplier || "—"}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            <tfoot>
+              <tr className="bg-gray-50 font-bold text-gray-800">
+                <td className="px-3 py-3 rounded-l-lg" colSpan={4}>TOTAL</td>
+                <td className="px-3 py-3 text-right">{peso(cgnTotals.totalCapital)}</td>
+                <td className="px-3 py-3 text-right">{peso(cgnTotals.totalDisposal)}</td>
+                <td className="px-3 py-3 text-right text-green-600">{peso(cgnTotals.totalNetProfit)}</td>
+                <td className="px-3 py-3 rounded-r-lg"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
       {/* Expenses — every entry, all categories, includes both what staff
           logged on Reports and what's logged here (entries added from this
           page are marked Admin Only and stay hidden from Reports). */}
@@ -536,6 +621,10 @@ function Financial() {
             <div className="flex justify-between text-sm text-gray-600 px-2 py-1.5">
               <span>Profit</span>
               <span className="font-medium tabular-nums">{peso(totals.totalNetProfit)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-teal-600 px-2 py-1.5">
+              <span>CGN Profit</span>
+              <span className="font-medium tabular-nums">{peso(cgnTotals.totalNetProfit)}</span>
             </div>
             <button
               type="button"
