@@ -411,6 +411,48 @@ $$;
 
 -- Original (broken) unit goes straight to Supplier Defective, carrying the
 -- return reason over as the issue description; replacement unit is sold.
+-- Starting a return actually moves the device to "Customer Returned" (it
+-- used to only insert the customer_returns row, leaving the device showing
+-- Sold the whole time a return sat Pending — "Customer Returned" was a
+-- status value every dropdown/filter/badge had, but nothing ever set it).
+create function public.create_return(p_sale_item_id uuid, p_reason text)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_device_id uuid;
+begin
+  select device_id into v_device_id from public.sale_items where id = p_sale_item_id;
+
+  insert into public.customer_returns (sale_item_id, reason, status)
+  values (p_sale_item_id, p_reason, 'Pending');
+
+  update public.devices set status = 'Customer Returned' where id = v_device_id;
+end;
+$$;
+
+-- Customer keeps the unit after a rejected return, so it goes back to
+-- Sold — not stuck at "Customer Returned" forever.
+create function public.reject_return(p_return_id uuid)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_device_id uuid;
+begin
+  select device_id into v_device_id
+  from public.sale_items
+  where id = (select sale_item_id from public.customer_returns where id = p_return_id);
+
+  update public.customer_returns set status = 'Rejected' where id = p_return_id;
+  update public.devices set status = 'Sold' where id = v_device_id;
+end;
+$$;
+
 create function public.replace_return(
   p_return_id uuid,
   p_original_device_id uuid,
@@ -424,7 +466,10 @@ set search_path = public
 as $$
 declare
   v_supplier_id uuid;
+  v_sale_item_id uuid;
 begin
+  select sale_item_id into v_sale_item_id from public.customer_returns where id = p_return_id;
+
   update public.customer_returns
   set status = 'Replaced', replacement_device_id = p_replacement_device_id
   where id = p_return_id;
@@ -437,6 +482,12 @@ begin
   values (p_original_device_id, v_supplier_id, p_reason);
 
   update public.devices set status = 'Sold' where id = p_replacement_device_id;
+
+  -- Repoint the original sale's line item to the replacement unit, so its
+  -- capital/profit are the ones from the unit the customer actually walked
+  -- out with this time — otherwise the replacement's cost never appears
+  -- anywhere in Sales History/Reports/Financial.
+  update public.sale_items set device_id = p_replacement_device_id where id = v_sale_item_id;
 end;
 $$;
 
@@ -685,6 +736,25 @@ begin
   if p_status = 'Supplier Defective' and v_previous_status <> 'Supplier Defective' and p_issue_description is not null then
     insert into public.supplier_defective_records (device_id, supplier_id, issue_description)
     values (p_id, v_supplier_id, p_issue_description);
+  end if;
+
+  -- Sold -> Available means the sale is being undone (taking the unit back
+  -- into sellable stock), not a return — refund the sale so it stops
+  -- counting as revenue instead of silently persisting.
+  if v_previous_status = 'Sold' and p_status = 'Available' then
+    update public.sales
+    set status = 'Refunded'
+    where status = 'Completed'
+      and id in (select sale_id from public.sale_items where device_id = p_id);
+  end if;
+
+  -- Editing a Reserved device to any other status cancels the reservation
+  -- behind it, so it doesn't stay Active against a device no longer held
+  -- for anyone.
+  if v_previous_status = 'Reserved' and p_status <> 'Reserved' then
+    update public.reservations
+    set status = 'Cancelled'
+    where device_id = p_id and status in ('Active', 'Expiring Soon');
   end if;
 end;
 $$;

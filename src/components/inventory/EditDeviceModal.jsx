@@ -5,18 +5,22 @@ import { getDeviceCategories } from "../../services/referenceService";
 import { updateDevice } from "../../services/inventoryService";
 import SupplierSelect from "./SupplierSelect";
 
-const baseStatusOptions = ["Available", "Sold", "Customer Returned", "Supplier Defective", "Returned"];
+const baseStatusOptions = ["Available", "Customer Returned", "Supplier Defective", "Returned"];
 const conditionOptions = ["Brand New", "Pre-owned"];
 const repairPartConditionOptions = ["Brand New", "Genuine", "Used"];
 
 function EditDeviceModal({ device, onClose, onSaved }) {
   const categories = useServiceData(getDeviceCategories, []);
-  // "Reserved" is only offered if the device already is — it always needs a
-  // matching reservation record (customer, date, price), which only "New
-  // Reservation" on the Reserved page actually creates. Manually switching
-  // a device to Reserved here would leave one with no reservation behind it,
-  // same bug this is closing on Add Device.
-  const statusOptions = device.status === "Reserved" ? ["Reserved", ...baseStatusOptions] : baseStatusOptions;
+  // "Reserved" and "Sold" are only offered if the device already is one of
+  // them — both always need a matching record elsewhere (a reservation, or
+  // a real sale via New Sale) that this form can't create. Manually
+  // switching a device to Reserved/Sold here would leave one with no
+  // reservation/sale behind it, same bug this is closing on Add Device.
+  // Switching a Sold device back to Available is still allowed — that's
+  // handled as "undo this sale" by update_device, which refunds it.
+  let statusOptions = baseStatusOptions;
+  if (device.status === "Reserved") statusOptions = ["Reserved", ...statusOptions];
+  if (device.status === "Sold") statusOptions = ["Sold", ...statusOptions];
 
   const [form, setForm] = useState({
     batchCode: device.batchCode || "",
@@ -42,6 +46,9 @@ function EditDeviceModal({ device, onClose, onSaved }) {
   // actually creates a record on the Supplier Defective page — not just a
   // devices.status flip that goes nowhere.
   const isNewlyDefective = form.status === "Supplier Defective" && device.status !== "Supplier Defective";
+  // Sold -> Available is treated as undoing the sale (update_device refunds
+  // it) rather than a return, so the admin should know before confirming.
+  const isUndoingSale = device.status === "Sold" && form.status === "Available";
 
   const handleConfirm = async () => {
     setError("");
@@ -177,6 +184,11 @@ function EditDeviceModal({ device, onClose, onSaved }) {
               >
                 {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
+              {isUndoingSale && (
+                <p className="text-xs text-amber-600 mt-1">
+                  This undoes the sale — its sale record will be marked Refunded and stop counting as revenue.
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Supplier</label>

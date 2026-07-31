@@ -41,12 +41,14 @@ export async function getCustomerReturns() {
 }
 
 // Starts a return for a sold item — status starts Pending until it's
-// resolved (replaced or rejected) on the Customer Returns page.
+// resolved (replaced or rejected) on the Customer Returns page. Also moves
+// the device to Customer Returned (see create_return in schema.sql) so it
+// doesn't keep showing as a plain completed Sold unit while the return
+// is pending.
 export async function createReturn({ saleItemId, reason }) {
-  const { error } = await supabase.from("customer_returns").insert({
-    sale_item_id: saleItemId,
-    reason,
-    status: "Pending",
+  const { error } = await supabase.rpc("create_return", {
+    p_sale_item_id: saleItemId,
+    p_reason: reason,
   });
   if (error) throw error;
 }
@@ -68,10 +70,10 @@ export async function replaceReturn(returnId, originalDeviceId, replacementDevic
   if (error) throw error;
 }
 
+// Customer keeps the unit after a rejected return, so the device goes
+// back to Sold (see reject_return in schema.sql) instead of staying stuck
+// at Customer Returned.
 export async function rejectReturn(returnId) {
-  const { error } = await supabase
-    .from("customer_returns")
-    .update({ status: "Rejected" })
-    .eq("id", returnId);
+  const { error } = await supabase.rpc("reject_return", { p_return_id: returnId });
   if (error) throw error;
 }
