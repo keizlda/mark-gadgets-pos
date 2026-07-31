@@ -4,6 +4,7 @@ import { useServiceData } from "../hooks/useServiceData";
 import { getSalesHistory } from "../services/salesService";
 import { getAllDevices } from "../services/inventoryService";
 import { getAllExpenses, addExpense, deleteExpense } from "../services/expensesService";
+import { getCgnResales, addCgnResale, deleteCgnResale } from "../services/cgnResalesService";
 import DateRangePicker from "../components/common/DateRangePicker";
 import UnsoldUnitsModal from "../components/financial/UnsoldUnitsModal";
 import ExpenseCategoryModal from "../components/financial/ExpenseCategoryModal";
@@ -139,6 +140,66 @@ function Financial() {
     const totalNetProfit = cgnRows.reduce((sum, r) => sum + (r.netProfit ?? 0), 0);
     return { totalCapital, totalDisposal, totalNetProfit };
   }, [cgnRows]);
+
+  // CGN's own resale of those same units to their own customers — a
+  // separate business event, tracked in its own table (not devices/sales,
+  // since the unit already left our inventory when we sold it to CGN).
+  const [cgnResales, setCgnResales] = useState([]);
+  const loadCgnResales = useCallback(() => {
+    getCgnResales().then(setCgnResales);
+  }, []);
+  useEffect(() => {
+    loadCgnResales();
+  }, [loadCgnResales]);
+
+  const cgnResaleTotals = useMemo(() => {
+    const totalCapital = cgnResales.reduce((sum, r) => sum + r.capital, 0);
+    const totalDisposal = cgnResales.reduce((sum, r) => sum + r.disposalPrice, 0);
+    const totalProfit = cgnResales.reduce((sum, r) => sum + r.profit, 0);
+    return { totalCapital, totalDisposal, totalProfit };
+  }, [cgnResales]);
+
+  const [resaleDate, setResaleDate] = useState(toISODate(new Date()));
+  const [resaleDeviceName, setResaleDeviceName] = useState("");
+  const [resaleCapital, setResaleCapital] = useState("");
+  const [resaleDisposal, setResaleDisposal] = useState("");
+  const [resaleSupplierNote, setResaleSupplierNote] = useState("");
+  const [resaleError, setResaleError] = useState("");
+  const [submittingResale, setSubmittingResale] = useState(false);
+
+  const handleAddCgnResale = async (e) => {
+    e.preventDefault();
+    if (!resaleDeviceName.trim() || !resaleCapital || !resaleDisposal) return;
+    setResaleError("");
+    setSubmittingResale(true);
+    try {
+      await addCgnResale({
+        date: resaleDate,
+        deviceName: resaleDeviceName.trim(),
+        capital: Number(resaleCapital),
+        disposalPrice: Number(resaleDisposal),
+        supplierNote: resaleSupplierNote.trim(),
+      });
+      setResaleDeviceName("");
+      setResaleCapital("");
+      setResaleDisposal("");
+      setResaleSupplierNote("");
+      loadCgnResales();
+    } catch (err) {
+      setResaleError(err.message || "Failed to add resale entry. Please try again.");
+    } finally {
+      setSubmittingResale(false);
+    }
+  };
+
+  const handleRemoveCgnResale = async (id) => {
+    try {
+      await deleteCgnResale(id);
+      loadCgnResales();
+    } catch (err) {
+      showToast(err.message || "Failed to remove resale entry. Please try again.", "error");
+    }
+  };
 
   // Same expenses staff log from Reports — this is one shared table, not a
   // separate admin-only ledger, so whatever staff have entered shows up
@@ -440,6 +501,145 @@ function Financial() {
           </table>
         </div>
       </div>
+
+      {/* CGN's Own Resale — what CGN resold each unit for to their own
+          customers, separate from our own sale to them above. Only shown
+          while viewing the CGN ledger. */}
+      {ledgerView === "cgn" && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <p className="font-bold text-gray-800 mb-1">CGN's Own Resale</p>
+          <p className="text-xs text-gray-400 mb-4">
+            What CGN resold each unit for to their own customers, from CGN's own report — separate from what we
+            sold it to them for above.
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 bg-gray-50">
+                  <th className="px-3 py-2.5 font-medium rounded-l-lg">Date</th>
+                  <th className="px-3 py-2.5 font-medium">Unit</th>
+                  <th className="px-3 py-2.5 font-medium text-right">Capital</th>
+                  <th className="px-3 py-2.5 font-medium text-right">Resold For</th>
+                  <th className="px-3 py-2.5 font-medium text-right">Profit</th>
+                  <th className="px-3 py-2.5 font-medium">Ref</th>
+                  <th className="px-3 py-2.5 font-medium rounded-r-lg text-right">Remove</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cgnResales.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-6 text-center text-gray-400">
+                      No CGN resale entries recorded yet.
+                    </td>
+                  </tr>
+                ) : cgnResales.map((r) => (
+                  <tr key={r.id} className="border-b border-gray-50 last:border-0">
+                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{r.date}</td>
+                    <td className="px-3 py-3 text-gray-800 font-medium">{r.deviceName}</td>
+                    <td className="px-3 py-3 text-right text-gray-700">{peso(r.capital)}</td>
+                    <td className="px-3 py-3 text-right text-gray-800">{peso(r.disposalPrice)}</td>
+                    <td className={`px-3 py-3 text-right font-medium ${r.profit < 0 ? "text-red-500" : "text-green-600"}`}>
+                      {peso(r.profit)}
+                    </td>
+                    <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{r.supplierNote || "—"}</td>
+                    <td className="px-3 py-3 text-right">
+                      <button
+                        onClick={() => handleRemoveCgnResale(r.id)}
+                        className="text-gray-400 hover:text-red-500 p-1"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-gray-50 font-bold text-gray-800">
+                  <td className="px-3 py-3 rounded-l-lg" colSpan={2}>TOTAL</td>
+                  <td className="px-3 py-3 text-right">{peso(cgnResaleTotals.totalCapital)}</td>
+                  <td className="px-3 py-3 text-right">{peso(cgnResaleTotals.totalDisposal)}</td>
+                  <td className="px-3 py-3 text-right text-green-600">{peso(cgnResaleTotals.totalProfit)}</td>
+                  <td colSpan={2} className="px-3 py-3 rounded-r-lg"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {resaleError && (
+            <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4">
+              <AlertTriangle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-700">{resaleError}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleAddCgnResale} className="flex flex-wrap items-end gap-3 mt-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Date</label>
+              <input
+                type="date"
+                value={resaleDate}
+                onChange={(e) => setResaleDate(e.target.value)}
+                className="w-40 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex-1 min-w-[180px]">
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Unit</label>
+              <input
+                type="text"
+                value={resaleDeviceName}
+                onChange={(e) => setResaleDeviceName(e.target.value)}
+                placeholder="e.g. iPhone 11 128GB Purple"
+                className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Capital</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
+                <input
+                  type="number"
+                  value={resaleCapital}
+                  onChange={(e) => setResaleCapital(e.target.value)}
+                  placeholder="0.00"
+                  className="w-28 border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Resold For</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
+                <input
+                  type="number"
+                  value={resaleDisposal}
+                  onChange={(e) => setResaleDisposal(e.target.value)}
+                  placeholder="0.00"
+                  className="w-28 border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Ref (Optional)</label>
+              <input
+                type="text"
+                value={resaleSupplierNote}
+                onChange={(e) => setResaleSupplierNote(e.target.value)}
+                placeholder="e.g. S 06.22"
+                className="w-28 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submittingResale}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+            >
+              <Plus size={14} />
+              {submittingResale ? "Adding..." : "Add"}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Expenses — every entry, all categories, includes both what staff
           logged on Reports and what's logged here (entries added from this
