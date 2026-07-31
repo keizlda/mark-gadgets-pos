@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Info, AlertTriangle, ClipboardList, Fingerprint, Eye, Calendar, Apple, PackagePlus } from "lucide-react";
-import { useServiceData } from "../../hooks/useServiceData";
+import { Info, AlertTriangle, ClipboardList, Fingerprint, Eye, Calendar, Apple, PackagePlus, Settings } from "lucide-react";
 import { getProductCatalog } from "../../services/referenceService";
 import { addDevice, getNextBatchSequence } from "../../services/inventoryService";
 import { getPendingShellsWithProgress } from "../../services/bulkOrderShellsService";
 import { formatDate, todayLocalDateString } from "../../utils/datetime";
 import SupplierSelect from "../../components/inventory/SupplierSelect";
+import ManageCatalogModal from "../../components/inventory/ManageCatalogModal";
 import { useToast } from "../../hooks/useToast";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
 
 // Batch codes follow MMDDYY-### (e.g. 073026-001) — prefilling the date
 // part means staff only ever need to type the sequence number.
@@ -82,12 +83,21 @@ function createBlankForm() {
 function AddDevice() {
   const navigate = useNavigate();
   const showToast = useToast();
-  const productCatalog = useServiceData(getProductCatalog, {});
+  const isAdmin = useIsAdmin();
+
+  const [productCatalog, setProductCatalog] = useState({});
+  const loadProductCatalog = useCallback(() => {
+    getProductCatalog().then(setProductCatalog);
+  }, []);
+  useEffect(() => {
+    loadProductCatalog();
+  }, [loadProductCatalog]);
   const categories = Object.keys(productCatalog);
 
   const [form, setForm] = useState(createBlankForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [showManageCatalog, setShowManageCatalog] = useState(false);
 
   const [pendingShells, setPendingShells] = useState([]);
   const loadPendingShells = useCallback(() => {
@@ -217,16 +227,29 @@ function AddDevice() {
   if (!catalog) return null;
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Info banner */}
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
-        <Info size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
-        <div>
-          <p className="text-sm font-medium text-blue-900">
-            Register a new Apple device into the inventory.
-          </p>
-          <p className="text-xs text-blue-500">All fields marked with * are required.</p>
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <Info size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-blue-900">
+              Register a new Apple device into the inventory.
+            </p>
+            <p className="text-xs text-blue-500">All fields marked with * are required.</p>
+          </div>
         </div>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setShowManageCatalog(true)}
+            className="flex items-center gap-1.5 text-sm text-blue-700 border border-blue-200 bg-white px-3 py-1.5 rounded-lg hover:bg-blue-50 flex-shrink-0"
+          >
+            <Settings size={14} />
+            Manage Catalog
+          </button>
+        )}
       </div>
 
       {error && (
@@ -604,6 +627,11 @@ function AddDevice() {
         </button>
       </div>
     </form>
+
+    {showManageCatalog && (
+      <ManageCatalogModal onClose={() => setShowManageCatalog(false)} onChanged={loadProductCatalog} />
+    )}
+    </>
   );
 }
 
