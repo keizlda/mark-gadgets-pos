@@ -191,6 +191,14 @@ function Financial() {
     }
   };
 
+  // Lets admin add an expense straight from the Cargo/Prulife (or Expenses)
+  // breakdown modal, already scoped to that category, instead of backing out
+  // to the main form and re-picking it from the dropdown.
+  const handleAddExpenseFromModal = async ({ date, description, amount, category }) => {
+    await addExpense({ date, description, amount, adminOnly: true, category });
+    loadExpenses();
+  };
+
   const handleRemoveExpense = async (id) => {
     try {
       await deleteExpense(id);
@@ -401,7 +409,7 @@ function Financial() {
               ) : filteredExpenses.map((e) => (
                 <tr key={e.id} className="border-b border-gray-50 last:border-0">
                   <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{e.date}</td>
-                  <td className="px-3 py-3 text-gray-700">
+                  <td className="px-3 py-3 text-gray-800 font-medium">
                     {e.description}
                     {e.category === "Cargo" && (
                       <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 align-middle">
@@ -508,41 +516,47 @@ function Financial() {
         </form>
 
         {/* Breakdown, below the form — mirrors the shop's own spreadsheet
-            summary format: Profit, then each deduction, then the bottom line. */}
-        <div className="space-y-1.5 text-right mt-6 pt-4 border-t border-gray-100">
-          <div className="flex justify-end gap-6 text-sm text-gray-600">
-            <span>Profit</span>
-            <span className="w-32">{peso(totals.totalNetProfit)}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setExpenseModalCategory("General")}
-            className="flex justify-end gap-6 text-sm text-red-500 w-full hover:underline"
-          >
-            <span>Expenses</span>
-            <span className="w-32">-{peso(totalExpenses)}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setExpenseModalCategory("Cargo")}
-            className="flex justify-end gap-6 text-sm text-amber-600 w-full hover:underline"
-          >
-            <span>Cargo</span>
-            <span className="w-32">-{peso(totalCargo)}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setExpenseModalCategory("Prulife")}
-            className="flex justify-end gap-6 text-sm text-indigo-600 w-full hover:underline"
-          >
-            <span>Prulife</span>
-            <span className="w-32">-{peso(totalPrulife)}</span>
-          </button>
-          <div className="flex justify-end gap-6 text-base font-bold text-gray-800 pt-1.5 border-t border-gray-100">
-            <span>Net Profit</span>
-            <span className={netProfitAfterExpenses < 0 ? "w-32 text-red-500" : "w-32"}>
-              {peso(netProfitAfterExpenses)}
-            </span>
+            summary format: Profit, then each deduction, then the bottom line.
+            A fixed-width column keeps every value flush regardless of how
+            long its label is. */}
+        <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+          <div className="w-full max-w-xs space-y-1">
+            <div className="flex justify-between text-sm text-gray-600 px-2 py-1.5">
+              <span>Profit</span>
+              <span className="font-medium tabular-nums">{peso(totals.totalNetProfit)}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setExpenseModalCategory("General")}
+              className="flex justify-between w-full text-sm text-red-500 px-2 py-1.5 rounded-lg hover:bg-red-50"
+            >
+              <span>Expenses</span>
+              <span className="font-medium tabular-nums">-{peso(totalExpenses)}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setExpenseModalCategory("Cargo")}
+              className="flex justify-between w-full text-sm text-amber-600 px-2 py-1.5 rounded-lg hover:bg-amber-50"
+            >
+              <span>Cargo</span>
+              <span className="font-medium tabular-nums">-{peso(totalCargo)}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setExpenseModalCategory("Prulife")}
+              className="flex justify-between w-full text-sm text-indigo-600 px-2 py-1.5 rounded-lg hover:bg-indigo-50"
+            >
+              <span>Prulife</span>
+              <span className="font-medium tabular-nums">-{peso(totalPrulife)}</span>
+            </button>
+            <div
+              className={`flex justify-between text-base font-bold px-2 py-2 mt-1 border-t border-gray-100 ${
+                netProfitAfterExpenses < 0 ? "text-red-500" : "text-gray-800"
+              }`}
+            >
+              <span>Net Profit</span>
+              <span className="tabular-nums">{peso(netProfitAfterExpenses)}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -603,10 +617,11 @@ function Financial() {
 
       {expenseModalCategory && (
         <ExpenseCategoryModal
-          category={expenseModalCategory === "General" ? "Expenses" : expenseModalCategory}
+          category={expenseModalCategory}
           entries={expensesByCategory[expenseModalCategory]}
           isAdmin
           onRemove={handleRemoveExpense}
+          onAdd={handleAddExpenseFromModal}
           onClose={() => setExpenseModalCategory(null)}
         />
       )}
