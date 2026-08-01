@@ -18,6 +18,15 @@ export function formatDate(isoString) {
   });
 }
 
+// Local (not UTC) "YYYY-MM-DDTHH:mm" for prefilling <input type="datetime-local">
+// — using toISOString() here would shift the displayed time by Manila's
+// UTC+8 offset, the same class of bug todayLocalDateString() exists to avoid.
+export function toDatetimeLocalString(isoString) {
+  const d = new Date(isoString);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function formatTime(isoString) {
   return new Date(isoString).toLocaleTimeString("en-US", {
     hour: "numeric",

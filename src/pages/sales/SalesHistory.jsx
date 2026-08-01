@@ -17,6 +17,7 @@ import { getPaymentMethods } from "../../services/referenceService";
 import { getDeviceById } from "../../services/inventoryService";
 import InitiateReturnModal from "../../components/sales/InitiateReturnModal";
 import DeviceDetailsModal from "../../components/inventory/DeviceDetailsModal";
+import EditSaleModal from "../../components/sales/EditSaleModal";
 import DateRangePicker from "../../components/common/DateRangePicker";
 import { useToast } from "../../hooks/useToast";
 
@@ -67,6 +68,7 @@ function SalesHistory() {
   const [unitInfoDevice, setUnitInfoDevice] = useState(null);
   const [markingPaidId, setMarkingPaidId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [editingRow, setEditingRow] = useState(null);
 
   const handleMarkAsPaid = async (row) => {
     setOpenMenu(null);
@@ -358,9 +360,17 @@ function SalesHistory() {
                           )}
                           {isAdmin && (
                             <button
+                              onClick={() => { setEditingRow(row); setOpenMenu(null); }}
+                              className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-t border-gray-100"
+                            >
+                              Edit Sale
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
                               onClick={() => handleDeleteSale(row)}
                               disabled={deletingId === row.saleItemId}
-                              className="block w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-gray-50 disabled:opacity-60 border-t border-gray-100"
+                              className="block w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-gray-50 disabled:opacity-60"
                             >
                               {deletingId === row.saleItemId ? "Deleting..." : "Delete"}
                             </button>
@@ -444,6 +454,18 @@ function SalesHistory() {
 
       {unitInfoDevice && (
         <DeviceDetailsModal device={unitInfoDevice} onClose={() => setUnitInfoDevice(null)} />
+      )}
+
+      {editingRow && (
+        <EditSaleModal
+          row={editingRow}
+          onClose={() => setEditingRow(null)}
+          onSaved={() => {
+            setEditingRow(null);
+            loadSalesHistory();
+            showToast("Sale updated.");
+          }}
+        />
       )}
     </div>
   );

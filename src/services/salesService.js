@@ -11,6 +11,8 @@ export async function getSalesHistory() {
       customer_name,
       customer_phone,
       payment_method,
+      notes,
+      reference_number,
       status,
       order_type,
       payment_status,
@@ -48,8 +50,14 @@ export async function getSalesHistory() {
         batchCode: item.devices?.batch_code,
         date: formatDate(item.sales?.sold_at),
         time: formatTime(item.sales?.sold_at),
+        // Raw timestamps, for prefilling Edit Sale's date inputs — date/time
+        // above are already formatted for display only.
+        soldAt: item.sales?.sold_at,
+        dateAddedRaw: item.devices?.date_added,
         customer: item.sales?.customer_name,
         phone: item.sales?.customer_phone,
+        notes: item.sales?.notes,
+        referenceNumber: item.sales?.reference_number,
         device: item.devices?.device_name,
         category: item.devices?.category,
         storage: item.devices?.storage,
@@ -85,6 +93,38 @@ export async function getSalesHistory() {
             : item.sales?.status,
       };
     });
+}
+
+// Corrects a sale after the fact (Sales History's Edit action, admin-only).
+// Customer/notes/reference/financing/sold-at live on the shared sales row,
+// so editing them from any one unit of a Bulk order updates every sibling
+// row in that order too — price and date added are per-device, scoped to
+// just this one.
+export async function editSale({
+  saleItemId,
+  customerName,
+  customerPhone,
+  notes,
+  referenceNumber,
+  downPayment,
+  balance,
+  priceAtSale,
+  soldAt,
+  dateAdded,
+}) {
+  const { error } = await supabase.rpc("edit_sale", {
+    p_sale_item_id: saleItemId,
+    p_customer_name: customerName || null,
+    p_customer_phone: customerPhone || null,
+    p_notes: notes || null,
+    p_reference_number: referenceNumber || null,
+    p_down_payment: downPayment ?? null,
+    p_balance: balance ?? null,
+    p_price_at_sale: priceAtSale,
+    p_sold_at: soldAt,
+    p_date_added: dateAdded,
+  });
+  if (error) throw error;
 }
 
 // Deletes this one unit's sale outright — same "undo the sale" operation
