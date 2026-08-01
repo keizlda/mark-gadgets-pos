@@ -8,6 +8,7 @@ import LowStockAlerts from "../components/dashboard/LowStockAlerts";
 import RecentActivityTable from "../components/dashboard/RecentActivityTable";
 import DeviceDetailsModal from "../components/inventory/DeviceDetailsModal";
 import { useServiceData } from "../hooks/useServiceData";
+import { useIsAdmin } from "../hooks/useIsAdmin";
 import { getAllDevices, getLowStockItems } from "../services/inventoryService";
 import { getSalesHistory } from "../services/salesService";
 import { getDeviceCategories } from "../services/referenceService";
@@ -21,6 +22,7 @@ const categoryColors = {
 
 function Dashboard() {
   const navigate = useNavigate();
+  const isAdmin = useIsAdmin();
 
   const allDevices = useServiceData(getAllDevices, []);
   const lowStockItems = useServiceData(getLowStockItems, []);
@@ -143,9 +145,9 @@ function Dashboard() {
         </button>
       </div>
 
-      {/* Charts + alerts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <SalesChart />
+      {/* Charts + alerts row — Sales This Month is financial info, admin-only */}
+      <div className={`grid grid-cols-1 gap-4 ${isAdmin ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
+        {isAdmin && <SalesChart />}
         <InventoryDonut data={inventoryByCategory} />
         <LowStockAlerts />
       </div>

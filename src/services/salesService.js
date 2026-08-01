@@ -146,5 +146,5 @@ export async function getSalesThisMonth() {
 
   if (error) throw error;
 
-  return data.map(({ month, sales }) => ({ month, sales }));
+  return data.map(({ month, sales, month_start }) => ({ month, sales, monthStart: month_start }));
 }
