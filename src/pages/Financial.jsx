@@ -152,12 +152,24 @@ function Financial() {
     loadCgnResales();
   }, [loadCgnResales]);
 
+  // cgnResales carries its own sale_date, independent of salesHistory, so
+  // it needs its own date-range filter — without this it always showed
+  // every resale ever entered regardless of the report's date range.
+  const filteredCgnResales = useMemo(() => {
+    const from = generatedRange.from ? new Date(generatedRange.from + "T00:00:00") : null;
+    const to = generatedRange.to ? new Date(generatedRange.to + "T00:00:00") : null;
+    return cgnResales.filter((r) => {
+      const d = new Date(r.date + "T00:00:00");
+      return (!from || d >= from) && (!to || d <= to);
+    });
+  }, [cgnResales, generatedRange]);
+
   const cgnResaleTotals = useMemo(() => {
-    const totalCapital = cgnResales.reduce((sum, r) => sum + r.capital, 0);
-    const totalDisposal = cgnResales.reduce((sum, r) => sum + r.disposalPrice, 0);
-    const totalProfit = cgnResales.reduce((sum, r) => sum + r.profit, 0);
+    const totalCapital = filteredCgnResales.reduce((sum, r) => sum + r.capital, 0);
+    const totalDisposal = filteredCgnResales.reduce((sum, r) => sum + r.disposalPrice, 0);
+    const totalProfit = filteredCgnResales.reduce((sum, r) => sum + r.profit, 0);
     return { totalCapital, totalDisposal, totalProfit };
-  }, [cgnResales]);
+  }, [filteredCgnResales]);
 
   // Both legs of the CGN business — what we sold them (wholesale) and what
   // they resold it for (retail) — combined into one ledger and one profit
@@ -175,7 +187,7 @@ function Financial() {
       ref: r.supplier || "—",
       stage: "Sold to CGN",
     }));
-    const cgnResold = cgnResales.map((r) => ({
+    const cgnResold = filteredCgnResales.map((r) => ({
       key: `resale-${r.id}`,
       id: r.id,
       date: r.date,
@@ -189,7 +201,7 @@ function Financial() {
       stage: "CGN Resale",
     }));
     return [...soldToCgn, ...cgnResold].sort((a, b) => b.sortDate - a.sortDate);
-  }, [cgnRows, cgnResales]);
+  }, [cgnRows, filteredCgnResales]);
 
   const combinedCgnTotals = useMemo(
     () => ({
