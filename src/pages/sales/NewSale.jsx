@@ -4,9 +4,7 @@ import { useServiceData } from "../../hooks/useServiceData";
 import { processSale } from "../../services/salesService";
 import { getAvailableDevicesForSale } from "../../services/inventoryService";
 import { getPosCategories } from "../../services/referenceService";
-import { addExpense } from "../../services/expensesService";
 import { useToast } from "../../hooks/useToast";
-import { todayLocalDateString } from "../../utils/datetime";
 import QuickAddDeviceModal from "../../components/sales/QuickAddDeviceModal";
 import SwapTradeInModal from "../../components/sales/SwapTradeInModal";
 
@@ -156,11 +154,12 @@ function NewSale() {
   const total = cart.reduce((sum, c) => sum + (Number(c.actualPrice) || 0), 0);
   const profit = total - totalCapital;
 
-  // Positive: the store's unit(s) are worth more, customer tops up cash
-  // (already just part of the sale total above, nothing extra to record).
-  // Negative: the trade-in is worth more, so the store hands back cash —
-  // that's real money leaving the register the sale itself won't capture,
-  // so it becomes an Expense once the sale processes.
+  // Positive: the store's unit(s) are worth more, customer tops up cash.
+  // Negative: the trade-in is worth more, so the store hands back cash.
+  // Either way, no separate ledger entry needed — same as any other
+  // inventory purchase, the trade-in's Appraised Value (its Capital) is
+  // the full cost of acquiring it, cash or otherwise. This is purely
+  // informational so staff know how much cash to collect or hand over.
   const swapCashDifference = payment === "Swap" && swapTradeIn ? total - swapTradeIn.appraisedValue : 0;
 
   const handlePaymentChange = (method) => {
@@ -189,18 +188,6 @@ function NewSale() {
         notes,
         cartItems: cart.map((c) => ({ ...c, price: Number(c.actualPrice) || 0 })),
       });
-
-      if (payment === "Swap" && swapCashDifference < 0) {
-        await addExpense({
-          date: todayLocalDateString(),
-          description: `Cash paid out on swap trade-in (${swapTradeIn.batchCode}) for ${cart
-            .map((c) => c.batchCode)
-            .join(", ")}`,
-          amount: Math.abs(swapCashDifference),
-          adminOnly: false,
-          category: "General",
-        });
-      }
 
       showToast("Sale processed.");
       clearCart();
@@ -551,8 +538,7 @@ function NewSale() {
                   )}
                   {swapCashDifference < 0 && (
                     <p className="text-orange-600">
-                      Store pays ₱{Math.abs(swapCashDifference).toLocaleString()} cash back — logged as an expense
-                      once processed.
+                      Store pays ₱{Math.abs(swapCashDifference).toLocaleString()} cash back to the customer.
                     </p>
                   )}
                   {swapCashDifference === 0 && <p className="text-green-600">Even swap — no cash changes hands.</p>}
