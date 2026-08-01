@@ -118,22 +118,27 @@ function Financial() {
     });
   }, [generatedRange, salesHistory]);
 
-  const totals = useMemo(() => {
-    const totalCapital = rows.reduce((sum, r) => sum + (r.purchasePrice ?? 0), 0);
-    const totalDisposal = rows.reduce((sum, r) => sum + r.total, 0);
-    const totalNetProfit = rows.reduce((sum, r) => sum + (r.netProfit ?? 0), 0);
-    return { totalCapital, totalDisposal, totalNetProfit };
-  }, [rows]);
-
   // CGN is the admin's other branch — every sale made to them (bulk or
-  // individual) gets its own ledger here, on top of the regular one above,
-  // so the admin can see what was sold to CGN specifically without it
-  // being buried in the full sales list. Matched on the same customer
-  // name field the sale was rung up under, case/whitespace-insensitive.
+  // individual) belongs on the CGN ledger only, not the store one, so its
+  // profit doesn't get folded into the overall store total. Matched on the
+  // same customer name field the sale was rung up under, case/whitespace-
+  // insensitive.
   const cgnRows = useMemo(
     () => rows.filter((r) => r.customer && r.customer.trim().toLowerCase() === "cgn"),
     [rows]
   );
+  const storeRows = useMemo(
+    () => rows.filter((r) => !(r.customer && r.customer.trim().toLowerCase() === "cgn")),
+    [rows]
+  );
+
+  const totals = useMemo(() => {
+    const totalCapital = storeRows.reduce((sum, r) => sum + (r.purchasePrice ?? 0), 0);
+    const totalDisposal = storeRows.reduce((sum, r) => sum + r.total, 0);
+    const totalNetProfit = storeRows.reduce((sum, r) => sum + (r.netProfit ?? 0), 0);
+    return { totalCapital, totalDisposal, totalNetProfit };
+  }, [storeRows]);
+
   const cgnTotals = useMemo(() => {
     const totalCapital = cgnRows.reduce((sum, r) => sum + (r.purchasePrice ?? 0), 0);
     const totalDisposal = cgnRows.reduce((sum, r) => sum + r.total, 0);
@@ -289,13 +294,11 @@ function Financial() {
   const totalCargo = cargoExpenses.reduce((sum, e) => sum + e.amount, 0);
   const totalPrulife = prulifeExpenses.reduce((sum, e) => sum + e.amount, 0);
   const totalPersonal = personalExpenses.reduce((sum, e) => sum + e.amount, 0);
-  // Split so "CGN Profit" below can carry the full combined CGN business
-  // (what we made selling to them + what they made reselling) without
-  // double-counting the wholesale-to-CGN leg, which totals.totalNetProfit
-  // already includes as part of the whole store's sales.
-  const storeOnlyProfit = totals.totalNetProfit - cgnTotals.totalNetProfit;
+  // totals is already store-only (CGN sales are excluded upstream, into
+  // their own ledger), so no double-counting to guard against here — CGN's
+  // combined profit (both legs) is just added on top.
   const netProfitAfterExpenses =
-    storeOnlyProfit + combinedCgnTotals.totalNetProfit - totalExpenses - totalCargo - totalPrulife - totalPersonal;
+    totals.totalNetProfit + combinedCgnTotals.totalNetProfit - totalExpenses - totalCargo - totalPrulife - totalPersonal;
 
   // A present-moment snapshot of stock still on hand — not scoped to the
   // selected date range, since "what's tied up in unsold inventory right
@@ -513,7 +516,7 @@ function Financial() {
               </tr>
             </thead>
             <tbody>
-              {(ledgerView === "cgn" ? combinedCgnEntries : rows).length === 0 ? (
+              {(ledgerView === "cgn" ? combinedCgnEntries : storeRows).length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-gray-400">
                     {ledgerView === "cgn"
@@ -561,7 +564,7 @@ function Financial() {
                   </tr>
                 ))
               ) : (
-                rows.map((row, index) => (
+                storeRows.map((row, index) => (
                   <tr key={row.saleItemId} className="border-b border-gray-50 last:border-0">
                     <td className="px-3 py-3 text-gray-500">{index + 1}</td>
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.date}</td>
@@ -838,7 +841,7 @@ function Financial() {
           <div className="w-full max-w-xs space-y-1">
             <div className="flex justify-between text-sm text-gray-600 px-2 py-1.5">
               <span>Store Profit</span>
-              <span className="font-medium tabular-nums">{peso(storeOnlyProfit)}</span>
+              <span className="font-medium tabular-nums">{peso(totals.totalNetProfit)}</span>
             </div>
             <div className="flex justify-between text-sm text-teal-600 px-2 py-1.5">
               <span>CGN Profit</span>

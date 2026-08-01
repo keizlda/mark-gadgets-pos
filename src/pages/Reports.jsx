@@ -115,6 +115,7 @@ function Reports() {
         items: 1,
         amount: s.total,
         payment: s.payment,
+        customer: s.customer,
       }));
   }, [generatedRange, salesHistory]);
 
@@ -125,6 +126,17 @@ function Reports() {
 
   const displayedRows = viewMode === "cash" ? cashRows : rows;
   const displayedTotals = viewMode === "cash" ? cashTotals : totals;
+
+  // CGN sales still show as line items in the table/totals above like any
+  // other sale, but belong to Financial's CGN Ledger, not this report's
+  // profit — excluded here so they don't get counted twice.
+  const nonCgnSales = useMemo(
+    () =>
+      rows
+        .filter((r) => !(r.customer && r.customer.trim().toLowerCase() === "cgn"))
+        .reduce((sum, r) => sum + r.amount, 0),
+    [rows]
+  );
 
   const filteredExpenses = useMemo(() => {
     const from = generatedRange.from ? new Date(generatedRange.from) : null;
@@ -154,7 +166,7 @@ function Reports() {
     [expensesByCategory]
   );
 
-  const newProfit = totals.totalSales - categoryTotals.General - categoryTotals.Cargo;
+  const newProfit = nonCgnSales - categoryTotals.General - categoryTotals.Cargo;
 
   const handleReportTypeChange = (type) => {
     setReportType(type);
@@ -522,7 +534,7 @@ function Reports() {
               <div className="w-full max-w-xs space-y-1">
                 <div className="flex justify-between text-sm text-gray-600 px-2 py-1.5">
                   <span>Profit</span>
-                  <span className="font-medium tabular-nums">{peso(totals.totalSales)}</span>
+                  <span className="font-medium tabular-nums">{peso(nonCgnSales)}</span>
                 </div>
                 <button
                   type="button"
@@ -557,7 +569,10 @@ function Reports() {
       {/* Note */}
       <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-700 print:hidden">
         <span className="font-medium">Note:</span>
-        <span>This report is based on the selected date range.</span>
+        <span>
+          This report is based on the selected date range. Sales to CGN still show in the table above, but aren't
+          counted in Profit — that belongs to Financial's CGN Ledger.
+        </span>
       </div>
 
       {expenseModalCategory && (
