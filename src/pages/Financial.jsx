@@ -159,6 +159,47 @@ function Financial() {
     return { totalCapital, totalDisposal, totalProfit };
   }, [cgnResales]);
 
+  // Both legs of the CGN business — what we sold them (wholesale) and what
+  // they resold it for (retail) — combined into one ledger and one profit
+  // figure, since both are the admin's own money either way.
+  const combinedCgnEntries = useMemo(() => {
+    const soldToCgn = cgnRows.map((r) => ({
+      key: `sale-${r.saleItemId}`,
+      date: r.date,
+      sortDate: new Date(r.date),
+      batchCode: r.batchCode,
+      unit: [r.device, r.storage, r.color].filter(Boolean).join(" · "),
+      capital: r.purchasePrice,
+      soldFor: r.total,
+      profit: r.netProfit,
+      ref: r.supplier || "—",
+      stage: "Sold to CGN",
+    }));
+    const cgnResold = cgnResales.map((r) => ({
+      key: `resale-${r.id}`,
+      id: r.id,
+      date: r.date,
+      sortDate: new Date(r.date),
+      batchCode: "—",
+      unit: r.deviceName,
+      capital: r.capital,
+      soldFor: r.disposalPrice,
+      profit: r.profit,
+      ref: r.supplierNote || "—",
+      stage: "CGN Resale",
+    }));
+    return [...soldToCgn, ...cgnResold].sort((a, b) => b.sortDate - a.sortDate);
+  }, [cgnRows, cgnResales]);
+
+  const combinedCgnTotals = useMemo(
+    () => ({
+      totalCapital: cgnTotals.totalCapital + cgnResaleTotals.totalCapital,
+      totalDisposal: cgnTotals.totalDisposal + cgnResaleTotals.totalDisposal,
+      totalNetProfit: cgnTotals.totalNetProfit + cgnResaleTotals.totalProfit,
+    }),
+    [cgnTotals, cgnResaleTotals]
+  );
+
   const [resaleDate, setResaleDate] = useState(toISODate(new Date()));
   const [resaleDeviceName, setResaleDeviceName] = useState("");
   const [resaleCapital, setResaleCapital] = useState("");
@@ -236,8 +277,13 @@ function Financial() {
   const totalCargo = cargoExpenses.reduce((sum, e) => sum + e.amount, 0);
   const totalPrulife = prulifeExpenses.reduce((sum, e) => sum + e.amount, 0);
   const totalPersonal = personalExpenses.reduce((sum, e) => sum + e.amount, 0);
+  // Split so "CGN Profit" below can carry the full combined CGN business
+  // (what we made selling to them + what they made reselling) without
+  // double-counting the wholesale-to-CGN leg, which totals.totalNetProfit
+  // already includes as part of the whole store's sales.
+  const storeOnlyProfit = totals.totalNetProfit - cgnTotals.totalNetProfit;
   const netProfitAfterExpenses =
-    totals.totalNetProfit - totalExpenses - totalCargo - totalPrulife - totalPersonal;
+    storeOnlyProfit + combinedCgnTotals.totalNetProfit - totalExpenses - totalCargo - totalPrulife - totalPersonal;
 
   // A present-moment snapshot of stock still on hand — not scoped to the
   // selected date range, since "what's tied up in unsold inventory right
@@ -404,7 +450,7 @@ function Financial() {
           icon={Wallet}
           iconBg="bg-gray-100 text-gray-600"
           label={ledgerView === "cgn" ? "CGN CAPITAL" : "TOTAL CAPITAL"}
-          value={peso(ledgerView === "cgn" ? cgnTotals.totalCapital : totals.totalCapital)}
+          value={peso(ledgerView === "cgn" ? combinedCgnTotals.totalCapital : totals.totalCapital)}
           sub="Total Cost of Units Sold"
           valueClass="text-gray-700"
         />
@@ -412,7 +458,7 @@ function Financial() {
           icon={PiggyBank}
           iconBg="bg-blue-50 text-blue-600"
           label={ledgerView === "cgn" ? "CGN DISPOSAL PRICE" : "TOTAL DISPOSAL PRICE"}
-          value={peso(ledgerView === "cgn" ? cgnTotals.totalDisposal : totals.totalDisposal)}
+          value={peso(ledgerView === "cgn" ? combinedCgnTotals.totalDisposal : totals.totalDisposal)}
           sub="Total Amount Sold For"
           valueClass="text-blue-600"
         />
@@ -420,14 +466,17 @@ function Financial() {
           icon={TrendingUp}
           iconBg="bg-green-50 text-green-600"
           label={ledgerView === "cgn" ? "CGN NET PROFIT" : "TOTAL NET PROFIT"}
-          value={peso(ledgerView === "cgn" ? cgnTotals.totalNetProfit : totals.totalNetProfit)}
+          value={peso(ledgerView === "cgn" ? combinedCgnTotals.totalNetProfit : totals.totalNetProfit)}
           sub="Disposal Price minus Capital"
           valueClass="text-green-600"
         />
       </div>
 
-      {/* Ledger table — toggled between the full store ledger and the
-          CGN-only one via the Store Ledger/CGN Ledger buttons above. */}
+      {/* Ledger table — toggled between the full store ledger and the CGN
+          one via the Store Ledger/CGN Ledger buttons above. The CGN view
+          merges both legs of that business into one table: units we sold
+          to CGN (wholesale) and what CGN resold them for to their own
+          customers (retail) — a "Stage" column tells the two apart. */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <p className="font-bold text-gray-800 mb-4">
           {ledgerView === "cgn" ? "CGN Ledger" : "Unit Financial Ledger"}
@@ -438,28 +487,69 @@ function Financial() {
             <thead>
               <tr className="text-left text-gray-500 bg-gray-50">
                 <th className="px-3 py-2.5 font-medium rounded-l-lg">#</th>
-                <th className="px-3 py-2.5 font-medium">Date Sold</th>
+                <th className="px-3 py-2.5 font-medium">Date</th>
                 <th className="px-3 py-2.5 font-medium">Batch Code</th>
                 <th className="px-3 py-2.5 font-medium">Unit / Model / Gb / Color</th>
                 <th className="px-3 py-2.5 font-medium text-right">Capital</th>
                 <th className="px-3 py-2.5 font-medium text-right">
-                  {ledgerView === "cgn" ? "Sold to CGN For" : "Disposal Price"}
+                  {ledgerView === "cgn" ? "Sold For" : "Disposal Price"}
                 </th>
                 <th className="px-3 py-2.5 font-medium text-right">Net Profit</th>
-                <th className="px-3 py-2.5 font-medium rounded-r-lg">Supplier</th>
+                <th className="px-3 py-2.5 font-medium">{ledgerView === "cgn" ? "Stage" : "Supplier"}</th>
+                {ledgerView === "cgn" && <th className="px-3 py-2.5 font-medium rounded-r-lg text-right">Remove</th>}
+                {ledgerView !== "cgn" && <th className="px-3 py-2.5 font-medium rounded-r-lg"></th>}
               </tr>
             </thead>
             <tbody>
-              {(ledgerView === "cgn" ? cgnRows : rows).length === 0 ? (
+              {(ledgerView === "cgn" ? combinedCgnEntries : rows).length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-gray-400">
+                  <td colSpan={9} className="py-8 text-center text-gray-400">
                     {ledgerView === "cgn"
-                      ? "No units sold to CGN for the selected date range."
+                      ? "No CGN activity for the selected date range."
                       : "No sold units found for the selected date range."}
                   </td>
                 </tr>
+              ) : ledgerView === "cgn" ? (
+                combinedCgnEntries.map((row, index) => (
+                  <tr key={row.key} className="border-b border-gray-50 last:border-0">
+                    <td className="px-3 py-3 text-gray-500">{index + 1}</td>
+                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.date}</td>
+                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.batchCode}</td>
+                    <td className="px-3 py-3 text-gray-800 font-medium">{row.unit}</td>
+                    <td className="px-3 py-3 text-right text-gray-700">
+                      {row.capital != null ? peso(row.capital) : "—"}
+                    </td>
+                    <td className="px-3 py-3 text-right text-gray-800">{peso(row.soldFor)}</td>
+                    <td
+                      className={`px-3 py-3 text-right font-medium ${
+                        row.profit == null ? "text-gray-400" : row.profit < 0 ? "text-red-500" : "text-green-600"
+                      }`}
+                    >
+                      {row.profit != null ? peso(row.profit) : "—"}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          row.stage === "CGN Resale" ? "bg-teal-100 text-teal-700" : "bg-blue-100 text-blue-700"
+                        }`}
+                      >
+                        {row.stage}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      {row.id && (
+                        <button
+                          onClick={() => handleRemoveCgnResale(row.id)}
+                          className="text-gray-400 hover:text-red-500 p-1"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
               ) : (
-                (ledgerView === "cgn" ? cgnRows : rows).map((row, index) => (
+                rows.map((row, index) => (
                   <tr key={row.saleItemId} className="border-b border-gray-50 last:border-0">
                     <td className="px-3 py-3 text-gray-500">{index + 1}</td>
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.date}</td>
@@ -479,6 +569,7 @@ function Financial() {
                       {row.netProfit != null ? peso(row.netProfit) : "—"}
                     </td>
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.supplier || "—"}</td>
+                    <td></td>
                   </tr>
                 ))
               )}
@@ -487,84 +578,30 @@ function Financial() {
               <tr className="bg-gray-50 font-bold text-gray-800">
                 <td className="px-3 py-3 rounded-l-lg" colSpan={4}>TOTAL</td>
                 <td className="px-3 py-3 text-right">
-                  {peso(ledgerView === "cgn" ? cgnTotals.totalCapital : totals.totalCapital)}
+                  {peso(ledgerView === "cgn" ? combinedCgnTotals.totalCapital : totals.totalCapital)}
                 </td>
                 <td className="px-3 py-3 text-right">
-                  {peso(ledgerView === "cgn" ? cgnTotals.totalDisposal : totals.totalDisposal)}
+                  {peso(ledgerView === "cgn" ? combinedCgnTotals.totalDisposal : totals.totalDisposal)}
                 </td>
                 <td className="px-3 py-3 text-right text-green-600">
-                  {peso(ledgerView === "cgn" ? cgnTotals.totalNetProfit : totals.totalNetProfit)}
+                  {peso(ledgerView === "cgn" ? combinedCgnTotals.totalNetProfit : totals.totalNetProfit)}
                 </td>
-                <td className="px-3 py-3 rounded-r-lg"></td>
+                <td className="px-3 py-3 rounded-r-lg" colSpan={2}></td>
               </tr>
             </tfoot>
           </table>
         </div>
       </div>
 
-      {/* CGN's Own Resale — what CGN resold each unit for to their own
-          customers, separate from our own sale to them above. Only shown
-          while viewing the CGN ledger. */}
+      {/* Add a CGN resale entry — CGN's own resale of a unit to their end
+          customer, from CGN's own report. Feeds straight into the merged
+          ledger above. Only relevant while viewing the CGN ledger. */}
       {ledgerView === "cgn" && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="font-bold text-gray-800 mb-1">CGN's Own Resale</p>
+          <p className="font-bold text-gray-800 mb-1">Add CGN Resale Entry</p>
           <p className="text-xs text-gray-400 mb-4">
-            What CGN resold each unit for to their own customers, from CGN's own report — separate from what we
-            sold it to them for above.
+            Record what CGN resold a unit for to their own customer — shows up in the ledger above as "CGN Resale".
           </p>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 bg-gray-50">
-                  <th className="px-3 py-2.5 font-medium rounded-l-lg">Date</th>
-                  <th className="px-3 py-2.5 font-medium">Unit</th>
-                  <th className="px-3 py-2.5 font-medium text-right">Capital</th>
-                  <th className="px-3 py-2.5 font-medium text-right">Resold For</th>
-                  <th className="px-3 py-2.5 font-medium text-right">Profit</th>
-                  <th className="px-3 py-2.5 font-medium">Ref</th>
-                  <th className="px-3 py-2.5 font-medium rounded-r-lg text-right">Remove</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cgnResales.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-6 text-center text-gray-400">
-                      No CGN resale entries recorded yet.
-                    </td>
-                  </tr>
-                ) : cgnResales.map((r) => (
-                  <tr key={r.id} className="border-b border-gray-50 last:border-0">
-                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{r.date}</td>
-                    <td className="px-3 py-3 text-gray-800 font-medium">{r.deviceName}</td>
-                    <td className="px-3 py-3 text-right text-gray-700">{peso(r.capital)}</td>
-                    <td className="px-3 py-3 text-right text-gray-800">{peso(r.disposalPrice)}</td>
-                    <td className={`px-3 py-3 text-right font-medium ${r.profit < 0 ? "text-red-500" : "text-green-600"}`}>
-                      {peso(r.profit)}
-                    </td>
-                    <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{r.supplierNote || "—"}</td>
-                    <td className="px-3 py-3 text-right">
-                      <button
-                        onClick={() => handleRemoveCgnResale(r.id)}
-                        className="text-gray-400 hover:text-red-500 p-1"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-gray-50 font-bold text-gray-800">
-                  <td className="px-3 py-3 rounded-l-lg" colSpan={2}>TOTAL</td>
-                  <td className="px-3 py-3 text-right">{peso(cgnResaleTotals.totalCapital)}</td>
-                  <td className="px-3 py-3 text-right">{peso(cgnResaleTotals.totalDisposal)}</td>
-                  <td className="px-3 py-3 text-right text-green-600">{peso(cgnResaleTotals.totalProfit)}</td>
-                  <td colSpan={2} className="px-3 py-3 rounded-r-lg"></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
 
           {resaleError && (
             <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4">
@@ -788,12 +825,12 @@ function Financial() {
         <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
           <div className="w-full max-w-xs space-y-1">
             <div className="flex justify-between text-sm text-gray-600 px-2 py-1.5">
-              <span>Profit</span>
-              <span className="font-medium tabular-nums">{peso(totals.totalNetProfit)}</span>
+              <span>Store Profit</span>
+              <span className="font-medium tabular-nums">{peso(storeOnlyProfit)}</span>
             </div>
             <div className="flex justify-between text-sm text-teal-600 px-2 py-1.5">
               <span>CGN Profit</span>
-              <span className="font-medium tabular-nums">{peso(cgnTotals.totalNetProfit)}</span>
+              <span className="font-medium tabular-nums">{peso(combinedCgnTotals.totalNetProfit)}</span>
             </div>
             <button
               type="button"
