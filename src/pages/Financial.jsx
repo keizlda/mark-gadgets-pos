@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, Trash2, AlertTriangle, Boxes } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
-import { getSalesHistory } from "../services/salesService";
+import { getSalesHistory, deleteSaleItem } from "../services/salesService";
 import { getAllDevices } from "../services/inventoryService";
 import { getAllExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import { getCgnResales, addCgnResale, deleteCgnResale } from "../services/cgnResalesService";
@@ -79,7 +79,13 @@ const initialRange = getPresetRange("Monthly");
 
 function Financial() {
   const showToast = useToast();
-  const salesHistory = useServiceData(getSalesHistory, []);
+  const [salesHistory, setSalesHistory] = useState([]);
+  const loadSalesHistory = useCallback(() => {
+    getSalesHistory().then(setSalesHistory);
+  }, []);
+  useEffect(() => {
+    loadSalesHistory();
+  }, [loadSalesHistory]);
   const allDevices = useServiceData(getAllDevices, []);
 
   const [reportType, setReportType] = useState("Monthly");
@@ -182,9 +188,10 @@ function Financial() {
   const combinedCgnEntries = useMemo(() => {
     const soldToCgn = cgnRows.map((r) => ({
       key: `sale-${r.saleItemId}`,
+      saleItemId: r.saleItemId,
+      batchCode: r.batchCode,
       date: r.date,
       sortDate: new Date(r.date),
-      batchCode: r.batchCode,
       unit: [r.device, r.storage, r.color].filter(Boolean).join(" · "),
       capital: r.purchasePrice,
       soldFor: r.total,
@@ -256,6 +263,28 @@ function Financial() {
       loadCgnResales();
     } catch (err) {
       showToast(err.message || "Failed to remove resale entry. Please try again.", "error");
+    }
+  };
+
+  // Same "undo the sale" as Sales History's Delete action — lets the admin
+  // remove a Sold to CGN entry without leaving the CGN Ledger to find it.
+  const [removingSaleItemId, setRemovingSaleItemId] = useState(null);
+  const handleRemoveCgnSale = async (row) => {
+    if (
+      !window.confirm(
+        `Delete this sale for ${row.batchCode}? The unit goes back to Available and this is undone everywhere — Sales History, Reports, and Financial.`
+      )
+    ) {
+      return;
+    }
+    setRemovingSaleItemId(row.saleItemId);
+    try {
+      await deleteSaleItem(row.saleItemId);
+      loadSalesHistory();
+    } catch (err) {
+      showToast(err.message || "Failed to delete sale. Please try again.", "error");
+    } finally {
+      setRemovingSaleItemId(null);
     }
   };
 
@@ -556,6 +585,15 @@ function Financial() {
                         <button
                           onClick={() => handleRemoveCgnResale(row.id)}
                           className="text-gray-400 hover:text-red-500 p-1"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                      {row.saleItemId && (
+                        <button
+                          onClick={() => handleRemoveCgnSale(row)}
+                          disabled={removingSaleItemId === row.saleItemId}
+                          className="text-gray-400 hover:text-red-500 p-1 disabled:opacity-60"
                         >
                           <Trash2 size={14} />
                         </button>
