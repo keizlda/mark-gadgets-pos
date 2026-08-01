@@ -99,13 +99,17 @@ function Reports() {
   const [submittingExpense, setSubmittingExpense] = useState(false);
   const [expenseModalCategory, setExpenseModalCategory] = useState(null); // null | "General" | "Cargo"
 
+  // CGN sales are excluded entirely — they belong to Financial's CGN
+  // Ledger and Sales History, not this report (table, summary cards, or
+  // Profit).
   const rows = useMemo(() => {
     const from = generatedRange.from ? new Date(generatedRange.from + "T00:00:00") : null;
     const to = generatedRange.to ? new Date(generatedRange.to + "T00:00:00") : null;
     return salesHistory
       .filter((s) => {
         const saleDate = new Date(s.date);
-        return (!from || saleDate >= from) && (!to || saleDate <= to);
+        const isCgn = s.customer && s.customer.trim().toLowerCase() === "cgn";
+        return !isCgn && (!from || saleDate >= from) && (!to || saleDate <= to);
       })
       .map((s) => ({
         txn: s.batchCode,
@@ -115,7 +119,6 @@ function Reports() {
         items: 1,
         amount: s.total,
         payment: s.payment,
-        customer: s.customer,
       }));
   }, [generatedRange, salesHistory]);
 
@@ -126,17 +129,6 @@ function Reports() {
 
   const displayedRows = viewMode === "cash" ? cashRows : rows;
   const displayedTotals = viewMode === "cash" ? cashTotals : totals;
-
-  // CGN sales still show as line items in the table/totals above like any
-  // other sale, but belong to Financial's CGN Ledger, not this report's
-  // profit — excluded here so they don't get counted twice.
-  const nonCgnSales = useMemo(
-    () =>
-      rows
-        .filter((r) => !(r.customer && r.customer.trim().toLowerCase() === "cgn"))
-        .reduce((sum, r) => sum + r.amount, 0),
-    [rows]
-  );
 
   const filteredExpenses = useMemo(() => {
     const from = generatedRange.from ? new Date(generatedRange.from) : null;
@@ -166,7 +158,7 @@ function Reports() {
     [expensesByCategory]
   );
 
-  const newProfit = nonCgnSales - categoryTotals.General - categoryTotals.Cargo;
+  const newProfit = totals.totalSales - categoryTotals.General - categoryTotals.Cargo;
 
   const handleReportTypeChange = (type) => {
     setReportType(type);
@@ -534,7 +526,7 @@ function Reports() {
               <div className="w-full max-w-xs space-y-1">
                 <div className="flex justify-between text-sm text-gray-600 px-2 py-1.5">
                   <span>Profit</span>
-                  <span className="font-medium tabular-nums">{peso(nonCgnSales)}</span>
+                  <span className="font-medium tabular-nums">{peso(totals.totalSales)}</span>
                 </div>
                 <button
                   type="button"
@@ -570,8 +562,8 @@ function Reports() {
       <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-700 print:hidden">
         <span className="font-medium">Note:</span>
         <span>
-          This report is based on the selected date range. Sales to CGN still show in the table above, but aren't
-          counted in Profit — that belongs to Financial's CGN Ledger.
+          This report is based on the selected date range. Sales to CGN aren't included — those belong to
+          Financial's CGN Ledger and Sales History instead.
         </span>
       </div>
 
