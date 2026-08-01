@@ -710,6 +710,7 @@ as $$
 declare
   v_supplier_id uuid;
   v_previous_status text;
+  v_affected_sale_ids uuid[];
 begin
   select status into v_previous_status from public.devices where id = p_id;
 
@@ -738,14 +739,21 @@ begin
     values (p_id, v_supplier_id, p_issue_description);
   end if;
 
-  -- Sold -> Available means the sale is being undone (taking the unit back
-  -- into sellable stock), not a return — refund the sale so it stops
-  -- counting as revenue instead of silently persisting.
+  -- Sold -> Available means the sale is being undone (taking the unit
+  -- back into sellable stock), not a return — the sale_item for this
+  -- device is deleted outright so it's gone from Sales History/Reports/
+  -- Financial entirely, same as if it were never sold. Scoped to just
+  -- this device's own sale_item(s), so a bulk order's other units are
+  -- untouched.
   if v_previous_status = 'Sold' and p_status = 'Available' then
-    update public.sales
-    set status = 'Refunded'
-    where status = 'Completed'
-      and id in (select sale_id from public.sale_items where device_id = p_id);
+    select array_agg(distinct sale_id) into v_affected_sale_ids
+    from public.sale_items where device_id = p_id;
+
+    delete from public.sale_items where device_id = p_id;
+
+    delete from public.sales
+    where id = any(v_affected_sale_ids)
+      and id not in (select distinct sale_id from public.sale_items);
   end if;
 
   -- Editing a Reserved device to any other status cancels the reservation
@@ -756,6 +764,34 @@ begin
     set status = 'Cancelled'
     where device_id = p_id and status in ('Active', 'Expiring Soon');
   end if;
+end;
+$$;
+
+-- Deletes one unit's sale_item directly (Sales History's Delete action) —
+-- same "undo this sale" operation as the Sold -> Available path above,
+-- just triggered from Sales History instead of Edit Device. Frees the
+-- device back to Available and cleans up the parent sale if this was its
+-- last remaining item.
+create function public.delete_sale_item(p_sale_item_id uuid)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_device_id uuid;
+  v_sale_id uuid;
+begin
+  select device_id, sale_id into v_device_id, v_sale_id
+  from public.sale_items where id = p_sale_item_id;
+
+  delete from public.sale_items where id = p_sale_item_id;
+
+  update public.devices set status = 'Available' where id = v_device_id and status = 'Sold';
+
+  delete from public.sales
+  where id = v_sale_id
+    and id not in (select distinct sale_id from public.sale_items);
 end;
 $$;
 

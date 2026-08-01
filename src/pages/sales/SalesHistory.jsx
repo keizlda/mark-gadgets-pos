@@ -11,7 +11,8 @@ import {
   PackageCheck,
 } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
-import { getSalesHistory, updateSalePaymentStatus } from "../../services/salesService";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
+import { getSalesHistory, updateSalePaymentStatus, deleteSaleItem } from "../../services/salesService";
 import { getPaymentMethods } from "../../services/referenceService";
 import { getDeviceById } from "../../services/inventoryService";
 import InitiateReturnModal from "../../components/sales/InitiateReturnModal";
@@ -19,9 +20,9 @@ import DeviceDetailsModal from "../../components/inventory/DeviceDetailsModal";
 import DateRangePicker from "../../components/common/DateRangePicker";
 import { useToast } from "../../hooks/useToast";
 
-// Refunded sales never reach this page at all — getSalesHistory() excludes
-// them entirely (a Sold unit edited back to Available is treated as if it
-// had never been sold), so only these two states are ever seen here.
+// An undone sale (a Sold unit edited back to Available, or deleted
+// straight from this page) is removed outright, not "Refunded" — so only
+// these two states are ever seen here.
 const statusStyles = {
   Completed: "bg-green-100 text-green-600",
   Returned: "bg-purple-100 text-purple-600",
@@ -42,6 +43,7 @@ const paymentStatusStyles = {
 
 function SalesHistory() {
   const showToast = useToast();
+  const isAdmin = useIsAdmin();
   const [salesHistory, setSalesHistory] = useState([]);
   const loadSalesHistory = useCallback(() => {
     getSalesHistory().then(setSalesHistory);
@@ -64,6 +66,7 @@ function SalesHistory() {
   const [returnStarted, setReturnStarted] = useState(false);
   const [unitInfoDevice, setUnitInfoDevice] = useState(null);
   const [markingPaidId, setMarkingPaidId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const handleMarkAsPaid = async (row) => {
     setOpenMenu(null);
@@ -75,6 +78,22 @@ function SalesHistory() {
       showToast(err.message || "Failed to update payment status. Please try again.", "error");
     } finally {
       setMarkingPaidId(null);
+    }
+  };
+
+  const handleDeleteSale = async (row) => {
+    setOpenMenu(null);
+    if (!window.confirm(`Delete this sale for ${row.batchCode}? The unit goes back to Available and this is undone everywhere — Sales History, Reports, and Financial.`)) {
+      return;
+    }
+    setDeletingId(row.saleItemId);
+    try {
+      await deleteSaleItem(row.saleItemId);
+      loadSalesHistory();
+    } catch (err) {
+      showToast(err.message || "Failed to delete sale. Please try again.", "error");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -109,9 +128,9 @@ function SalesHistory() {
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   // "Returned" still counts toward revenue — no cash refunds happen, the
-  // customer just walked out with a different (replacement) unit. Refunded
-  // sales are already excluded entirely by getSalesHistory(), so every row
-  // here is real revenue.
+  // customer just walked out with a different (replacement) unit. Deleted/
+  // undone sales aren't in salesHistory at all, so every row here is real
+  // revenue.
   const totalSales = salesHistory.reduce((sum, s) => sum + s.total, 0);
   const avgSale = salesHistory.length ? Math.round(totalSales / salesHistory.length) : 0;
 
@@ -335,6 +354,15 @@ function SalesHistory() {
                               className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-50"
                             >
                               Return
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDeleteSale(row)}
+                              disabled={deletingId === row.saleItemId}
+                              className="block w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-gray-50 disabled:opacity-60 border-t border-gray-100"
+                            >
+                              {deletingId === row.saleItemId ? "Deleting..." : "Delete"}
                             </button>
                           )}
                         </div>

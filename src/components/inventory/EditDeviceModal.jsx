@@ -46,8 +46,9 @@ function EditDeviceModal({ device, onClose, onSaved }) {
   // actually creates a record on the Supplier Defective page — not just a
   // devices.status flip that goes nowhere.
   const isNewlyDefective = form.status === "Supplier Defective" && device.status !== "Supplier Defective";
-  // Sold -> Available is treated as undoing the sale (update_device refunds
-  // it) rather than a return, so the admin should know before confirming.
+  // Sold -> Available is treated as undoing the sale (update_device deletes
+  // its sale record) rather than a return, so the admin should know before
+  // confirming.
   const isUndoingSale = device.status === "Sold" && form.status === "Available";
 
   const handleConfirm = async () => {
@@ -186,7 +187,7 @@ function EditDeviceModal({ device, onClose, onSaved }) {
               </select>
               {isUndoingSale && (
                 <p className="text-xs text-amber-600 mt-1">
-                  This undoes the sale — its sale record will be marked Refunded and stop counting as revenue.
+                  This undoes the sale — it's removed from Sales History, Reports, and Financial entirely, as if it had never been sold.
                 </p>
               )}
             </div>
