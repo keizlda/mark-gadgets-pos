@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle, Wallet, CreditCard, Smartphone, Landmark, FileCheck, CalendarClock, Building2, Tablet, Laptop, Watch, Headphones, Wrench, PackagePlus, Repeat } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { processSale } from "../../services/salesService";
-import { getAvailableDevicesForSale } from "../../services/inventoryService";
+import { getAvailableDevicesForSale, deleteDevice } from "../../services/inventoryService";
 import { getPosCategories } from "../../services/referenceService";
 import { useToast } from "../../hooks/useToast";
 import QuickAddDeviceModal from "../../components/sales/QuickAddDeviceModal";
@@ -133,6 +133,23 @@ function NewSale() {
     }
   };
 
+  // Re-logging means the details entered were wrong, not that there's a
+  // second phone — deletes the mistaken entry first so it doesn't sit in
+  // inventory as an orphaned duplicate once the corrected one is saved.
+  const handleChangeSwapTradeIn = async () => {
+    if (swapTradeIn) {
+      try {
+        await deleteDevice(swapTradeIn.id);
+        loadAvailableDevices();
+      } catch {
+        // Leave it if it can't be removed — better an extra unit in
+        // inventory than losing the chance to log the correct one.
+      }
+    }
+    setSwapTradeIn(null);
+    setShowSwapModal(true);
+  };
+
   const clearCart = () => setCart([]);
 
   const installmentEligible = cart.length > 0 && cart.every((c) => !NON_INSTALLMENT_CATEGORIES.includes(c.category));
@@ -168,16 +185,36 @@ function NewSale() {
 
   const handlePaymentChange = (method) => {
     setPayment(method);
-    if (method === "Cash") setReferenceNumber("N/A");
-    if (method === "Swap" && !swapTradeIn) setShowSwapModal(true);
-    // Skyro asks for Down Payment/Balance instead of a Reference Number —
-    // clear either set of fields when switching away from its own method
-    // so stale values from a different payment method can't leak through.
-    if (method === "Skyro") {
-      setReferenceNumber("N/A");
-    } else {
+
+    if (method === "Swap") {
       setDownPayment("");
       setBalance("");
+      // Switching back to Swap after picking something else in between
+      // needs to restore the reference to the trade-in already logged —
+      // otherwise it's stuck showing whatever the other method left there.
+      if (swapTradeIn) {
+        setReferenceNumber(`Trade-in: ${swapTradeIn.batchCode}`);
+      } else {
+        setShowSwapModal(true);
+      }
+      return;
+    }
+
+    if (method === "Skyro") {
+      setReferenceNumber("N/A");
+      return;
+    }
+
+    // Skyro asks for Down Payment/Balance instead of a Reference Number —
+    // clear both when switching to any other method so stale values can't
+    // leak through. Reference Number itself only resets for Cash (which
+    // never needs one) or if it's still holding a trade-in's batch code
+    // from Swap — every other method keeps whatever was already typed,
+    // same as before Swap/Skyro existed.
+    setDownPayment("");
+    setBalance("");
+    if (method === "Cash" || referenceNumber.startsWith("Trade-in:")) {
+      setReferenceNumber("N/A");
     }
   };
 
@@ -543,7 +580,7 @@ function NewSale() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setShowSwapModal(true)}
+                    onClick={handleChangeSwapTradeIn}
                     className="text-xs text-blue-600 hover:underline flex-shrink-0"
                   >
                     Log different unit

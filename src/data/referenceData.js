@@ -32,7 +32,16 @@ export const posCategories = [
   "Repair Parts",
 ];
 
-export const paymentMethods = ["Cash", "GCash", "Credit Card", "Bank Transfer", "Check", "Swap"];
+export const paymentMethods = [
+  "Cash",
+  "GCash",
+  "Credit Card",
+  "Bank Transfer",
+  "Check",
+  "Skyro",
+  "Home Credit",
+  "Swap",
+];
 
 export const returnReasons = [
   "Defective Unit",

@@ -609,7 +609,7 @@ function Financial() {
           customer, from CGN's own report. Feeds straight into the merged
           ledger above. Only relevant while viewing the CGN ledger. */}
       {ledgerView === "cgn" && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="bg-white rounded-xl border border-gray-200 p-5 print:hidden">
           <p className="font-bold text-gray-800 mb-1">Add CGN Resale Entry</p>
           <p className="text-xs text-gray-400 mb-4">
             Record what CGN resold a unit for to their own customer — shows up in the ledger above as "CGN Resale".
