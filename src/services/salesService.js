@@ -35,6 +35,12 @@ export async function getSalesHistory() {
 
   return data
     .slice()
+    // A Refunded sale (a Sold unit edited back to Available — see
+    // update_device) is treated as undone, not just excluded from totals —
+    // it disappears from Sales History/Reports/Financial entirely, exactly
+    // as if it had never been sold, since every one of them is built on
+    // this one function.
+    .filter((item) => item.sales?.status !== "Refunded")
     .sort((a, b) => new Date(b.sales?.sold_at) - new Date(a.sales?.sold_at))
     .map((item) => {
       const total = item.price_at_sale * item.quantity;

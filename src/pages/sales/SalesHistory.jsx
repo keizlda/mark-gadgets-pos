@@ -19,10 +19,12 @@ import DeviceDetailsModal from "../../components/inventory/DeviceDetailsModal";
 import DateRangePicker from "../../components/common/DateRangePicker";
 import { useToast } from "../../hooks/useToast";
 
+// Refunded sales never reach this page at all — getSalesHistory() excludes
+// them entirely (a Sold unit edited back to Available is treated as if it
+// had never been sold), so only these two states are ever seen here.
 const statusStyles = {
   Completed: "bg-green-100 text-green-600",
   Returned: "bg-purple-100 text-purple-600",
-  Refunded: "bg-red-100 text-red-600",
 };
 
 const paymentStyles = {
@@ -107,10 +109,11 @@ function SalesHistory() {
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   // "Returned" still counts toward revenue — no cash refunds happen, the
-  // customer just walked out with a different (replacement) unit.
-  const completed = salesHistory.filter((s) => s.status !== "Refunded");
-  const totalSales = completed.reduce((sum, s) => sum + s.total, 0);
-  const avgSale = completed.length ? Math.round(totalSales / completed.length) : 0;
+  // customer just walked out with a different (replacement) unit. Refunded
+  // sales are already excluded entirely by getSalesHistory(), so every row
+  // here is real revenue.
+  const totalSales = salesHistory.reduce((sum, s) => sum + s.total, 0);
+  const avgSale = salesHistory.length ? Math.round(totalSales / salesHistory.length) : 0;
 
   const handleApply = () => {
     setAppliedSearch(search);
@@ -205,7 +208,7 @@ function SalesHistory() {
           <div>
             <p className="text-xs text-gray-400">Total Sales</p>
             <p className="text-xl font-bold text-gray-800 leading-tight">₱{totalSales.toLocaleString()}</p>
-            <p className="text-xs text-gray-400">{completed.length} Transactions</p>
+            <p className="text-xs text-gray-400">{salesHistory.length} Transactions</p>
           </div>
         </div>
 
@@ -215,7 +218,7 @@ function SalesHistory() {
           </div>
           <div>
             <p className="text-xs text-gray-400">Completed Orders</p>
-            <p className="text-xl font-bold text-gray-800 leading-tight">{completed.length}</p>
+            <p className="text-xl font-bold text-gray-800 leading-tight">{salesHistory.length}</p>
             <p className="text-xs text-gray-400">Orders</p>
           </div>
         </div>

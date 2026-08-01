@@ -112,10 +112,9 @@ function Financial() {
   const rows = useMemo(() => {
     const from = generatedRange.from ? new Date(generatedRange.from + "T00:00:00") : null;
     const to = generatedRange.to ? new Date(generatedRange.to + "T00:00:00") : null;
-    // Refunded sales (a Sold unit edited back to Available — treated as
-    // undoing the sale) no longer count toward capital/disposal/profit.
+    // getSalesHistory() already excludes Refunded sales entirely (a Sold
+    // unit edited back to Available) — nothing further to filter here.
     return salesHistory.filter((s) => {
-      if (s.status === "Refunded") return false;
       const saleDate = new Date(s.date);
       return (!from || saleDate >= from) && (!to || saleDate <= to);
     });
