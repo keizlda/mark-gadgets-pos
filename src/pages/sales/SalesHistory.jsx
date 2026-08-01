@@ -66,6 +66,7 @@ function SalesHistory() {
   const [returnRecord, setReturnRecord] = useState(null);
   const [returnStarted, setReturnStarted] = useState(false);
   const [unitInfoDevice, setUnitInfoDevice] = useState(null);
+  const [unitInfoSale, setUnitInfoSale] = useState(null);
   const [markingPaidId, setMarkingPaidId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [editingRow, setEditingRow] = useState(null);
@@ -104,6 +105,7 @@ function SalesHistory() {
     try {
       const device = await getDeviceById(row.deviceId);
       setUnitInfoDevice(device);
+      setUnitInfoSale({ paymentMethod: row.payment, downPayment: row.downPayment, balance: row.balance });
     } catch (err) {
       showToast(err.message || "Failed to load unit info. Please try again.", "error");
     }
@@ -453,7 +455,16 @@ function SalesHistory() {
       )}
 
       {unitInfoDevice && (
-        <DeviceDetailsModal device={unitInfoDevice} onClose={() => setUnitInfoDevice(null)} />
+        <DeviceDetailsModal
+          device={unitInfoDevice}
+          paymentMethod={unitInfoSale?.paymentMethod}
+          downPayment={unitInfoSale?.downPayment}
+          balance={unitInfoSale?.balance}
+          onClose={() => {
+            setUnitInfoDevice(null);
+            setUnitInfoSale(null);
+          }}
+        />
       )}
 
       {editingRow && (

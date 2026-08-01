@@ -21,7 +21,12 @@ function Row({ label, children }) {
   );
 }
 
-function DeviceDetailsModal({ device, onClose }) {
+// paymentMethod/downPayment/balance are optional — only passed when this is
+// opened from Sales History's "Unit Info" for a sold unit, so a Skyro
+// sale's financing detail can show up here too. Other call sites (Dashboard
+// search, All Devices, Financial's unsold units) view devices with no sale
+// context, so those rows just don't render.
+function DeviceDetailsModal({ device, paymentMethod, downPayment, balance, onClose }) {
   const [saleDate, setSaleDate] = useState(undefined); // undefined = loading, null = never sold
 
   useEffect(() => {
@@ -62,6 +67,13 @@ function DeviceDetailsModal({ device, onClose }) {
           <Row label="Date Sold">
             {saleDate === undefined ? "Loading..." : saleDate ? `${formatDate(saleDate)} ${formatTime(saleDate)}` : "—"}
           </Row>
+          {paymentMethod && <Row label="Payment Method">{paymentMethod}</Row>}
+          {paymentMethod === "Skyro" && (
+            <>
+              <Row label="Down Payment">{downPayment != null ? `₱${Number(downPayment).toLocaleString()}` : "—"}</Row>
+              <Row label="Balance">{balance != null ? `₱${Number(balance).toLocaleString()}` : "—"}</Row>
+            </>
+          )}
           <Row label="Date Added">
             {device.dateAdded} <span className="text-gray-400">{device.time}</span>
           </Row>
