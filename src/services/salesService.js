@@ -14,6 +14,8 @@ export async function getSalesHistory() {
       status,
       order_type,
       payment_status,
+      down_payment,
+      balance,
       sold_at,
       profiles:salesperson_id ( name )
     ),
@@ -68,6 +70,10 @@ export async function getSalesHistory() {
         // simply because they all join in the same parent sales record.
         orderType: item.sales?.order_type,
         paymentStatus: item.sales?.payment_status,
+        // Skyro-only — the financing detail recorded in place of a
+        // reference number, since a financed sale doesn't have one.
+        downPayment: item.sales?.down_payment ?? null,
+        balance: item.sales?.balance ?? null,
         // The device's own status wins when it's since been returned — the
         // sale itself is still "Completed" (no refund happened), but this
         // row represents that specific unit, which is no longer with the
@@ -103,7 +109,15 @@ export async function updateSalePaymentStatus(saleId, paymentStatus) {
 // serialized device, so quantity per line item is always 1. Runs as a single
 // atomic RPC (see process_sale in schema.sql) so a dropped connection can't
 // leave a sale recorded with its devices still "Available".
-export async function processSale({ customerName, paymentMethod, referenceNumber, notes, cartItems }) {
+export async function processSale({
+  customerName,
+  paymentMethod,
+  referenceNumber,
+  notes,
+  cartItems,
+  downPayment,
+  balance,
+}) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -118,6 +132,8 @@ export async function processSale({ customerName, paymentMethod, referenceNumber
     p_notes: notes || null,
     p_total_amount: total,
     p_cart_items: cartItems.map((item) => ({ device_id: item.id, price: item.price })),
+    p_down_payment: downPayment ?? null,
+    p_balance: balance ?? null,
   });
   if (error) throw error;
 }

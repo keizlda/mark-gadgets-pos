@@ -66,6 +66,8 @@ function NewSale() {
   const [cart, setCart] = useState([]);
   const [payment, setPayment] = useState("Cash");
   const [referenceNumber, setReferenceNumber] = useState("N/A");
+  const [downPayment, setDownPayment] = useState("");
+  const [balance, setBalance] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -147,6 +149,8 @@ function NewSale() {
     if (installmentOptions.some((opt) => opt.id === payment) && !installmentEligible) {
       setPayment("Cash");
       setReferenceNumber("N/A");
+      setDownPayment("");
+      setBalance("");
     }
   }, [cart.length, payment, installmentEligible]);
 
@@ -166,6 +170,15 @@ function NewSale() {
     setPayment(method);
     if (method === "Cash") setReferenceNumber("N/A");
     if (method === "Swap" && !swapTradeIn) setShowSwapModal(true);
+    // Skyro asks for Down Payment/Balance instead of a Reference Number —
+    // clear either set of fields when switching away from its own method
+    // so stale values from a different payment method can't leak through.
+    if (method === "Skyro") {
+      setReferenceNumber("N/A");
+    } else {
+      setDownPayment("");
+      setBalance("");
+    }
   };
 
   const handleProcessSale = async () => {
@@ -187,11 +200,15 @@ function NewSale() {
         referenceNumber,
         notes,
         cartItems: cart.map((c) => ({ ...c, price: Number(c.actualPrice) || 0 })),
+        downPayment: payment === "Skyro" && downPayment !== "" ? Number(downPayment) : null,
+        balance: payment === "Skyro" && balance !== "" ? Number(balance) : null,
       });
 
       showToast("Sale processed.");
       clearCart();
       setReferenceNumber("N/A");
+      setDownPayment("");
+      setBalance("");
       setNotes("");
       setCustomerSearch("");
       setSwapTradeIn(null);
@@ -563,18 +580,51 @@ function NewSale() {
           </div>
         )}
 
-        {/* Reference Number — only needed for non-cash payments */}
-        {payment !== "Cash" && (
-          <div className="mt-4">
-            <p className="text-xs font-medium text-gray-600 mb-1.5">Reference Number</p>
-            <input
-              type="text"
-              value={referenceNumber}
-              onChange={(e) => setReferenceNumber(e.target.value)}
-              placeholder="Enter reference number..."
-              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+        {/* Skyro records a down payment/balance instead of a reference
+            number — a financed sale doesn't have one the way a bank
+            transfer or GCash payment does. */}
+        {payment === "Skyro" ? (
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Down Payment</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
+                <input
+                  type="number"
+                  value={downPayment}
+                  onChange={(e) => setDownPayment(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Balance</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
+                <input
+                  type="number"
+                  value={balance}
+                  onChange={(e) => setBalance(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
           </div>
+        ) : (
+          payment !== "Cash" && (
+            <div className="mt-4">
+              <p className="text-xs font-medium text-gray-600 mb-1.5">Reference Number</p>
+              <input
+                type="text"
+                value={referenceNumber}
+                onChange={(e) => setReferenceNumber(e.target.value)}
+                placeholder="Enter reference number..."
+                className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )
         )}
 
         {/* Notes */}

@@ -110,7 +110,12 @@ create table public.sales (
   order_type text not null default 'Regular' check (order_type in ('Regular', 'Bulk')),
   payment_status text not null default 'Paid' check (payment_status in ('Paid', 'Pending')),
   sold_at timestamptz not null default now(),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Financing detail for Skyro sales — replaces the reference number for
+  -- that payment method, since a financed sale doesn't have one the way a
+  -- bank transfer or GCash payment does.
+  down_payment numeric(12, 2) check (down_payment is null or down_payment >= 0),
+  balance numeric(12, 2) check (balance is null or balance >= 0)
 );
 
 create table public.sale_items (
@@ -338,7 +343,9 @@ create function public.process_sale(
   p_reference_number text,
   p_notes text,
   p_total_amount numeric,
-  p_cart_items jsonb -- [{"device_id": "...", "price": 123.45}, ...]
+  p_cart_items jsonb, -- [{"device_id": "...", "price": 123.45}, ...]
+  p_down_payment numeric default null,
+  p_balance numeric default null
 )
 returns uuid
 language plpgsql
@@ -357,8 +364,14 @@ begin
   v_order_type := case when v_item_count > 3 then 'Bulk' else 'Regular' end;
   v_payment_status := case when v_item_count > 3 then 'Pending' else 'Paid' end;
 
-  insert into public.sales (customer_name, salesperson_id, payment_method, reference_number, notes, total_amount, status, order_type, payment_status)
-  values (p_customer_name, p_salesperson_id, p_payment_method, p_reference_number, p_notes, p_total_amount, 'Completed', v_order_type, v_payment_status)
+  insert into public.sales (
+    customer_name, salesperson_id, payment_method, reference_number, notes,
+    total_amount, status, order_type, payment_status, down_payment, balance
+  )
+  values (
+    p_customer_name, p_salesperson_id, p_payment_method, p_reference_number, p_notes,
+    p_total_amount, 'Completed', v_order_type, v_payment_status, p_down_payment, p_balance
+  )
   returning id into v_sale_id;
 
   for v_item in select * from jsonb_array_elements(p_cart_items)
