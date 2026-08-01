@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle, Wallet, CreditCard, Smartphone, Landmark, FileCheck, CalendarClock, Building2, Tablet, Laptop, Watch, Headphones, Wrench, PackagePlus } from "lucide-react";
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle, Wallet, CreditCard, Smartphone, Landmark, FileCheck, CalendarClock, Building2, Tablet, Laptop, Watch, Headphones, Wrench, PackagePlus, Repeat } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { processSale } from "../../services/salesService";
 import { getAvailableDevicesForSale } from "../../services/inventoryService";
 import { getPosCategories } from "../../services/referenceService";
+import { addExpense } from "../../services/expensesService";
 import { useToast } from "../../hooks/useToast";
+import { todayLocalDateString } from "../../utils/datetime";
 import QuickAddDeviceModal from "../../components/sales/QuickAddDeviceModal";
+import SwapTradeInModal from "../../components/sales/SwapTradeInModal";
 
 const BULK_THRESHOLD = 3;
 
@@ -16,6 +19,7 @@ const paymentOptions = [
   { id: "Credit Card", label: "Card", icon: CreditCard },
   { id: "GCash", label: "GCash", icon: Smartphone },
   { id: "Bank Transfer", label: "Bank Transfer", icon: Landmark },
+  { id: "Swap", label: "Swap", icon: Repeat },
 ];
 
 const installmentOptions = [
@@ -68,6 +72,8 @@ function NewSale() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [swapTradeIn, setSwapTradeIn] = useState(null);
 
   const cartIds = useMemo(() => new Set(cart.map((c) => c.id)), [cart]);
 
@@ -108,6 +114,25 @@ function NewSale() {
     showToast("Device saved and added to cart.");
   };
 
+  // The customer's phone goes straight into inventory the moment it's
+  // logged (see SwapTradeInModal) — this just remembers it here so its
+  // appraised value can be weighed against the cart total.
+  const handleSwapTradeInCreated = (tradeIn) => {
+    setShowSwapModal(false);
+    setSwapTradeIn(tradeIn);
+    setReferenceNumber(`Trade-in: ${tradeIn.batchCode}`);
+    loadAvailableDevices();
+    showToast("Trade-in unit saved to inventory.");
+  };
+
+  const handleRemoveSwapTradeIn = () => {
+    setSwapTradeIn(null);
+    if (payment === "Swap") {
+      setPayment("Cash");
+      setReferenceNumber("N/A");
+    }
+  };
+
   const clearCart = () => setCart([]);
 
   const installmentEligible = cart.length > 0 && cart.every((c) => !NON_INSTALLMENT_CATEGORIES.includes(c.category));
@@ -131,9 +156,17 @@ function NewSale() {
   const total = cart.reduce((sum, c) => sum + (Number(c.actualPrice) || 0), 0);
   const profit = total - totalCapital;
 
+  // Positive: the store's unit(s) are worth more, customer tops up cash
+  // (already just part of the sale total above, nothing extra to record).
+  // Negative: the trade-in is worth more, so the store hands back cash —
+  // that's real money leaving the register the sale itself won't capture,
+  // so it becomes an Expense once the sale processes.
+  const swapCashDifference = payment === "Swap" && swapTradeIn ? total - swapTradeIn.appraisedValue : 0;
+
   const handlePaymentChange = (method) => {
     setPayment(method);
     if (method === "Cash") setReferenceNumber("N/A");
+    if (method === "Swap" && !swapTradeIn) setShowSwapModal(true);
   };
 
   const handleProcessSale = async () => {
@@ -141,6 +174,10 @@ function NewSale() {
     setError("");
     if (cart.some((c) => !(Number(c.actualPrice) > 0))) {
       setError("Every unit needs an Actual Price Sold greater than ₱0 before processing the sale.");
+      return;
+    }
+    if (payment === "Swap" && !swapTradeIn) {
+      setError("Log the customer's trade-in phone before processing a swap sale.");
       return;
     }
     setSubmitting(true);
@@ -152,11 +189,25 @@ function NewSale() {
         notes,
         cartItems: cart.map((c) => ({ ...c, price: Number(c.actualPrice) || 0 })),
       });
+
+      if (payment === "Swap" && swapCashDifference < 0) {
+        await addExpense({
+          date: todayLocalDateString(),
+          description: `Cash paid out on swap trade-in (${swapTradeIn.batchCode}) for ${cart
+            .map((c) => c.batchCode)
+            .join(", ")}`,
+          amount: Math.abs(swapCashDifference),
+          adminOnly: false,
+          category: "General",
+        });
+      }
+
       showToast("Sale processed.");
       clearCart();
       setReferenceNumber("N/A");
       setNotes("");
       setCustomerSearch("");
+      setSwapTradeIn(null);
       loadAvailableDevices();
     } catch (err) {
       setError(err.message || "Failed to process sale. Please try again.");
@@ -470,6 +521,62 @@ function NewSale() {
           )}
         </div>
 
+        {/* Swap trade-in summary — shows what was logged and whether cash
+            changes hands, in which direction. */}
+        {payment === "Swap" && (
+          <div className="mt-4 bg-blue-50 border border-blue-100 rounded-lg p-3">
+            {swapTradeIn ? (
+              <>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">
+                      {swapTradeIn.deviceName} <span className="text-gray-400">· {swapTradeIn.batchCode}</span>
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {[swapTradeIn.storage, swapTradeIn.color].filter(Boolean).join(" · ")} — Appraised at ₱
+                      {swapTradeIn.appraisedValue.toLocaleString()}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSwapModal(true)}
+                    className="text-xs text-blue-600 hover:underline flex-shrink-0"
+                  >
+                    Log different unit
+                  </button>
+                </div>
+                <div className="mt-2 pt-2 border-t border-blue-100 text-sm font-medium">
+                  {swapCashDifference > 0 && (
+                    <p className="text-gray-700">Customer pays ₱{swapCashDifference.toLocaleString()} in cash.</p>
+                  )}
+                  {swapCashDifference < 0 && (
+                    <p className="text-orange-600">
+                      Store pays ₱{Math.abs(swapCashDifference).toLocaleString()} cash back — logged as an expense
+                      once processed.
+                    </p>
+                  )}
+                  {swapCashDifference === 0 && <p className="text-green-600">Even swap — no cash changes hands.</p>}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveSwapTradeIn}
+                  className="text-xs text-red-500 hover:underline mt-2"
+                >
+                  Remove
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowSwapModal(true)}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Log the customer's trade-in phone
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Reference Number — only needed for non-cash payments */}
         {payment !== "Cash" && (
           <div className="mt-4">
@@ -505,7 +612,7 @@ function NewSale() {
 
         <button
           onClick={handleProcessSale}
-          disabled={cart.length === 0 || submitting}
+          disabled={cart.length === 0 || submitting || (payment === "Swap" && !swapTradeIn)}
           className="w-full mt-4 flex items-center justify-center gap-2 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <ShoppingCart size={15} />
@@ -515,6 +622,10 @@ function NewSale() {
 
       {showQuickAdd && (
         <QuickAddDeviceModal onClose={() => setShowQuickAdd(false)} onCreated={handleQuickAdded} />
+      )}
+
+      {showSwapModal && (
+        <SwapTradeInModal onClose={() => setShowSwapModal(false)} onCreated={handleSwapTradeInCreated} />
       )}
     </div>
   );

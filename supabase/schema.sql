@@ -97,7 +97,7 @@ create table public.sales (
   customer_name text,
   customer_phone text,
   salesperson_id uuid references public.profiles (id),
-  payment_method text not null check (payment_method in ('Cash', 'GCash', 'Credit Card', 'Bank Transfer', 'Check', 'Skyro', 'Home Credit')),
+  payment_method text not null check (payment_method in ('Cash', 'GCash', 'Credit Card', 'Bank Transfer', 'Check', 'Skyro', 'Home Credit', 'Swap')),
   reference_number text,
   notes text,
   total_amount numeric(12, 2) not null check (total_amount >= 0),
