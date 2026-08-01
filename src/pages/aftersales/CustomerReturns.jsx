@@ -62,8 +62,8 @@ function CustomerReturns() {
     if (to && returnDate > to) return false;
     if (
       appliedSearch &&
-      !r.batchCode.toLowerCase().includes(appliedSearch.toLowerCase()) &&
-      !r.customer.toLowerCase().includes(appliedSearch.toLowerCase())
+      !(r.batchCode || "").toLowerCase().includes(appliedSearch.toLowerCase()) &&
+      !(r.customer || "").toLowerCase().includes(appliedSearch.toLowerCase())
     )
       return false;
     return true;

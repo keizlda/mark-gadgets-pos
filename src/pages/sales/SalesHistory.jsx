@@ -116,8 +116,8 @@ function SalesHistory() {
     if (paymentStatus !== "All" && s.paymentStatus !== paymentStatus) return false;
     if (
       appliedSearch &&
-      !s.batchCode.toLowerCase().includes(appliedSearch.toLowerCase()) &&
-      !s.customer.toLowerCase().includes(appliedSearch.toLowerCase())
+      !(s.batchCode || "").toLowerCase().includes(appliedSearch.toLowerCase()) &&
+      !(s.customer || "").toLowerCase().includes(appliedSearch.toLowerCase())
     )
       return false;
     if (dateRange?.from || dateRange?.to) {
