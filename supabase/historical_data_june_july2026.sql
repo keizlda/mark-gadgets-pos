@@ -1044,8 +1044,8 @@ insert into public.expenses (expense_date, description, amount, category) values
   ('2026-07-08', 'rider', 500.0::numeric, 'Cargo'),
   ('2026-07-19', 'lhord', 1600.0::numeric, 'Cargo'),
   ('2026-07-19', 'rider', 500.0::numeric, 'Cargo'),
-  ('2023-07-22', 'lhord', 2800.0::numeric, 'Cargo'),
-  ('2023-07-22', 'rider', 500.0::numeric, 'Cargo');
+  ('2026-07-22', 'lhord', 2800.0::numeric, 'Cargo'),
+  ('2026-07-22', 'rider', 500.0::numeric, 'Cargo');
 
 -- ============================================================
 -- CGN's own resale to their customers (33 entries)
