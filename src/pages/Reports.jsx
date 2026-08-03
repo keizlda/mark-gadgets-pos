@@ -166,6 +166,7 @@ function Reports() {
     if (preset) {
       setDateFrom(preset.from);
       setDateTo(preset.to);
+      setGeneratedRange(preset);
     }
   };
 
