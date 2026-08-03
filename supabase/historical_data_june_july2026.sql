@@ -246,8 +246,8 @@ begin
     (42500.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('Mona', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-07-18'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('Mona', 'Cash', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-07-18'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
@@ -336,8 +336,8 @@ begin
     (18000.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('ND', 'Bulk order — ₱150,000 paid via BPI, ₱30,000 balance still owed per ledger.', v_total, 'Completed', 'Bulk', 'Pending', '2026-07-18'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('ND', 'Cash', 'Bulk order — ₱150,000 paid via BPI, ₱30,000 balance still owed per ledger.', v_total, 'Completed', 'Bulk', 'Pending', '2026-07-18'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
@@ -391,8 +391,8 @@ begin
     (10000.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('CGN', null, v_total, 'Completed', 'Bulk', 'Pending', '2026-06-01'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', null, v_total, 'Completed', 'Bulk', 'Pending', '2026-06-01'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
@@ -441,8 +441,8 @@ begin
     (14000.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('CGN', null, v_total, 'Completed', 'Bulk', 'Pending', '2026-06-01'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', null, v_total, 'Completed', 'Bulk', 'Pending', '2026-06-01'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
@@ -484,8 +484,8 @@ begin
     (19000.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('CGN', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-01'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-01'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
@@ -524,8 +524,8 @@ begin
     (22800.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('CGN', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-08'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-08'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
@@ -564,8 +564,8 @@ begin
     (18000.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('CGN', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-08'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-08'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
@@ -612,8 +612,8 @@ begin
     (12200.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('CGN', null, v_total, 'Completed', 'Bulk', 'Pending', '2026-06-10'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', null, v_total, 'Completed', 'Bulk', 'Pending', '2026-06-10'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
@@ -660,8 +660,8 @@ begin
     (32500.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('CGN', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-11'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-11'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
@@ -701,8 +701,8 @@ begin
     (19000.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('CGN', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-19'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-19'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
@@ -740,8 +740,8 @@ begin
     (22800.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('CGN', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-19'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-19'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
@@ -778,8 +778,8 @@ begin
     (18000.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('CGN', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-23'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-23'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
@@ -818,8 +818,8 @@ begin
     (12200.0::numeric)
   ) as t(disposal);
 
-  insert into public.sales (customer_name, notes, total_amount, status, order_type, payment_status, sold_at)
-  values ('CGN', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-24'::timestamptz)
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', null, v_total, 'Completed', 'Bulk', 'Paid', '2026-06-24'::timestamptz)
   returning id into v_sale_id;
 
   for rec in select * from (values
