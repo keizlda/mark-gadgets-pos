@@ -155,9 +155,9 @@ begin
     ('062226-038', 'iPhone 13', '128GB', 'White', 'iPhones', 16500.0::numeric, 22500.0::numeric, 'Pre-owned', 'Sohayma', null, '2026-06-22'::timestamptz, '2026-07-22'::timestamptz),
     ('022526-001', 'iPad 10th Gen', '64GB', 'Silver', 'iPads', 14000.0::numeric, 16000.0::numeric, 'Pre-owned', 'Lilah', null, '2026-02-25'::timestamptz, '2026-07-23'::timestamptz),
     ('062226-039', 'iPhone 13', '256GB', 'Pink', 'iPhones', 17500.0::numeric, 20500.0::numeric, 'Pre-owned', 'Sohayma', null, '2026-06-22'::timestamptz, '2026-07-23'::timestamptz),
-    ('070926-002', 'iPhone 16 Pro Max', '256GB', 'Dessert', 'iPhones', 50000.0::numeric, 59500.0::numeric, 'Pre-owned', 'Tina', null, '2026-07-09'::timestamptz, '2026-07-24'::timestamptz),
+    ('070926-002', 'iPhone 16 Pro Max', '256GB', 'Gold', 'iPhones', 50000.0::numeric, 59500.0::numeric, 'Pre-owned', 'Walk-in', null, '2026-07-09'::timestamptz, '2026-07-24'::timestamptz),
     ('062226-040', 'iPhone 11', '128GB', 'White', 'iPhones', 11000.0::numeric, 12500.0::numeric, 'Pre-owned', 'Sohayma', null, '2026-06-22'::timestamptz, '2026-07-24'::timestamptz),
-    ('062726-002', 'iPhone 14PM', '128GB', 'Black', 'iPhones', 30000.0::numeric, 36500.0::numeric, 'Pre-owned', 'Fr. Bagtong', null, '2026-06-27'::timestamptz, '2026-07-24'::timestamptz),
+    ('062726-002', 'iPhone 14PM', '128GB', 'Purple', 'iPhones', 30000.0::numeric, 36500.0::numeric, 'Pre-owned', 'Fr. Bagtong', null, '2026-06-27'::timestamptz, '2026-07-24'::timestamptz),
     ('071626-002', 'MacBook Neo', '256GB', 'Pink', 'MacBooks', 30000.0::numeric, 40000.0::numeric, 'Pre-owned', 'Walk-in', null, '2026-07-16'::timestamptz, '2026-07-25'::timestamptz),
     ('041926-003', 'iPhone XR', '128GB', 'White', 'iPhones', 8500.0::numeric, 10500.0::numeric, 'Pre-owned', 'Lilah', null, '2026-04-19'::timestamptz, '2026-07-26'::timestamptz),
     ('062226-041', 'iPhone 11', '128GB', 'Black', 'iPhones', 11000.0::numeric, 12500.0::numeric, 'Pre-owned', 'Sohayma', null, '2026-06-22'::timestamptz, '2026-07-27'::timestamptz),
@@ -254,7 +254,7 @@ begin
   for rec in select * from (values
     ('123025-001', 'iPhone 13 Pro', '128GB', 'Black', 'iPhones', 22800.0::numeric, 23000.0::numeric, 'Pre-owned', 'Aminor', null, '2025-12-30'::timestamptz),
     ('052926-001', 'iPhone 13 Pro', '128GB', 'Gold', 'iPhones', 19000.0::numeric, 23000.0::numeric, 'Pre-owned', 'Joey', null, '2026-05-29'::timestamptz),
-    ('060826-002', 'iPhone 13 Pro', '256GB', 'White', 'iPhones', 22000.0::numeric, 25000.0::numeric, 'Pre-owned', 'Walk-in', null, '2026-06-08'::timestamptz),
+    ('060826-002', 'iPhone 13 Pro', '256GB', 'Silver', 'iPhones', 22000.0::numeric, 25000.0::numeric, 'Pre-owned', 'Page', null, '2026-06-08'::timestamptz),
     ('052826-003', 'iPhone 13', '128GB', 'White', 'iPhones', 16000.0::numeric, 17500.0::numeric, 'Pre-owned', 'Lilah', null, '2026-05-28'::timestamptz),
     ('052826-004', 'iPhone 13', '128GB', 'White', 'iPhones', 16000.0::numeric, 17500.0::numeric, 'Pre-owned', 'Lilah', null, '2026-05-28'::timestamptz),
     ('052826-005', 'iPhone 13', '128GB', 'White', 'iPhones', 16000.0::numeric, 17500.0::numeric, 'Pre-owned', 'Lilah', null, '2026-05-28'::timestamptz),
@@ -844,7 +844,7 @@ begin
 end $$;
 
 -- ============================================================
--- Add-on purchases (34 units) — walk-in acquisitions, all still
+-- Add-on purchases (31 units) — walk-in acquisitions, all still
 -- unsold (status Available, Selling Price 0). 25 units originally
 -- logged here were confirmed resold later the same period under a
 -- separate batch code in Main Sales/CGN — those are intentionally
@@ -860,7 +860,6 @@ begin
     ('053026-003', 'iPhone 17 Pro Max', '256GB', 'Silver', 'iPhones', 79500.0::numeric, 'Brand New', 'ND', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-05-30'::timestamptz),
     ('053026-004', 'iPhone 17 Pro Max', '256GB', 'Silver', 'iPhones', 79000.0::numeric, 'Brand New', 'ND', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-05-30'::timestamptz),
     ('060526-003', 'iPhone 16', '128GB', 'Teal', 'iPhones', 31000.0::numeric, 'Pre-owned', 'Masiba', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-06-05'::timestamptz),
-    ('060826-004', 'iPhone 13 Pro', '256GB', 'Silver', 'iPhones', 22000.0::numeric, 'Pre-owned', 'Page', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-06-08'::timestamptz),
     ('060826-005', 'iPhone 17 Pro Max', '256GB', 'Silver', 'iPhones', 78500.0::numeric, 'Brand New', 'ND', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-06-08'::timestamptz),
     ('061626-002', 'iPhone 12 Pro Max', '256GB', 'Blue', 'iPhones', 19500.0::numeric, 'Pre-owned', 'Walk-in', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-06-16'::timestamptz),
     ('061626-003', 'iPhone 13 Pro Max', '256GB', 'Blue', 'iPhones', 23000.0::numeric, 'Pre-owned', 'Walk-in', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-06-16'::timestamptz),
@@ -868,12 +867,10 @@ begin
     ('062126-001', 'iPhone 13 Pro Max', '128GB', 'Blue', 'iPhones', 17000.0::numeric, 'Pre-owned', 'Elaine Abas', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-06-21'::timestamptz),
     ('062426-002', 'iPhone 15PM', '1TB', 'Blue', 'iPhones', 38000.0::numeric, 'Pre-owned', 'Walk-in', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-06-24'::timestamptz),
     ('062526-004', 'iPhone 16 Pro Max', '256GB', 'Silver', 'iPhones', 40000.0::numeric, 'Pre-owned', 'Susan Capitol', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-06-25'::timestamptz),
-    ('062726-003', 'iPhone 14 Pro Max', '128GB', 'Purple', 'iPhones', 30000.0::numeric, 'Pre-owned', 'Bagtong', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-06-27'::timestamptz),
     ('062826-001', 'iPhone 12', '128GB', 'White', 'iPhones', 12000.0::numeric, 'Pre-owned', 'Shy', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-06-28'::timestamptz),
     ('070126-001', 'iWatch SE Gen 2 44mm', null, null, 'Apple Watches', 5000.0::numeric, 'Pre-owned', 'Walk-in', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-07-01'::timestamptz),
     ('070226-004', 'iPhone 16 Pro Max', '256GB', 'Gold', 'iPhones', 40000.0::numeric, 'Pre-owned', 'Walk-in', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-07-02'::timestamptz),
     ('070326-003', 'iPhone 11 Pro', '256GB', 'Gold', 'iPhones', 4000.0::numeric, 'Pre-owned', 'Walk-in', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-07-03'::timestamptz),
-    ('070926-003', 'iPhone 16 Pro Max', '256GB', 'Gold', 'iPhones', 50000.0::numeric, 'Pre-owned', 'Walk-in', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-07-09'::timestamptz),
     ('071026-002', 'iPhone 17 Pro', '256GB', 'Silver', 'iPhones', 48000.0::numeric, 'Pre-owned', 'Walk-in', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-07-10'::timestamptz),
     ('071026-003', 'iPad Air M3', '128GB', 'Grey', 'iPads', 25000.0::numeric, 'Pre-owned', 'Walk-in', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-07-10'::timestamptz),
     ('071126-001', 'RS iPhone 16', '128GB', 'Silver', 'iPhones', 36000.0::numeric, 'Pre-owned', 'Walk-in', 'Available', 'Walk-in purchase — no resale price set yet. Update Selling Price via Edit Device once priced.', '2026-07-11'::timestamptz),
