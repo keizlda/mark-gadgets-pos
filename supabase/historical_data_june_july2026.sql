@@ -1024,37 +1024,46 @@ insert into public.expenses (expense_date, description, amount, category) values
 -- ============================================================
 -- CGN's own resale to their customers (33 entries)
 -- ============================================================
-insert into public.cgn_resales (sale_date, device_name, capital, disposal_price, supplier_note) values
-  ('2026-07-04', 'iPhone 11 128GB Purple', 11000.0::numeric, 12200.0::numeric, 'S 06.22'),
-  ('2026-07-04', 'iPhone 11 128GB Purple', 11000.0::numeric, 12200.0::numeric, 'S 06.22'),
-  ('2026-07-04', 'iPhone 11 128GB White', 11000.0::numeric, 12200.0::numeric, 'S 06.22'),
-  ('2026-07-04', 'iPhone 11 128GB White', 11000.0::numeric, 12200.0::numeric, 'S 06.22'),
-  ('2026-07-04', 'iPhone 11 128GB Black', 10700.0::numeric, 12200.0::numeric, 'L 06.10'),
-  ('2026-07-06', 'iPhone 12 128GB Black', 12200.0::numeric, 14000.0::numeric, 'L 05.06'),
-  ('2026-07-06', 'iPhone 12 128GB Black', 12200.0::numeric, 14000.0::numeric, 'L 05.06'),
-  ('2026-07-06', 'iPhone 12 128GB Red', 12200.0::numeric, 14000.0::numeric, 'L 05.06'),
-  ('2026-07-06', 'iPhone 13 128GB White', 16500.0::numeric, 18000.0::numeric, 'S 06.22'),
-  ('2026-07-06', 'iPhone 13 128GB White', 16500.0::numeric, 18000.0::numeric, 'S 06.22'),
-  ('2026-07-06', 'iPhone 13 128GB Pink', 16500.0::numeric, 18000.0::numeric, 'S 06.22'),
-  ('2026-07-06', 'iPhone 13 256GB Pink', 17500.0::numeric, 19000.0::numeric, 'S 06.22'),
-  ('2026-07-06', 'iPhone 13 256GB Pink', 17500.0::numeric, 19000.0::numeric, 'S 06.22'),
-  ('2026-07-06', 'iPhone 13 256GB White', 17500.0::numeric, 19000.0::numeric, 'S 06.22'),
-  ('2026-07-14', 'iPhone 13 256GB White', 17500.0::numeric, 19000.0::numeric, 'S 06.22'),
-  ('2026-07-14', 'iPhone 13 256GB White', 17500.0::numeric, 19000.0::numeric, 'S 06.22'),
-  ('2026-07-14', 'iPhone 13 256GB White', 17500.0::numeric, 19000.0::numeric, 'S 06.22'),
-  ('2026-07-14', 'iPhone 13 256GB Pink', 17500.0::numeric, 19000.0::numeric, 'S 06.22'),
-  ('2026-07-14', 'iPhone 13 256GB Pink', 17500.0::numeric, 19000.0::numeric, 'S 06.22'),
-  ('2026-07-20', 'MacBook Neo 256GB Silver (Brand New)', 37300.0::numeric, 42000.0::numeric, 'bgc '),
-  ('2026-07-23', 'iPhone 11 128GB White', 10700.0::numeric, 12200.0::numeric, 'L 06.10'),
-  ('2026-07-23', 'iPhone 11 128GB White', 10700.0::numeric, 12200.0::numeric, 'L 06.10'),
-  ('2026-07-23', 'iPhone 11 128GB Black', 10700.0::numeric, 12200.0::numeric, 'L 06.10'),
-  ('2026-07-23', 'iPhone 11 128GB Black', 10700.0::numeric, 12200.0::numeric, 'L 06.10'),
-  ('2026-07-23', 'iPhone 11 128GB Mint', 10700.0::numeric, 12200.0::numeric, 'L 06.10'),
-  ('2026-07-23', 'iPhone 12 128GB White', 12200.0::numeric, 14000.0::numeric, 'L 05.06'),
-  ('2026-07-23', 'iPhone 12 128GB White', 12200.0::numeric, 14000.0::numeric, 'L 05.06'),
-  ('2026-07-23', 'iPhone 12 128GB Purple', 12200.0::numeric, 14000.0::numeric, 'L 05.06'),
-  ('2026-07-24', 'iPhone XR 128GB White', 9000.0::numeric, 10000.0::numeric, 'A 12.08'),
-  ('2026-07-24', 'iPhone XR 128GB Blue', 9000.0::numeric, 10000.0::numeric, 'A 12.08'),
-  ('2026-07-24', 'iPhone XR 128GB Black', 9000.0::numeric, 10000.0::numeric, 'A 12.08'),
-  ('2026-07-24', 'iPhone XR 128GB Coral', 9000.0::numeric, 10000.0::numeric, 'A 12.08'),
-  ('2026-07-24', 'iPhone XR 128GB White', 8500.0::numeric, 10000.0::numeric, 'L 04.19');
+-- batch_code: 6 of these trace to a unit we actually sold CGN wholesale (a
+-- real devices.batch_code, cross-referenced by supplier + exact acquisition
+-- date + model + color + capital, all four required — matching on supplier
+-- name alone produced false positives). The other 27 don't match anything
+-- in our own wholesale records — CGN evidently sourced those directly from
+-- the same suppliers themselves — so they get a freshly-assigned code
+-- continuing the same MMDDYY-NNN/acquisition-date sequence, picking up
+-- after the highest number already used for that date elsewhere in this
+-- file.
+insert into public.cgn_resales (sale_date, device_name, capital, disposal_price, supplier_note, batch_code) values
+  ('2026-07-04', 'iPhone 11 128GB Purple', 11000.0::numeric, 12200.0::numeric, 'S 06.22', '062226-046'),
+  ('2026-07-04', 'iPhone 11 128GB Purple', 11000.0::numeric, 12200.0::numeric, 'S 06.22', '062226-047'),
+  ('2026-07-04', 'iPhone 11 128GB White', 11000.0::numeric, 12200.0::numeric, 'S 06.22', '062226-048'),
+  ('2026-07-04', 'iPhone 11 128GB White', 11000.0::numeric, 12200.0::numeric, 'S 06.22', '062226-049'),
+  ('2026-07-04', 'iPhone 11 128GB Black', 10700.0::numeric, 12200.0::numeric, 'L 06.10', '061026-026'),
+  ('2026-07-06', 'iPhone 12 128GB Black', 12200.0::numeric, 14000.0::numeric, 'L 05.06', '050626-003'),
+  ('2026-07-06', 'iPhone 12 128GB Black', 12200.0::numeric, 14000.0::numeric, 'L 05.06', '050626-006'),
+  ('2026-07-06', 'iPhone 12 128GB Red', 12200.0::numeric, 14000.0::numeric, 'L 05.06', '050626-007'),
+  ('2026-07-06', 'iPhone 13 128GB White', 16500.0::numeric, 18000.0::numeric, 'S 06.22', '062226-044'),
+  ('2026-07-06', 'iPhone 13 128GB White', 16500.0::numeric, 18000.0::numeric, 'S 06.22', '062226-045'),
+  ('2026-07-06', 'iPhone 13 128GB Pink', 16500.0::numeric, 18000.0::numeric, 'S 06.22', '062226-050'),
+  ('2026-07-06', 'iPhone 13 256GB Pink', 17500.0::numeric, 19000.0::numeric, 'S 06.22', '062226-051'),
+  ('2026-07-06', 'iPhone 13 256GB Pink', 17500.0::numeric, 19000.0::numeric, 'S 06.22', '062226-052'),
+  ('2026-07-06', 'iPhone 13 256GB White', 17500.0::numeric, 19000.0::numeric, 'S 06.22', '062226-053'),
+  ('2026-07-14', 'iPhone 13 256GB White', 17500.0::numeric, 19000.0::numeric, 'S 06.22', '062226-054'),
+  ('2026-07-14', 'iPhone 13 256GB White', 17500.0::numeric, 19000.0::numeric, 'S 06.22', '062226-055'),
+  ('2026-07-14', 'iPhone 13 256GB White', 17500.0::numeric, 19000.0::numeric, 'S 06.22', '062226-056'),
+  ('2026-07-14', 'iPhone 13 256GB Pink', 17500.0::numeric, 19000.0::numeric, 'S 06.22', '062226-057'),
+  ('2026-07-14', 'iPhone 13 256GB Pink', 17500.0::numeric, 19000.0::numeric, 'S 06.22', '062226-058'),
+  ('2026-07-20', 'MacBook Neo 256GB Silver (Brand New)', 37300.0::numeric, 42000.0::numeric, 'bgc ', '072026-001'),
+  ('2026-07-23', 'iPhone 11 128GB White', 10700.0::numeric, 12200.0::numeric, 'L 06.10', '061026-027'),
+  ('2026-07-23', 'iPhone 11 128GB White', 10700.0::numeric, 12200.0::numeric, 'L 06.10', '061026-028'),
+  ('2026-07-23', 'iPhone 11 128GB Black', 10700.0::numeric, 12200.0::numeric, 'L 06.10', '061026-029'),
+  ('2026-07-23', 'iPhone 11 128GB Black', 10700.0::numeric, 12200.0::numeric, 'L 06.10', '061026-030'),
+  ('2026-07-23', 'iPhone 11 128GB Mint', 10700.0::numeric, 12200.0::numeric, 'L 06.10', '061026-031'),
+  ('2026-07-23', 'iPhone 12 128GB White', 12200.0::numeric, 14000.0::numeric, 'L 05.06', '050626-005'),
+  ('2026-07-23', 'iPhone 12 128GB White', 12200.0::numeric, 14000.0::numeric, 'L 05.06', '050626-008'),
+  ('2026-07-23', 'iPhone 12 128GB Purple', 12200.0::numeric, 14000.0::numeric, 'L 05.06', '050626-004'),
+  ('2026-07-24', 'iPhone XR 128GB White', 9000.0::numeric, 10000.0::numeric, 'A 12.08', '120825-003'),
+  ('2026-07-24', 'iPhone XR 128GB Blue', 9000.0::numeric, 10000.0::numeric, 'A 12.08', '120825-004'),
+  ('2026-07-24', 'iPhone XR 128GB Black', 9000.0::numeric, 10000.0::numeric, 'A 12.08', '120825-005'),
+  ('2026-07-24', 'iPhone XR 128GB Coral', 9000.0::numeric, 10000.0::numeric, 'A 12.08', '120825-006'),
+  ('2026-07-24', 'iPhone XR 128GB White', 8500.0::numeric, 10000.0::numeric, 'L 04.19', '041926-010');

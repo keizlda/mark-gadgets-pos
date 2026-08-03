@@ -205,6 +205,11 @@ create table public.cgn_resales (
   -- Free text — the shorthand supplier/receipt-date code from CGN's own
   -- ledger (e.g. "S 06.22"), kept for traceability, not a foreign key.
   supplier_note text,
+  -- Also free text, not an FK to devices — some resales trace back to a
+  -- unit we actually sold CGN wholesale (a real devices.batch_code), but
+  -- others were sourced by CGN directly and never passed through our own
+  -- inventory, so there's no devices row to reference for those.
+  batch_code text,
   created_at timestamptz not null default now()
 );
 

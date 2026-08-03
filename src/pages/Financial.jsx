@@ -204,7 +204,7 @@ function Financial() {
       id: r.id,
       date: r.date,
       sortDate: new Date(r.date),
-      batchCode: "—",
+      batchCode: r.batchCode || "—",
       unit: r.deviceName,
       capital: r.capital,
       soldFor: r.disposalPrice,
@@ -229,6 +229,7 @@ function Financial() {
   const [resaleCapital, setResaleCapital] = useState("");
   const [resaleDisposal, setResaleDisposal] = useState("");
   const [resaleSupplierNote, setResaleSupplierNote] = useState("");
+  const [resaleBatchCode, setResaleBatchCode] = useState("");
   const [resaleError, setResaleError] = useState("");
   const [submittingResale, setSubmittingResale] = useState(false);
 
@@ -244,11 +245,13 @@ function Financial() {
         capital: Number(resaleCapital),
         disposalPrice: Number(resaleDisposal),
         supplierNote: resaleSupplierNote.trim(),
+        batchCode: resaleBatchCode.trim(),
       });
       setResaleDeviceName("");
       setResaleCapital("");
       setResaleDisposal("");
       setResaleSupplierNote("");
+      setResaleBatchCode("");
       loadCgnResales();
     } catch (err) {
       setResaleError(err.message || "Failed to add resale entry. Please try again.");
@@ -718,6 +721,16 @@ function Financial() {
                 onChange={(e) => setResaleSupplierNote(e.target.value)}
                 placeholder="e.g. S 06.22"
                 className="w-28 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Batch Code (Optional)</label>
+              <input
+                type="text"
+                value={resaleBatchCode}
+                onChange={(e) => setResaleBatchCode(e.target.value)}
+                placeholder="e.g. 062226-046"
+                className="w-32 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <button
