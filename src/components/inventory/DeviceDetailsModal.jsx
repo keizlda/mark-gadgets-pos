@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { getDeviceSaleDate } from "../../services/salesService";
+import { getDeviceSaleInfo } from "../../services/salesService";
 import { formatDate, formatTime } from "../../utils/datetime";
 
 const statusStyles = {
@@ -27,12 +27,12 @@ function Row({ label, children }) {
 // search, All Devices, Financial's unsold units) view devices with no sale
 // context, so those rows just don't render.
 function DeviceDetailsModal({ device, paymentMethod, downPayment, balance, onClose }) {
-  const [saleDate, setSaleDate] = useState(undefined); // undefined = loading, null = never sold
+  const [saleInfo, setSaleInfo] = useState(undefined); // undefined = loading, null = never sold
 
   useEffect(() => {
     if (!device) return;
-    setSaleDate(undefined);
-    getDeviceSaleDate(device.id).then(setSaleDate);
+    setSaleInfo(undefined);
+    getDeviceSaleInfo(device.id).then(setSaleInfo);
   }, [device]);
 
   if (!device) return null;
@@ -65,8 +65,13 @@ function DeviceDetailsModal({ device, paymentMethod, downPayment, balance, onClo
             </span>
           </Row>
           <Row label="Date Sold">
-            {saleDate === undefined ? "Loading..." : saleDate ? `${formatDate(saleDate)} ${formatTime(saleDate)}` : "—"}
+            {saleInfo === undefined
+              ? "Loading..."
+              : saleInfo?.soldAt
+              ? `${formatDate(saleInfo.soldAt)} ${formatTime(saleInfo.soldAt)}`
+              : "—"}
           </Row>
+          {saleInfo?.customerName && <Row label="Sold To">{saleInfo.customerName}</Row>}
           {paymentMethod && <Row label="Payment Method">{paymentMethod}</Row>}
           {paymentMethod === "Skyro" && (
             <>

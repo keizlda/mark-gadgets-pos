@@ -844,6 +844,189 @@ begin
 end $$;
 
 -- ============================================================
+-- CGN wholesale — units CGN sourced directly (27 units, blocks 11-15)
+-- These correspond to CGN's own resale entries (see cgn_resales below)
+-- whose supplier+acquisition-date+model+color+capital don't match any
+-- unit we ourselves stocked — CGN evidently bought them straight from
+-- the supplier, bypassing the main store. Formally recorded here as sold
+-- to CGN at cost (disposal = capital, zero markup) so every unit is a
+-- real, traceable device — supports the Supplier Defective/Replace flow
+-- if one needs replacing — without inventing any profit that was never
+-- actually ours.
+-- ============================================================
+do $$
+declare
+  rec record;
+  v_device_id uuid;
+  v_supplier_id uuid;
+  v_sale_id uuid;
+  v_total numeric;
+begin
+  select sum(disposal) into v_total from (values
+    (11000.0::numeric), (11000.0::numeric), (11000.0::numeric), (11000.0::numeric),
+    (16500.0::numeric), (17500.0::numeric), (17500.0::numeric), (17500.0::numeric),
+    (17500.0::numeric), (17500.0::numeric), (17500.0::numeric), (17500.0::numeric),
+    (17500.0::numeric)
+  ) as t(disposal);
+
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', 'Sourced by CGN directly from Sohayma — recorded at cost (no markup) for traceability. See cgn_resales for CGN''s own resale of these units.', v_total, 'Completed', 'Bulk', 'Paid', '2026-06-22'::timestamptz)
+  returning id into v_sale_id;
+
+  for rec in select * from (values
+    ('062226-046', 'iPhone 11', '128GB', 'Purple', 'iPhones', 11000.0::numeric, 'Pre-owned', 'Sohayma'),
+    ('062226-047', 'iPhone 11', '128GB', 'Purple', 'iPhones', 11000.0::numeric, 'Pre-owned', 'Sohayma'),
+    ('062226-048', 'iPhone 11', '128GB', 'White', 'iPhones', 11000.0::numeric, 'Pre-owned', 'Sohayma'),
+    ('062226-049', 'iPhone 11', '128GB', 'White', 'iPhones', 11000.0::numeric, 'Pre-owned', 'Sohayma'),
+    ('062226-050', 'iPhone 13', '128GB', 'Pink', 'iPhones', 16500.0::numeric, 'Pre-owned', 'Sohayma'),
+    ('062226-051', 'iPhone 13', '256GB', 'Pink', 'iPhones', 17500.0::numeric, 'Pre-owned', 'Sohayma'),
+    ('062226-052', 'iPhone 13', '256GB', 'Pink', 'iPhones', 17500.0::numeric, 'Pre-owned', 'Sohayma'),
+    ('062226-053', 'iPhone 13', '256GB', 'White', 'iPhones', 17500.0::numeric, 'Pre-owned', 'Sohayma'),
+    ('062226-054', 'iPhone 13', '256GB', 'White', 'iPhones', 17500.0::numeric, 'Pre-owned', 'Sohayma'),
+    ('062226-055', 'iPhone 13', '256GB', 'White', 'iPhones', 17500.0::numeric, 'Pre-owned', 'Sohayma'),
+    ('062226-056', 'iPhone 13', '256GB', 'Pink', 'iPhones', 17500.0::numeric, 'Pre-owned', 'Sohayma'),
+    ('062226-057', 'iPhone 13', '256GB', 'Pink', 'iPhones', 17500.0::numeric, 'Pre-owned', 'Sohayma'),
+    ('062226-058', 'iPhone 13', '256GB', 'Pink', 'iPhones', 17500.0::numeric, 'Pre-owned', 'Sohayma')
+  ) as t(batch_code, device_name, storage, color, category, capital, condition, supplier_name)
+  loop
+    select id into v_supplier_id from public.suppliers where name = rec.supplier_name;
+
+    insert into public.devices (batch_code, device_name, category, storage, color, status, supplier_id, purchase_price, selling_price, condition, notes, date_added)
+    values (rec.batch_code, rec.device_name, rec.category, rec.storage, rec.color, 'Sold', v_supplier_id, rec.capital, rec.capital, rec.condition, 'Sourced directly by CGN — never physically stocked by the main store. Recorded at cost for traceability.', '2026-06-22'::timestamptz)
+    returning id into v_device_id;
+
+    insert into public.sale_items (sale_id, device_id, price_at_sale, quantity)
+    values (v_sale_id, v_device_id, rec.capital, 1);
+  end loop;
+end $$;
+
+do $$
+declare
+  rec record;
+  v_device_id uuid;
+  v_supplier_id uuid;
+  v_sale_id uuid;
+  v_total numeric;
+begin
+  select sum(disposal) into v_total from (values
+    (10700.0::numeric), (10700.0::numeric), (10700.0::numeric), (10700.0::numeric), (10700.0::numeric), (10700.0::numeric)
+  ) as t(disposal);
+
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', 'Sourced by CGN directly from Lilah — recorded at cost (no markup) for traceability. See cgn_resales for CGN''s own resale of these units.', v_total, 'Completed', 'Bulk', 'Paid', '2026-06-10'::timestamptz)
+  returning id into v_sale_id;
+
+  for rec in select * from (values
+    ('061026-026', 'iPhone 11', '128GB', 'Black', 'iPhones', 10700.0::numeric, 'Pre-owned', 'Lilah'),
+    ('061026-027', 'iPhone 11', '128GB', 'White', 'iPhones', 10700.0::numeric, 'Pre-owned', 'Lilah'),
+    ('061026-028', 'iPhone 11', '128GB', 'White', 'iPhones', 10700.0::numeric, 'Pre-owned', 'Lilah'),
+    ('061026-029', 'iPhone 11', '128GB', 'Black', 'iPhones', 10700.0::numeric, 'Pre-owned', 'Lilah'),
+    ('061026-030', 'iPhone 11', '128GB', 'Black', 'iPhones', 10700.0::numeric, 'Pre-owned', 'Lilah'),
+    ('061026-031', 'iPhone 11', '128GB', 'Mint', 'iPhones', 10700.0::numeric, 'Pre-owned', 'Lilah')
+  ) as t(batch_code, device_name, storage, color, category, capital, condition, supplier_name)
+  loop
+    select id into v_supplier_id from public.suppliers where name = rec.supplier_name;
+
+    insert into public.devices (batch_code, device_name, category, storage, color, status, supplier_id, purchase_price, selling_price, condition, notes, date_added)
+    values (rec.batch_code, rec.device_name, rec.category, rec.storage, rec.color, 'Sold', v_supplier_id, rec.capital, rec.capital, rec.condition, 'Sourced directly by CGN — never physically stocked by the main store. Recorded at cost for traceability.', '2026-06-10'::timestamptz)
+    returning id into v_device_id;
+
+    insert into public.sale_items (sale_id, device_id, price_at_sale, quantity)
+    values (v_sale_id, v_device_id, rec.capital, 1);
+  end loop;
+end $$;
+
+do $$
+declare
+  rec record;
+  v_device_id uuid;
+  v_supplier_id uuid;
+  v_sale_id uuid;
+  v_total numeric;
+begin
+  select sum(disposal) into v_total from (values
+    (12200.0::numeric), (12200.0::numeric), (12200.0::numeric)
+  ) as t(disposal);
+
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', 'Sourced by CGN directly from Lilah — recorded at cost (no markup) for traceability. See cgn_resales for CGN''s own resale of these units.', v_total, 'Completed', 'Bulk', 'Paid', '2026-05-06'::timestamptz)
+  returning id into v_sale_id;
+
+  for rec in select * from (values
+    ('050626-006', 'iPhone 12', '128GB', 'Black', 'iPhones', 12200.0::numeric, 'Pre-owned', 'Lilah'),
+    ('050626-007', 'iPhone 12', '128GB', 'Red', 'iPhones', 12200.0::numeric, 'Pre-owned', 'Lilah'),
+    ('050626-008', 'iPhone 12', '128GB', 'White', 'iPhones', 12200.0::numeric, 'Pre-owned', 'Lilah')
+  ) as t(batch_code, device_name, storage, color, category, capital, condition, supplier_name)
+  loop
+    select id into v_supplier_id from public.suppliers where name = rec.supplier_name;
+
+    insert into public.devices (batch_code, device_name, category, storage, color, status, supplier_id, purchase_price, selling_price, condition, notes, date_added)
+    values (rec.batch_code, rec.device_name, rec.category, rec.storage, rec.color, 'Sold', v_supplier_id, rec.capital, rec.capital, rec.condition, 'Sourced directly by CGN — never physically stocked by the main store. Recorded at cost for traceability.', '2026-05-06'::timestamptz)
+    returning id into v_device_id;
+
+    insert into public.sale_items (sale_id, device_id, price_at_sale, quantity)
+    values (v_sale_id, v_device_id, rec.capital, 1);
+  end loop;
+end $$;
+
+do $$
+declare
+  rec record;
+  v_device_id uuid;
+  v_supplier_id uuid;
+  v_sale_id uuid;
+  v_total numeric;
+begin
+  select sum(disposal) into v_total from (values
+    (9000.0::numeric), (9000.0::numeric), (9000.0::numeric), (9000.0::numeric)
+  ) as t(disposal);
+
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', 'Sourced by CGN directly from Aminor — recorded at cost (no markup) for traceability. See cgn_resales for CGN''s own resale of these units.', v_total, 'Completed', 'Bulk', 'Paid', '2025-12-08'::timestamptz)
+  returning id into v_sale_id;
+
+  for rec in select * from (values
+    ('120825-003', 'iPhone XR', '128GB', 'White', 'iPhones', 9000.0::numeric, 'Pre-owned', 'Aminor'),
+    ('120825-004', 'iPhone XR', '128GB', 'Blue', 'iPhones', 9000.0::numeric, 'Pre-owned', 'Aminor'),
+    ('120825-005', 'iPhone XR', '128GB', 'Black', 'iPhones', 9000.0::numeric, 'Pre-owned', 'Aminor'),
+    ('120825-006', 'iPhone XR', '128GB', 'Coral', 'iPhones', 9000.0::numeric, 'Pre-owned', 'Aminor')
+  ) as t(batch_code, device_name, storage, color, category, capital, condition, supplier_name)
+  loop
+    select id into v_supplier_id from public.suppliers where name = rec.supplier_name;
+
+    insert into public.devices (batch_code, device_name, category, storage, color, status, supplier_id, purchase_price, selling_price, condition, notes, date_added)
+    values (rec.batch_code, rec.device_name, rec.category, rec.storage, rec.color, 'Sold', v_supplier_id, rec.capital, rec.capital, rec.condition, 'Sourced directly by CGN — never physically stocked by the main store. Recorded at cost for traceability.', '2025-12-08'::timestamptz)
+    returning id into v_device_id;
+
+    insert into public.sale_items (sale_id, device_id, price_at_sale, quantity)
+    values (v_sale_id, v_device_id, rec.capital, 1);
+  end loop;
+end $$;
+
+-- Note: no acquisition date is known for this one (source note was just
+-- "bgc", no date) — using the CGN resale date itself as a fallback, same
+-- rule used elsewhere in this file for blank acquisition dates.
+do $$
+declare
+  v_device_id uuid;
+  v_supplier_id uuid;
+  v_sale_id uuid;
+begin
+  select id into v_supplier_id from public.suppliers where name = 'BGC';
+
+  insert into public.sales (customer_name, payment_method, notes, total_amount, status, order_type, payment_status, sold_at)
+  values ('CGN', 'Cash', 'Sourced by CGN directly from BGC — recorded at cost (no markup) for traceability. See cgn_resales for CGN''s own resale of this unit.', 37300.0::numeric, 'Completed', 'Regular', 'Paid', '2026-07-20'::timestamptz)
+  returning id into v_sale_id;
+
+  insert into public.devices (batch_code, device_name, category, storage, color, status, supplier_id, purchase_price, selling_price, condition, notes, date_added)
+  values ('072026-001', 'MacBook Neo', 'MacBooks', '256GB', 'Silver', 'Sold', v_supplier_id, 37300.0::numeric, 37300.0::numeric, 'Brand New', 'Sourced directly by CGN — never physically stocked by the main store. Recorded at cost for traceability.', '2026-07-20'::timestamptz)
+  returning id into v_device_id;
+
+  insert into public.sale_items (sale_id, device_id, price_at_sale, quantity)
+  values (v_sale_id, v_device_id, 37300.0::numeric, 1);
+end $$;
+
+-- ============================================================
 -- Add-on purchases (31 units) — walk-in acquisitions, all still
 -- unsold (status Available, Selling Price 0). 25 units originally
 -- logged here were confirmed resold later the same period under a
@@ -1067,3 +1250,11 @@ insert into public.cgn_resales (sale_date, device_name, capital, disposal_price,
   ('2026-07-24', 'iPhone XR 128GB Black', 9000.0::numeric, 10000.0::numeric, 'A 12.08', '120825-005'),
   ('2026-07-24', 'iPhone XR 128GB Coral', 9000.0::numeric, 10000.0::numeric, 'A 12.08', '120825-006'),
   ('2026-07-24', 'iPhone XR 128GB White', 8500.0::numeric, 10000.0::numeric, 'L 04.19', '041926-010');
+
+-- Backfill the real device_id link from batch_code now that every one of
+-- these 33 units (the 6 real matches plus the 27 just created above) has
+-- an actual devices row.
+update public.cgn_resales r
+set device_id = d.id
+from public.devices d
+where d.batch_code = r.batch_code;

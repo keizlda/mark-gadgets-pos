@@ -205,11 +205,13 @@ create table public.cgn_resales (
   -- Free text — the shorthand supplier/receipt-date code from CGN's own
   -- ledger (e.g. "S 06.22"), kept for traceability, not a foreign key.
   supplier_note text,
-  -- Also free text, not an FK to devices — some resales trace back to a
-  -- unit we actually sold CGN wholesale (a real devices.batch_code), but
-  -- others were sourced by CGN directly and never passed through our own
-  -- inventory, so there's no devices row to reference for those.
+  -- Also free text, kept as a display cache even now that device_id below
+  -- gives a real link — avoids a join everywhere batch code is shown.
   batch_code text,
+  -- Real link to the unit, once every CGN resale has a corresponding
+  -- devices row (created for units CGN sourced directly, if needed) — lets
+  -- the existing Supplier Defective / Replace flow operate on it directly.
+  device_id uuid references public.devices (id),
   created_at timestamptz not null default now()
 );
 
