@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, Filter, MoreVertical, Wrench, ShoppingBag, Truck, CheckCircle2, Info } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
 import { getSupplierDefectiveRecords } from "../../services/inventoryService";
 import { getSuppliers } from "../../services/referenceService";
 import UpdateDefectiveStatusModal from "../../components/inventory/UpdateDefectiveStatusModal";
+import EditDefectiveRecordModal from "../../components/inventory/EditDefectiveRecordModal";
 import DateRangePicker from "../../components/common/DateRangePicker";
 
 const statusStyles = {
@@ -16,6 +18,7 @@ const blankFilters = { dateRange: undefined, supplier: "All", status: "All", sea
 
 function SupplierDefective() {
   const suppliers = useServiceData(getSuppliers, []);
+  const isAdmin = useIsAdmin();
 
   const [supplierDefectiveRecords, setSupplierDefectiveRecords] = useState([]);
   const loadRecords = useCallback(() => {
@@ -31,6 +34,7 @@ function SupplierDefective() {
   const [perPage, setPerPage] = useState(10);
   const [openMenu, setOpenMenu] = useState(null);
   const [updateRecord, setUpdateRecord] = useState(null);
+  const [editRecord, setEditRecord] = useState(null);
 
   const handleClear = () => {
     setFilters(blankFilters);
@@ -45,6 +49,11 @@ function SupplierDefective() {
 
   const handleUpdated = () => {
     setUpdateRecord(null);
+    loadRecords();
+  };
+
+  const handleEdited = () => {
+    setEditRecord(null);
     loadRecords();
   };
 
@@ -228,6 +237,14 @@ function SupplierDefective() {
                         >
                           Update Status
                         </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => { setEditRecord(row); setOpenMenu(null); }}
+                            className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          >
+                            Edit
+                          </button>
+                        )}
                       </div>
                     )}
                   </td>
@@ -288,6 +305,14 @@ function SupplierDefective() {
           record={updateRecord}
           onClose={() => setUpdateRecord(null)}
           onUpdated={handleUpdated}
+        />
+      )}
+
+      {editRecord && (
+        <EditDefectiveRecordModal
+          record={editRecord}
+          onClose={() => setEditRecord(null)}
+          onUpdated={handleEdited}
         />
       )}
     </div>

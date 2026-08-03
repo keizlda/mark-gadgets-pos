@@ -208,6 +208,7 @@ export async function getSupplierDefectiveRecords() {
       color: r.devices?.color,
       supplier: r.suppliers?.name,
       dateDetected: formatDate(r.date_detected),
+      dateDetectedRaw: r.date_detected,
       time: formatTime(r.date_detected),
       issue: r.issue_description,
       status: r.status,
@@ -225,6 +226,19 @@ export async function updateSupplierDefectiveStatus(id, { status, actionTaken, d
     p_status: status,
     p_action_taken: actionTaken || null,
     p_device_id: deviceId || null,
+  });
+  if (error) throw error;
+}
+
+// Admin-only correction of the record's own fields (issue description,
+// supplier, date detected) — batch code/device details are edited via the
+// existing Edit Device flow instead.
+export async function editSupplierDefectiveRecord(id, { issueDescription, supplierName, dateDetected }) {
+  const { error } = await supabase.rpc("edit_supplier_defective_record", {
+    p_id: id,
+    p_issue_description: issueDescription,
+    p_supplier_name: supplierName || null,
+    p_date_detected: dateDetected,
   });
   if (error) throw error;
 }
