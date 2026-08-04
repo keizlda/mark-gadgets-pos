@@ -234,6 +234,15 @@ function Reports() {
 
   return (
     <div className="space-y-4">
+      {/* Overrides the global @page landscape default (index.css) while this
+          page is mounted — Reports' table is narrow enough for portrait,
+          unlike Financial's wider ledger which still needs landscape. */}
+      <style>{`
+        @media print {
+          @page { size: portrait; }
+        }
+      `}</style>
+
       {/* Print-only header — replaces the sidebar/topbar context that's hidden when printing */}
       <div className="hidden print:block mb-2">
         <h1 className="text-xl font-bold text-gray-900">Mark Gadgets — Sales Report</h1>
