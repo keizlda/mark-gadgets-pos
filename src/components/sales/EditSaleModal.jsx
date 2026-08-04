@@ -21,7 +21,7 @@ function EditSaleModal({ row, onClose, onSaved }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const isSkyro = row.payment === "Skyro";
+  const isFinancing = ["Skyro", "Home Credit", "Credit Card"].includes(row.payment);
   const isBulk = row.orderType === "Bulk";
 
   const handleSubmit = async (e) => {
@@ -38,9 +38,9 @@ function EditSaleModal({ row, onClose, onSaved }) {
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
         notes: notes.trim(),
-        referenceNumber: isSkyro ? "" : referenceNumber.trim(),
-        downPayment: isSkyro && downPayment !== "" ? Number(downPayment) : null,
-        balance: isSkyro && balance !== "" ? Number(balance) : null,
+        referenceNumber: isFinancing ? "" : referenceNumber.trim(),
+        downPayment: isFinancing && downPayment !== "" ? Number(downPayment) : null,
+        balance: isFinancing && balance !== "" ? Number(balance) : null,
         priceAtSale: Number(priceAtSale),
         soldAt: new Date(soldAt).toISOString(),
         dateAdded: new Date(dateAdded).toISOString(),
@@ -126,7 +126,7 @@ function EditSaleModal({ row, onClose, onSaved }) {
               <p className="text-xs text-gray-400 mt-1">This unit's own price — not shared with sibling units.</p>
             </div>
 
-            {isSkyro ? (
+            {isFinancing ? (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">Down Payment</label>

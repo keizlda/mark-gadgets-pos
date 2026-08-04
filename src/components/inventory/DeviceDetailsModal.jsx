@@ -22,10 +22,11 @@ function Row({ label, children }) {
 }
 
 // paymentMethod/downPayment/balance are optional — only passed when this is
-// opened from Sales History's "Unit Info" for a sold unit, so a Skyro
-// sale's financing detail can show up here too. Other call sites (Dashboard
-// search, All Devices, Financial's unsold units) view devices with no sale
-// context, so those rows just don't render.
+// opened from Sales History's "Unit Info" for a sold unit, so a financed
+// sale's (Skyro/Home Credit/Credit Card) down payment/balance can show up
+// here too. Other call sites (Dashboard search, All Devices, Financial's
+// unsold units) view devices with no sale context, so those rows just
+// don't render.
 function DeviceDetailsModal({ device, paymentMethod, downPayment, balance, onClose }) {
   const [saleInfo, setSaleInfo] = useState(undefined); // undefined = loading, null = never sold
 
@@ -73,7 +74,7 @@ function DeviceDetailsModal({ device, paymentMethod, downPayment, balance, onClo
           </Row>
           {saleInfo?.customerName && <Row label="Sold To">{saleInfo.customerName}</Row>}
           {paymentMethod && <Row label="Payment Method">{paymentMethod}</Row>}
-          {paymentMethod === "Skyro" && (
+          {["Skyro", "Home Credit", "Credit Card"].includes(paymentMethod) && (
             <>
               <Row label="Down Payment">{downPayment != null ? `₱${Number(downPayment).toLocaleString()}` : "—"}</Row>
               <Row label="Balance">{balance != null ? `₱${Number(balance).toLocaleString()}` : "—"}</Row>

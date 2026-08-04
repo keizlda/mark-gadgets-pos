@@ -25,6 +25,12 @@ const installmentOptions = [
   { id: "Home Credit", label: "Home Credit", icon: Building2 },
 ];
 
+// These record a Down Payment/Balance instead of a reference number —
+// Credit Card is included even though it stays in the regular Payment
+// Method group (not Installment), since it's usable for any cart including
+// accessories, unlike Skyro/Home Credit which are device-financing only.
+const FINANCING_METHODS = ["Skyro", "Home Credit", "Credit Card"];
+
 // Installment financing is for actual devices — a phone case or a battery
 // isn't something a lender finances, and mixing one into a cart that's
 // otherwise on installment doesn't make sense either.
@@ -200,17 +206,17 @@ function NewSale() {
       return;
     }
 
-    if (method === "Skyro") {
+    if (FINANCING_METHODS.includes(method)) {
       setReferenceNumber("N/A");
       return;
     }
 
-    // Skyro asks for Down Payment/Balance instead of a Reference Number —
-    // clear both when switching to any other method so stale values can't
-    // leak through. Reference Number itself only resets for Cash (which
-    // never needs one) or if it's still holding a trade-in's batch code
-    // from Swap — every other method keeps whatever was already typed,
-    // same as before Swap/Skyro existed.
+    // Financing methods ask for Down Payment/Balance instead of a Reference
+    // Number — clear both when switching to any other method so stale
+    // values can't leak through. Reference Number itself only resets for
+    // Cash (which never needs one) or if it's still holding a trade-in's
+    // batch code from Swap — every other method keeps whatever was already
+    // typed, same as before Swap/financing existed.
     setDownPayment("");
     setBalance("");
     if (method === "Cash" || referenceNumber.startsWith("Trade-in:")) {
@@ -237,8 +243,8 @@ function NewSale() {
         referenceNumber,
         notes,
         cartItems: cart.map((c) => ({ ...c, price: Number(c.actualPrice) || 0 })),
-        downPayment: payment === "Skyro" && downPayment !== "" ? Number(downPayment) : null,
-        balance: payment === "Skyro" && balance !== "" ? Number(balance) : null,
+        downPayment: FINANCING_METHODS.includes(payment) && downPayment !== "" ? Number(downPayment) : null,
+        balance: FINANCING_METHODS.includes(payment) && balance !== "" ? Number(balance) : null,
       });
 
       showToast("Sale processed.");
@@ -617,10 +623,10 @@ function NewSale() {
           </div>
         )}
 
-        {/* Skyro records a down payment/balance instead of a reference
-            number — a financed sale doesn't have one the way a bank
-            transfer or GCash payment does. */}
-        {payment === "Skyro" ? (
+        {/* Financing methods record a down payment/balance instead of a
+            reference number — a financed sale doesn't have one the way a
+            bank transfer or GCash payment does. */}
+        {FINANCING_METHODS.includes(payment) ? (
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Down Payment</label>
