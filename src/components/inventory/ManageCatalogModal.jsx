@@ -337,15 +337,19 @@ function SuppliersTab({ onChanged }) {
     }
   };
 
-  // Cycles Device -> Accessory -> Device — "Both (universal)" suppliers
-  // (null type, e.g. "Walk-in") only reach that state via direct data
-  // entry, not this toggle, since almost every new supplier is one or the
-  // other, not genuinely both.
+  // Device -> Accessory -> Both (null, shows for every category, like
+  // "Walk-in") -> back to Device.
+  const nextSupplierType = (current) => {
+    if (current === "Device") return "Accessory";
+    if (current === "Accessory") return null;
+    return "Device";
+  };
+
   const handleCycleType = async (supplier) => {
     setError("");
     setBusy(true);
     try {
-      await setSupplierType(supplier.id, supplier.supplierType === "Accessory" ? "Device" : "Accessory");
+      await setSupplierType(supplier.id, nextSupplierType(supplier.supplierType));
       notify();
     } catch (err) {
       setError(err.message || "Failed to update supplier type.");
