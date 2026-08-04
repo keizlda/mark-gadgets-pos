@@ -62,7 +62,7 @@ function SummaryCard({ icon: Icon, iconBg, label, value, sub, valueClass }) {
   );
 }
 
-const initialRange = getPresetRange("Monthly");
+const initialRange = getPresetRange("Daily");
 
 function computeTotals(rows) {
   const totalSales = rows.reduce((sum, r) => sum + r.amount, 0);
@@ -77,7 +77,7 @@ function Reports() {
   const isAdmin = useIsAdmin();
   const showToast = useToast();
 
-  const [reportType, setReportType] = useState("Monthly");
+  const [reportType, setReportType] = useState("Daily");
   const [dateFrom, setDateFrom] = useState(initialRange.from);
   const [dateTo, setDateTo] = useState(initialRange.to);
   const [generatedRange, setGeneratedRange] = useState(initialRange);

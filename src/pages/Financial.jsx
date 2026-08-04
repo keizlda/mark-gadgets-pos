@@ -76,7 +76,7 @@ function SummaryCard({ icon: Icon, iconBg, label, value, sub, valueClass, onClic
   );
 }
 
-const initialRange = getPresetRange("Monthly");
+const initialRange = getPresetRange("Daily");
 
 function Financial() {
   const showToast = useToast();
@@ -89,7 +89,7 @@ function Financial() {
   }, [loadSalesHistory]);
   const allDevices = useServiceData(getAllDevices, []);
 
-  const [reportType, setReportType] = useState("Monthly");
+  const [reportType, setReportType] = useState("Daily");
   const [dateFrom, setDateFrom] = useState(initialRange.from);
   const [dateTo, setDateTo] = useState(initialRange.to);
   const [generatedRange, setGeneratedRange] = useState(initialRange);
