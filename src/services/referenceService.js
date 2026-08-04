@@ -80,8 +80,14 @@ export async function removeModelColor(modelId, colors, color) {
   if (error) throw error;
 }
 
-export async function getSuppliers() {
-  const { data, error } = await supabase.from("suppliers").select("name").eq("active", true).order("name");
+// type: "Device" or "Accessory" — omit to get every active supplier
+// regardless of type (used where there's no category context to filter by).
+// A supplier with no type set (e.g. "Walk-in") always shows, for either
+// type — it's a generic source, not a vendor dedicated to one category.
+export async function getSuppliers(type) {
+  let query = supabase.from("suppliers").select("name").eq("active", true).order("name");
+  if (type) query = query.or(`supplier_type.eq.${type},supplier_type.is.null`);
+  const { data, error } = await query;
   if (error) throw error;
   return data.map((s) => s.name);
 }
@@ -89,15 +95,19 @@ export async function getSuppliers() {
 // The admin management view needs archived suppliers too (to restore them),
 // which the active-only getSuppliers() above deliberately excludes.
 export async function getAllSuppliers() {
-  const { data, error } = await supabase.from("suppliers").select("id, name, contact_info, active").order("name");
+  const { data, error } = await supabase
+    .from("suppliers")
+    .select("id, name, contact_info, active, supplier_type")
+    .order("name");
   if (error) throw error;
-  return data.map((s) => ({ id: s.id, name: s.name, contactInfo: s.contact_info, active: s.active }));
+  return data.map((s) => ({ id: s.id, name: s.name, contactInfo: s.contact_info, active: s.active, supplierType: s.supplier_type }));
 }
 
-export async function addSupplier({ name, contactInfo }) {
+export async function addSupplier({ name, contactInfo, supplierType }) {
   const { error } = await supabase.from("suppliers").insert({
     name,
     contact_info: contactInfo || null,
+    supplier_type: supplierType || "Device",
   });
   if (error) throw error;
 }
@@ -107,6 +117,14 @@ export async function addSupplier({ name, contactInfo }) {
 // picks in SupplierSelect rather than touching anything already on file.
 export async function setSupplierActive(supplierId, active) {
   const { error } = await supabase.from("suppliers").update({ active }).eq("id", supplierId);
+  if (error) throw error;
+}
+
+// Corrects which category list a supplier shows up in — for a supplier
+// added under the wrong type, or "Walk-in"-style entries the admin wants
+// to narrow from universal to one specific type.
+export async function setSupplierType(supplierId, supplierType) {
+  const { error } = await supabase.from("suppliers").update({ supplier_type: supplierType }).eq("id", supplierId);
   if (error) throw error;
 }
 

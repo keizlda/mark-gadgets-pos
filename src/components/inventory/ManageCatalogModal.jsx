@@ -9,6 +9,7 @@ import {
   getAllSuppliers,
   addSupplier,
   setSupplierActive,
+  setSupplierType,
 } from "../../services/referenceService";
 
 const categories = ["iPhone", "iPad", "Apple Watch", "MacBook", "Accessories", "Repair Parts"];
@@ -264,10 +265,32 @@ function CatalogTab({ onChanged }) {
   );
 }
 
+const supplierTypeLabel = {
+  Device: "Phones / iPads / Watches / MacBooks",
+  Accessory: "Accessories / Repair Parts",
+};
+
+function SupplierTypeBadge({ type, onClick, disabled }) {
+  const label = type ? supplierTypeLabel[type] : "Both (universal)";
+  const style = type === "Accessory" ? "bg-purple-50 text-purple-600" : type === "Device" ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-500";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title="Click to switch which category list this supplier shows up in"
+      className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${style} hover:opacity-75 disabled:opacity-60`}
+    >
+      {label}
+    </button>
+  );
+}
+
 function SuppliersTab({ onChanged }) {
   const [suppliers, setSuppliers] = useState([]);
   const [newName, setNewName] = useState("");
   const [newContact, setNewContact] = useState("");
+  const [newType, setNewType] = useState("Device");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -288,7 +311,7 @@ function SuppliersTab({ onChanged }) {
     setError("");
     setBusy(true);
     try {
-      await addSupplier({ name: newName.trim(), contactInfo: newContact.trim() });
+      await addSupplier({ name: newName.trim(), contactInfo: newContact.trim(), supplierType: newType });
       setNewName("");
       setNewContact("");
       notify();
@@ -312,6 +335,23 @@ function SuppliersTab({ onChanged }) {
     }
   };
 
+  // Cycles Device -> Accessory -> Device — "Both (universal)" suppliers
+  // (null type, e.g. "Walk-in") only reach that state via direct data
+  // entry, not this toggle, since almost every new supplier is one or the
+  // other, not genuinely both.
+  const handleCycleType = async (supplier) => {
+    setError("");
+    setBusy(true);
+    try {
+      await setSupplierType(supplier.id, supplier.supplierType === "Accessory" ? "Device" : "Accessory");
+      notify();
+    } catch (err) {
+      setError(err.message || "Failed to update supplier type.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const active = suppliers.filter((s) => s.active);
   const archived = suppliers.filter((s) => !s.active);
 
@@ -324,33 +364,48 @@ function SuppliersTab({ onChanged }) {
         </div>
       )}
 
-      <div className="bg-gray-50 rounded-lg p-3 flex items-end gap-2">
-        <div className="flex-1">
-          <label className="block text-xs font-medium text-gray-600 mb-1">Supplier Name</label>
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+      <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Supplier Name</label>
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Contact Info</label>
+            <input
+              type="text"
+              value={newContact}
+              onChange={(e) => setNewContact(e.target.value)}
+              placeholder="Optional"
+              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
-        <div className="flex-1">
-          <label className="block text-xs font-medium text-gray-600 mb-1">Contact Info</label>
-          <input
-            type="text"
-            value={newContact}
-            onChange={(e) => setNewContact(e.target.value)}
-            placeholder="Optional"
-            className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Supplies</label>
+            <select
+              value={newType}
+              onChange={(e) => setNewType(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Device">Phones / iPads / Watches / MacBooks</option>
+              <option value="Accessory">Accessories / Repair Parts</option>
+            </select>
+          </div>
+          <button
+            onClick={handleAdd}
+            disabled={busy || !newName.trim()}
+            className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+          >
+            Add
+          </button>
         </div>
-        <button
-          onClick={handleAdd}
-          disabled={busy || !newName.trim()}
-          className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
-        >
-          Add
-        </button>
       </div>
 
       <div>
@@ -365,15 +420,18 @@ function SuppliersTab({ onChanged }) {
                   <p className="text-sm text-gray-800">{s.name}</p>
                   {s.contactInfo && <p className="text-xs text-gray-400">{s.contactInfo}</p>}
                 </div>
-                <button
-                  onClick={() => handleToggleActive(s)}
-                  disabled={busy}
-                  className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-500 disabled:opacity-60"
-                  title="Archive — hides it from future Supplier selections without touching past records"
-                >
-                  <Trash2 size={13} />
-                  Archive
-                </button>
+                <div className="flex items-center gap-2">
+                  <SupplierTypeBadge type={s.supplierType} onClick={() => handleCycleType(s)} disabled={busy} />
+                  <button
+                    onClick={() => handleToggleActive(s)}
+                    disabled={busy}
+                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-500 disabled:opacity-60"
+                    title="Archive — hides it from future Supplier selections without touching past records"
+                  >
+                    <Trash2 size={13} />
+                    Archive
+                  </button>
+                </div>
               </div>
             ))
           )}

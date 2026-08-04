@@ -1,18 +1,27 @@
 import { useState, useEffect, useCallback } from "react";
 import { getSuppliers } from "../../services/referenceService";
+import { isAccessoryLikeCategory } from "../../data/referenceData";
 import AddSupplierModal from "./AddSupplierModal";
 
 const ADD_NEW = "__add_new__";
 
 // Shared supplier <select> — lets staff add a brand-new supplier inline
 // (owner picks up new suppliers occasionally) without leaving the form.
-function SupplierSelect({ value, onChange, required = false, placeholder = "Select supplier" }) {
+//
+// category (optional): the current form's product category. When given,
+// the list is filtered to suppliers of the matching type (Accessories/
+// Repair Parts draw from a different supplier list than phones/iPads/
+// Watches/MacBooks). Omit it where there's no category context — every
+// active supplier shows instead of risking an empty, wrongly-filtered list.
+function SupplierSelect({ value, onChange, required = false, placeholder = "Select supplier", category }) {
+  const supplierType = category ? (isAccessoryLikeCategory(category) ? "Accessory" : "Device") : undefined;
+
   const [suppliers, setSuppliers] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
 
   const loadSuppliers = useCallback(() => {
-    getSuppliers().then(setSuppliers);
-  }, []);
+    getSuppliers(supplierType).then(setSuppliers);
+  }, [supplierType]);
   useEffect(() => {
     loadSuppliers();
   }, [loadSuppliers]);
@@ -45,7 +54,11 @@ function SupplierSelect({ value, onChange, required = false, placeholder = "Sele
       </select>
 
       {showAddModal && (
-        <AddSupplierModal onClose={() => setShowAddModal(false)} onAdded={handleAdded} />
+        <AddSupplierModal
+          defaultType={supplierType || "Device"}
+          onClose={() => setShowAddModal(false)}
+          onAdded={handleAdded}
+        />
       )}
     </>
   );

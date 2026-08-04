@@ -4,6 +4,7 @@ import { Info, AlertTriangle, ClipboardList, Fingerprint, Eye, Calendar, Apple, 
 import { getProductCatalog } from "../../services/referenceService";
 import { addDevice, getNextBatchSequence } from "../../services/inventoryService";
 import { getPendingShellsWithProgress } from "../../services/bulkOrderShellsService";
+import { isAccessoryLikeCategory } from "../../data/referenceData";
 import { formatDate, todayLocalDateString } from "../../utils/datetime";
 import SupplierSelect from "../../components/inventory/SupplierSelect";
 import ManageCatalogModal from "../../components/inventory/ManageCatalogModal";
@@ -129,7 +130,7 @@ function AddDevice() {
   const resolvedModel = isOtherModel ? form.customModel.trim() : form.model;
   const modelColors = !isOtherModel && form.model ? catalog?.modelColors[form.model] || [] : [];
   const isDefective = form.status === "Supplier Defective";
-  const isRepairPart = form.category === "Repair Parts";
+  const isRepairPart = isAccessoryLikeCategory(form.category);
   const selectedShell = pendingShells.find((s) => s.id === form.shellId);
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
@@ -145,6 +146,11 @@ function AddDevice() {
       // "Brand New" is valid in both condition vocabularies, so switching
       // category never leaves a stale, now-invalid condition selected.
       condition: "Brand New",
+      // The supplier list is filtered by category — a phone supplier
+      // selected before switching to Accessories/Repair Parts (or vice
+      // versa) wouldn't be in the new list, so it'd show selected but
+      // invalid rather than actually being saved.
+      supplier: "",
     }));
   };
 
@@ -409,6 +415,7 @@ function AddDevice() {
               <SupplierSelect
                 value={form.supplier}
                 onChange={(v) => update("supplier", v)}
+                category={form.category}
                 required
               />
             </div>

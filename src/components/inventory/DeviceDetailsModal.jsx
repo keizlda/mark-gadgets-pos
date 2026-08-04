@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { getDeviceSaleInfo } from "../../services/salesService";
 import { formatDate, formatTime } from "../../utils/datetime";
+import { isAccessoryLikeCategory } from "../../data/referenceData";
 
 const statusStyles = {
   Sold: "bg-blue-100 text-blue-600",
@@ -52,8 +53,12 @@ function DeviceDetailsModal({ device, paymentMethod, downPayment, balance, onClo
           <Row label="Batch Code">{device.batchCode}</Row>
           <Row label="Device">{device.device}</Row>
           <Row label="Category">{device.category}</Row>
-          <Row label="Storage">{device.storage || "—"}</Row>
-          <Row label="Color">{device.color || "—"}</Row>
+          {!isAccessoryLikeCategory(device.category) && (
+            <>
+              <Row label="Storage">{device.storage || "—"}</Row>
+              <Row label="Color">{device.color || "—"}</Row>
+            </>
+          )}
           <Row label="Condition">{device.condition || "—"}</Row>
           <Row label="Supplier">{device.supplier || "—"}</Row>
           <Row label="Selling Price">₱{Number(device.price || 0).toLocaleString()}</Row>

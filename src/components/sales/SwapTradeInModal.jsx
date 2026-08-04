@@ -3,6 +3,7 @@ import { X, AlertTriangle, Repeat } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getProductCatalog } from "../../services/referenceService";
 import { addDevice, getNextBatchSequence } from "../../services/inventoryService";
+import { isAccessoryLikeCategory } from "../../data/referenceData";
 import SupplierSelect from "../inventory/SupplierSelect";
 
 function batchCodeDatePrefix() {
@@ -56,7 +57,7 @@ function SwapTradeInModal({ onClose, onCreated }) {
   const isOtherModel = form.model === OTHER_MODEL;
   const resolvedModel = isOtherModel ? form.customModel.trim() : form.model;
   const modelColors = !isOtherModel && form.model ? catalog?.modelColors[form.model] || [] : [];
-  const isRepairPart = form.category === "Repair Parts";
+  const isRepairPart = isAccessoryLikeCategory(form.category);
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -69,7 +70,16 @@ function SwapTradeInModal({ onClose, onCreated }) {
   }, []);
 
   const handleCategoryChange = (category) => {
-    setForm((f) => ({ ...f, category, model: "", customModel: "", color: "", storage: "", condition: "Pre-owned" }));
+    setForm((f) => ({
+      ...f,
+      category,
+      model: "",
+      customModel: "",
+      color: "",
+      storage: "",
+      condition: "Pre-owned",
+      supplier: "",
+    }));
   };
 
   const handleModelChange = (model) => {
@@ -258,7 +268,12 @@ function SwapTradeInModal({ onClose, onCreated }) {
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
                   Supplier <span className="text-red-500">*</span>
                 </label>
-                <SupplierSelect value={form.supplier} onChange={(v) => update("supplier", v)} required />
+                <SupplierSelect
+                  value={form.supplier}
+                  onChange={(v) => update("supplier", v)}
+                  category={form.category}
+                  required
+                />
                 <p className="text-xs text-gray-400 mt-1">Use "Walk-in" for a customer trade-in.</p>
               </div>
             </div>

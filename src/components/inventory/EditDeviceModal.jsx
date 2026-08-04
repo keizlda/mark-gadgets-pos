@@ -3,6 +3,7 @@ import { X, AlertTriangle } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getDeviceCategories } from "../../services/referenceService";
 import { updateDevice } from "../../services/inventoryService";
+import { isAccessoryLikeCategory } from "../../data/referenceData";
 import SupplierSelect from "./SupplierSelect";
 
 const baseStatusOptions = ["Available", "Customer Returned", "Supplier Defective", "Returned"];
@@ -40,7 +41,7 @@ function EditDeviceModal({ device, onClose, onSaved }) {
   const [error, setError] = useState("");
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
-  const isRepairPart = form.category === "Repair Parts";
+  const isRepairPart = isAccessoryLikeCategory(form.category);
 
   // Setting status to Supplier Defective needs an issue description so it
   // actually creates a record on the Supplier Defective page — not just a
@@ -117,7 +118,13 @@ function EditDeviceModal({ device, onClose, onSaved }) {
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Category</label>
               <select
                 value={form.category}
-                onChange={(e) => update("category", e.target.value)}
+                onChange={(e) => {
+                  const category = e.target.value;
+                  // The supplier list is filtered by category — a supplier
+                  // selected under the old category may not be valid for
+                  // the new one.
+                  setForm((f) => ({ ...f, category, supplierName: "" }));
+                }}
                 className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {categories.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -196,6 +203,7 @@ function EditDeviceModal({ device, onClose, onSaved }) {
               <SupplierSelect
                 value={form.supplierName}
                 onChange={(v) => update("supplierName", v)}
+                category={form.category}
                 placeholder="None"
               />
             </div>

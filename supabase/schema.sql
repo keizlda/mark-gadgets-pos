@@ -23,6 +23,12 @@ create table public.suppliers (
   -- so a hard delete would either fail on the FK or orphan history. Archiving
   -- just hides it from future picks in SupplierSelect.
   active boolean not null default true,
+  -- Accessories/Repair Parts are sourced from different vendors than
+  -- iPhones/iPads/Apple Watches/MacBooks — SupplierSelect filters its list
+  -- to this instead of showing one flat list for every category. Null
+  -- means "shows for every category" — a generic source like 'Walk-in'
+  -- isn't a dedicated vendor of either.
+  supplier_type text check (supplier_type in ('Device', 'Accessory')),
   created_at timestamptz not null default now()
 );
 

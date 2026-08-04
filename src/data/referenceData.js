@@ -10,6 +10,15 @@
 export const deviceCategories = ["iPhones", "iPads", "Apple Watches", "MacBooks", "Accessories", "Repair Parts"];
 export const deviceStorages = ["64GB", "128GB", "256GB", "512GB", "1TB"];
 
+// Accessories/Repair Parts aren't serialized phone-like devices — no
+// Color/Storage, a different condition vocabulary, and a different
+// supplier list all key off this same check. Works with either the
+// singular (Add Device's form) or plural/DB category spelling, since
+// these two names don't have a singular/plural distinction.
+export function isAccessoryLikeCategory(category) {
+  return category === "Accessories" || category === "Repair Parts";
+}
+
 // productCatalog keys are singular ("iPhone") to match how product_models.category
 // is stored; devices.category in the DB is plural ("iPhones") to match its
 // own CHECK constraint — AddDevice's categoryToDbValue maps between them.

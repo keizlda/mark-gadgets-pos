@@ -4,6 +4,7 @@ import { useServiceData } from "../../hooks/useServiceData";
 import { getProductCatalog } from "../../services/referenceService";
 import { createBulkOrderShell } from "../../services/bulkOrderShellsService";
 import { todayLocalDateString } from "../../utils/datetime";
+import { isAccessoryLikeCategory } from "../../data/referenceData";
 import SupplierSelect from "./SupplierSelect";
 
 const OTHER_MODEL = "__other__";
@@ -40,11 +41,12 @@ function LogShipmentArrivalModal({ onClose, onCreated }) {
   const isOtherModel = form.model === OTHER_MODEL;
   const resolvedModel = isOtherModel ? form.customModel.trim() : form.model;
   const modelColors = !isOtherModel && form.model ? catalog?.modelColors[form.model] || [] : [];
+  const isRepairPart = isAccessoryLikeCategory(form.category);
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
   const handleCategoryChange = (category) => {
-    setForm((f) => ({ ...f, category, model: "", customModel: "", color: "", storage: "" }));
+    setForm((f) => ({ ...f, category, model: "", customModel: "", color: "", storage: "", supplier: "" }));
   };
 
   const handleModelChange = (model) => {
@@ -115,7 +117,12 @@ function LogShipmentArrivalModal({ onClose, onCreated }) {
               <label className="block text-xs font-medium text-gray-600 mb-1.5">
                 Supplier <span className="text-red-500">*</span>
               </label>
-              <SupplierSelect value={form.supplier} onChange={(v) => update("supplier", v)} required />
+              <SupplierSelect
+                value={form.supplier}
+                onChange={(v) => update("supplier", v)}
+                category={form.category}
+                required
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -154,45 +161,47 @@ function LogShipmentArrivalModal({ onClose, onCreated }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Color <span className="text-gray-400 font-normal">(optional — leave blank if mixed)</span>
-                </label>
-                {isOtherModel ? (
-                  <input
-                    type="text"
-                    value={form.color}
-                    onChange={(e) => update("color", e.target.value)}
-                    placeholder="Enter color"
-                    className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                ) : (
+            {!isRepairPart && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    Color <span className="text-gray-400 font-normal">(optional — leave blank if mixed)</span>
+                  </label>
+                  {isOtherModel ? (
+                    <input
+                      type="text"
+                      value={form.color}
+                      onChange={(e) => update("color", e.target.value)}
+                      placeholder="Enter color"
+                      className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <select
+                      value={form.color}
+                      onChange={(e) => update("color", e.target.value)}
+                      disabled={!form.model}
+                      className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+                    >
+                      <option value="">{form.model ? "Any color" : "Select a model first"}</option>
+                      {modelColors.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    Storage <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
                   <select
-                    value={form.color}
-                    onChange={(e) => update("color", e.target.value)}
-                    disabled={!form.model}
-                    className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+                    value={form.storage}
+                    onChange={(e) => update("storage", e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">{form.model ? "Any color" : "Select a model first"}</option>
-                    {modelColors.map((c) => <option key={c} value={c}>{c}</option>)}
+                    <option value="">Any storage</option>
+                    {catalog.storages.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
-                )}
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Storage <span className="text-gray-400 font-normal">(optional)</span>
-                </label>
-                <select
-                  value={form.storage}
-                  onChange={(e) => update("storage", e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Any storage</option>
-                  {catalog.storages.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>

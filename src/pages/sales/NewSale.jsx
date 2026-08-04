@@ -370,8 +370,8 @@ function NewSale() {
                               </div>
                             </div>
                           </td>
-                          <td className="py-2.5 text-gray-600">{p.storage}</td>
-                          <td className="py-2.5 text-gray-600">{p.color}</td>
+                          <td className="py-2.5 text-gray-600">{p.storage || "—"}</td>
+                          <td className="py-2.5 text-gray-600">{p.color || "—"}</td>
                           <td className="py-2.5 text-gray-700">₱{p.price.toLocaleString()}</td>
                           <td className="py-2.5 text-right">
                             <button
@@ -444,7 +444,9 @@ function NewSale() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm text-gray-800 font-medium truncate">{c.product}</p>
-                      <p className="text-xs text-gray-400">{c.storage} · {c.color} · {c.batchCode}</p>
+                      <p className="text-xs text-gray-400">
+                        {[c.storage, c.color, c.batchCode].filter(Boolean).join(" · ")}
+                      </p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         Capital: ₱{(Number(c.purchasePrice) || 0).toLocaleString()} · Base: ₱
                         {(Number(c.price) || 0).toLocaleString()}

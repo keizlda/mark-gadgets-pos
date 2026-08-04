@@ -68,8 +68,8 @@ function DeviceTable({ devices, onView, onEdit, onDelete }) {
                       </div>
                     </td>
                     <td className="py-3 text-gray-600">{row.category}</td>
-                    <td className="py-3 text-gray-600">{row.storage}</td>
-                    <td className="py-3 text-gray-600">{row.color}</td>
+                    <td className={`py-3 ${row.storage ? "text-gray-600" : "text-gray-300"}`}>{row.storage || "—"}</td>
+                    <td className={`py-3 ${row.color ? "text-gray-600" : "text-gray-300"}`}>{row.color || "—"}</td>
                     <td className="py-3">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusStyles[row.status]}`}>
                         {row.status}

@@ -2,9 +2,10 @@ import { useState } from "react";
 import { X, AlertTriangle } from "lucide-react";
 import { addSupplier } from "../../services/referenceService";
 
-function AddSupplierModal({ onClose, onAdded }) {
+function AddSupplierModal({ onClose, onAdded, defaultType = "Device" }) {
   const [name, setName] = useState("");
   const [contactInfo, setContactInfo] = useState("");
+  const [supplierType, setSupplierType] = useState(defaultType);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -14,7 +15,7 @@ function AddSupplierModal({ onClose, onAdded }) {
     setSubmitting(true);
     try {
       const trimmedName = name.trim();
-      await addSupplier({ name: trimmedName, contactInfo: contactInfo.trim() });
+      await addSupplier({ name: trimmedName, contactInfo: contactInfo.trim(), supplierType });
       onAdded(trimmedName);
     } catch (err) {
       if (err.code === "23505") {
@@ -71,6 +72,30 @@ function AddSupplierModal({ onClose, onAdded }) {
                 placeholder="Phone number or email"
                 className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Supplies</label>
+              <div className="flex gap-2">
+                {[
+                  { value: "Device", label: "Phones / iPads / Watches / MacBooks" },
+                  { value: "Accessory", label: "Accessories / Repair Parts" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSupplierType(opt.value)}
+                    className={`flex-1 text-xs px-3 py-2 rounded-lg border text-left ${
+                      supplierType === opt.value
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Determines which forms this supplier shows up in.</p>
             </div>
           </div>
 
