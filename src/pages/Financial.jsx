@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Coins, Printer, Search, PiggyBank, TrendingUp, Wallet, Plus, Trash2, AlertTriangle, Boxes } from "lucide-react";
+import { Coins, Printer, FileSpreadsheet, Search, PiggyBank, TrendingUp, Wallet, Plus, Trash2, AlertTriangle, Boxes } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
 import { getSalesHistory, deleteSaleItem } from "../services/salesService";
 import { getAllDevices } from "../services/inventoryService";
 import { getAllExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import { getCgnResales, addCgnResale, deleteCgnResale } from "../services/cgnResalesService";
 import { formatDate } from "../utils/datetime";
+import { exportFinancialReport } from "../utils/exportFinancialReport";
 import DateRangePicker from "../components/common/DateRangePicker";
 import UnsoldUnitsModal from "../components/financial/UnsoldUnitsModal";
 import ExpenseCategoryModal from "../components/financial/ExpenseCategoryModal";
@@ -415,6 +416,30 @@ function Financial() {
     window.print();
   };
 
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportFinancialReport({
+        reportType,
+        generatedRange,
+        storeRows,
+        cgnEntries: combinedCgnEntries,
+        expenses: filteredExpenses,
+        unsoldUnits,
+        totals,
+        cgnTotals: combinedCgnTotals,
+        expenseTotals: { expenses: totalExpenses, cargo: totalCargo, prulife: totalPrulife, personal: totalPersonal },
+        netProfit: netProfitAfterExpenses,
+        unsoldTotals,
+      });
+    } catch (err) {
+      showToast(err.message || "Failed to export report. Please try again.", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Print-only header */}
@@ -431,13 +456,23 @@ function Financial() {
           <Coins size={22} className="text-gray-700" />
           <h1 className="text-xl font-bold text-gray-800">Financial</h1>
         </div>
-        <button
-          onClick={handlePrint}
-          className="flex items-center gap-2 text-sm text-gray-700 border border-gray-200 bg-white px-4 py-2 rounded-lg hover:bg-gray-50"
-        >
-          <Printer size={15} />
-          Print Report
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-2 text-sm text-gray-700 border border-gray-200 bg-white px-4 py-2 rounded-lg hover:bg-gray-50 disabled:opacity-60"
+          >
+            <FileSpreadsheet size={15} />
+            {exporting ? "Exporting..." : "Export to Excel"}
+          </button>
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-2 text-sm text-gray-700 border border-gray-200 bg-white px-4 py-2 rounded-lg hover:bg-gray-50"
+          >
+            <Printer size={15} />
+            Print Report
+          </button>
+        </div>
       </div>
 
       {/* Controls */}
