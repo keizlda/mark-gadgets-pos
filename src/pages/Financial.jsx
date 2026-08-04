@@ -5,6 +5,7 @@ import { getSalesHistory, deleteSaleItem } from "../services/salesService";
 import { getAllDevices } from "../services/inventoryService";
 import { getAllExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import { getCgnResales, addCgnResale, deleteCgnResale } from "../services/cgnResalesService";
+import { formatDate } from "../utils/datetime";
 import DateRangePicker from "../components/common/DateRangePicker";
 import UnsoldUnitsModal from "../components/financial/UnsoldUnitsModal";
 import ExpenseCategoryModal from "../components/financial/ExpenseCategoryModal";
@@ -202,7 +203,7 @@ function Financial() {
     const cgnResold = filteredCgnResales.map((r) => ({
       key: `resale-${r.id}`,
       id: r.id,
-      date: r.date,
+      date: formatDate(r.date),
       sortDate: new Date(r.date),
       batchCode: r.batchCode || "—",
       unit: r.deviceName,
