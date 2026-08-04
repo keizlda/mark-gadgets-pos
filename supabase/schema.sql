@@ -839,6 +839,11 @@ begin
   select device_id, sale_id into v_device_id, v_sale_id
   from public.sale_items where id = p_sale_item_id;
 
+  -- A return filed against this exact sale would otherwise block the
+  -- sale_items delete below with a foreign-key violation — undoing the
+  -- sale undoes the return filed on it too.
+  delete from public.customer_returns where sale_item_id = p_sale_item_id;
+
   delete from public.sale_items where id = p_sale_item_id;
 
   update public.devices set status = 'Available' where id = v_device_id and status = 'Sold';
