@@ -295,7 +295,9 @@ function SuppliersTab({ onChanged }) {
   const [error, setError] = useState("");
 
   const load = useCallback(() => {
-    getAllSuppliers().then(setSuppliers);
+    getAllSuppliers()
+      .then(setSuppliers)
+      .catch((err) => setError(err.message || "Failed to load suppliers."));
   }, []);
   useEffect(() => {
     load();

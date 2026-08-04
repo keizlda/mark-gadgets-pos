@@ -17,10 +17,14 @@ function SupplierSelect({ value, onChange, required = false, placeholder = "Sele
   const supplierType = category ? (isAccessoryLikeCategory(category) ? "Accessory" : "Device") : undefined;
 
   const [suppliers, setSuppliers] = useState([]);
+  const [loadError, setLoadError] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
 
   const loadSuppliers = useCallback(() => {
-    getSuppliers(supplierType).then(setSuppliers);
+    setLoadError(false);
+    getSuppliers(supplierType)
+      .then(setSuppliers)
+      .catch(() => setLoadError(true));
   }, [supplierType]);
   useEffect(() => {
     loadSuppliers();
@@ -52,6 +56,12 @@ function SupplierSelect({ value, onChange, required = false, placeholder = "Sele
         {suppliers.map((s) => <option key={s} value={s}>{s}</option>)}
         <option value={ADD_NEW}>+ Add New Supplier</option>
       </select>
+
+      {loadError && (
+        <p className="text-xs text-red-500 mt-1">
+          Couldn't load suppliers — try refreshing the page. If this keeps happening, a database migration may be missing.
+        </p>
+      )}
 
       {showAddModal && (
         <AddSupplierModal
