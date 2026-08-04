@@ -1,11 +1,10 @@
 @import "tailwindcss";
 
-/* Printed reports (Financial, Reports "Print Report") — landscape with
-   tight margins so wide ledger tables fit the page width instead of
-   getting clipped, and a smaller base size so long tables paginate less. */
+/* Printed reports (Financial, Reports "Print Report") — portrait with
+   tight margins, and a smaller base size so long tables paginate less. */
 @media print {
   @page {
-    size: landscape;
+    size: portrait;
     margin: 10mm;
   }
 
