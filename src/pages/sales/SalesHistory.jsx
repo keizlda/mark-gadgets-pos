@@ -13,8 +13,10 @@ import {
 import { useServiceData } from "../../hooks/useServiceData";
 import { useIsAdmin } from "../../hooks/useIsAdmin";
 import { getSalesHistory, updateSalePaymentStatus, deleteSaleItem } from "../../services/salesService";
+import { getCgnResales } from "../../services/cgnResalesService";
 import { getPaymentMethods } from "../../services/referenceService";
 import { getDeviceById } from "../../services/inventoryService";
+import { formatDate } from "../../utils/datetime";
 import InitiateReturnModal from "../../components/sales/InitiateReturnModal";
 import DeviceDetailsModal from "../../components/inventory/DeviceDetailsModal";
 import EditSaleModal from "../../components/sales/EditSaleModal";
@@ -42,12 +44,26 @@ const paymentStatusStyles = {
   Pending: "bg-orange-100 text-orange-600",
 };
 
+// cgn_resales.device_name is one free-text string ("iPhone 13 256GB White")
+// rather than separate device/storage/color columns — split it the same way
+// so it lines up with the Device column's two-line layout.
+function parseCgnDeviceName(name) {
+  const cleaned = (name || "").replace(/\s*\(Brand New\)\s*$/i, "").trim();
+  const match = cleaned.match(/^(.*?)\s+(\d+\s*(?:GB|TB))\s+(.*)$/i);
+  if (match) {
+    return { device: match[1].trim(), storage: match[2].replace(/\s+/g, "").toUpperCase(), color: match[3].trim() };
+  }
+  return { device: cleaned, storage: "", color: "" };
+}
+
 function SalesHistory() {
   const showToast = useToast();
   const isAdmin = useIsAdmin();
   const [salesHistory, setSalesHistory] = useState([]);
+  const [cgnResales, setCgnResales] = useState([]);
   const loadSalesHistory = useCallback(() => {
     getSalesHistory().then(setSalesHistory);
+    getCgnResales().then(setCgnResales);
   }, []);
   useEffect(() => {
     loadSalesHistory();
@@ -112,21 +128,59 @@ function SalesHistory() {
     }
   };
 
+  // CGN reselling a unit to their own customer is a separate business event
+  // (tracked in cgn_resales, not our sales/sale_items) but staff still need
+  // to see it here when checking on CGN — merged in alongside our own sales,
+  // tagged so it renders and behaves differently (see isCgnResale below).
+  const cgnResaleRows = useMemo(() => {
+    return cgnResales.map((r) => {
+      const { device, storage, color } = parseCgnDeviceName(r.deviceName);
+      return {
+        key: `resale-${r.id}`,
+        saleItemId: null,
+        saleId: null,
+        deviceId: r.deviceId,
+        batchCode: r.batchCode || "—",
+        date: formatDate(r.date),
+        sortAt: r.date,
+        time: "",
+        customer: "CGN",
+        phone: "",
+        device,
+        storage,
+        color,
+        total: r.disposalPrice,
+        payment: undefined,
+        salesperson: "—",
+        orderType: "CGN Resale",
+        paymentStatus: undefined,
+        status: "Completed",
+        isCgnResale: true,
+      };
+    });
+  }, [cgnResales]);
+
+  const mergedRows = useMemo(() => {
+    const ownSales = salesHistory.map((s) => ({ ...s, key: s.saleItemId, sortAt: s.soldAt }));
+    return [...ownSales, ...cgnResaleRows].sort((a, b) => new Date(b.sortAt) - new Date(a.sortAt));
+  }, [salesHistory, cgnResaleRows]);
+
   // Every distinct named bulk buyer (CGN, Mona, ND, whoever comes next) —
   // derived from actual sales instead of a hardcoded list, so a brand-new
   // bulk buyer just shows up here on its own once a Bulk sale is logged
-  // for them.
+  // for them. CGN resales always count as CGN even without a matching Bulk
+  // sales row, so CGN still appears here the first time one is ever added.
   const bulkBuyerNames = useMemo(() => {
     const names = new Set();
-    salesHistory.forEach((s) => {
-      if (s.orderType === "Bulk" && s.customer && s.customer.trim()) {
+    mergedRows.forEach((s) => {
+      if ((s.orderType === "Bulk" || s.isCgnResale) && s.customer && s.customer.trim()) {
         names.add(s.customer.trim());
       }
     });
     return [...names].sort();
-  }, [salesHistory]);
+  }, [mergedRows]);
 
-  const filtered = salesHistory.filter((s) => {
+  const filtered = mergedRows.filter((s) => {
     if (bulkBuyer !== "All" && !(s.customer && s.customer.trim() === bulkBuyer)) return false;
     if (payment !== "All" && s.payment !== payment) return false;
     if (paymentStatus !== "All" && s.paymentStatus !== paymentStatus) return false;
@@ -318,7 +372,7 @@ function SalesHistory() {
                 </tr>
               ) : (
                 paged.map((row, index) => (
-                  <tr key={row.batchCode} className="border-b border-gray-50 hover:bg-gray-50">
+                  <tr key={row.key} className="border-b border-gray-50 hover:bg-gray-50">
                     <td className="py-3 text-blue-600 font-medium whitespace-nowrap">{row.batchCode}</td>
                     <td className="py-3 text-gray-500 whitespace-nowrap">
                       <p>{row.date}</p>
@@ -330,12 +384,16 @@ function SalesHistory() {
                     </td>
                     <td className="py-3">
                       <p className="text-gray-800 font-medium">{row.device}</p>
-                      <p className="text-xs text-gray-400">{row.storage} · {row.color}</p>
+                      {(row.storage || row.color) && (
+                        <p className="text-xs text-gray-400">
+                          {[row.storage, row.color].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
                     </td>
                     <td className="py-3 text-gray-700 font-medium">₱{row.total.toLocaleString()}</td>
                     <td className="py-3">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentStyles[row.payment] || "bg-gray-100 text-gray-600"}`}>
-                        {row.payment}
+                        {row.payment || "—"}
                       </span>
                     </td>
                     <td className="py-3 text-gray-600">{row.salesperson}</td>
@@ -350,11 +408,16 @@ function SalesHistory() {
                             Bulk Order
                           </span>
                         )}
+                        {row.isCgnResale && (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-700">
+                            CGN Resale
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="py-3">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${paymentStatusStyles[row.paymentStatus] || "bg-gray-100 text-gray-600"}`}>
-                        {row.paymentStatus}
+                        {row.paymentStatus || "—"}
                       </span>
                     </td>
                     <td className="py-3 text-right relative">
@@ -365,48 +428,60 @@ function SalesHistory() {
                         <MoreVertical size={16} />
                       </button>
                       {openMenu === index && (
-                        <div className="absolute right-6 top-8 bg-white border border-gray-200 rounded-lg shadow-md z-10 w-40 text-left">
-                          <button
-                            onClick={() => handleViewUnitInfo(row)}
-                            className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                          >
-                            Unit Info
-                          </button>
-                          {row.paymentStatus === "Pending" && (
+                        <div className="absolute right-6 top-8 bg-white border border-gray-200 rounded-lg shadow-md z-10 w-44 text-left">
+                          {row.deviceId ? (
                             <button
-                              onClick={() => handleMarkAsPaid(row)}
-                              disabled={markingPaidId === row.saleId}
-                              className="block w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-gray-50 disabled:opacity-60"
+                              onClick={() => handleViewUnitInfo(row)}
+                              className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                             >
-                              {markingPaidId === row.saleId ? "Updating..." : "Mark as Paid"}
+                              Unit Info
                             </button>
-                          )}
-                          {row.status === "Returned" ? (
-                            <p className="px-3 py-2 text-xs text-gray-400">Already returned</p>
                           ) : (
-                            <button
-                              onClick={() => { setReturnRecord(row); setOpenMenu(null); }}
-                              className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-50"
-                            >
-                              Return
-                            </button>
+                            <p className="px-3 py-2 text-xs text-gray-400">No linked unit</p>
                           )}
-                          {isAdmin && (
-                            <button
-                              onClick={() => { setEditingRow(row); setOpenMenu(null); }}
-                              className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-t border-gray-100"
-                            >
-                              Edit Sale
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button
-                              onClick={() => handleDeleteSale(row)}
-                              disabled={deletingId === row.saleItemId}
-                              className="block w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-gray-50 disabled:opacity-60"
-                            >
-                              {deletingId === row.saleItemId ? "Deleting..." : "Delete"}
-                            </button>
+                          {row.isCgnResale ? (
+                            <p className="px-3 py-2 text-xs text-gray-400 border-t border-gray-100">
+                              Managed in Financial → CGN Ledger
+                            </p>
+                          ) : (
+                            <>
+                              {row.paymentStatus === "Pending" && (
+                                <button
+                                  onClick={() => handleMarkAsPaid(row)}
+                                  disabled={markingPaidId === row.saleId}
+                                  className="block w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-gray-50 disabled:opacity-60"
+                                >
+                                  {markingPaidId === row.saleId ? "Updating..." : "Mark as Paid"}
+                                </button>
+                              )}
+                              {row.status === "Returned" ? (
+                                <p className="px-3 py-2 text-xs text-gray-400">Already returned</p>
+                              ) : (
+                                <button
+                                  onClick={() => { setReturnRecord(row); setOpenMenu(null); }}
+                                  className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-gray-50"
+                                >
+                                  Return
+                                </button>
+                              )}
+                              {isAdmin && (
+                                <button
+                                  onClick={() => { setEditingRow(row); setOpenMenu(null); }}
+                                  className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-t border-gray-100"
+                                >
+                                  Edit Sale
+                                </button>
+                              )}
+                              {isAdmin && (
+                                <button
+                                  onClick={() => handleDeleteSale(row)}
+                                  disabled={deletingId === row.saleItemId}
+                                  className="block w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-gray-50 disabled:opacity-60"
+                                >
+                                  {deletingId === row.saleItemId ? "Deleting..." : "Delete"}
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
                       )}

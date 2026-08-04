@@ -6,7 +6,7 @@ import { supabase } from "../lib/supabaseClient";
 export async function getCgnResales() {
   const { data, error } = await supabase
     .from("cgn_resales")
-    .select("id, sale_date, device_name, capital, disposal_price, supplier_note, batch_code")
+    .select("id, sale_date, device_name, capital, disposal_price, supplier_note, batch_code, device_id")
     .order("sale_date", { ascending: false });
 
   if (error) throw error;
@@ -20,6 +20,7 @@ export async function getCgnResales() {
     profit: r.disposal_price - r.capital,
     supplierNote: r.supplier_note,
     batchCode: r.batch_code,
+    deviceId: r.device_id,
   }));
 }
 
