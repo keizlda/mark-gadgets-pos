@@ -72,8 +72,13 @@ export async function updateDevice(id, device) {
   if (error) throw error;
 }
 
+// Admin-only, from All Devices — cleans up any sale/reservation/defective
+// history first, then removes the device itself. Refuses (with a clear
+// message) to touch a unit that's a live customer-return replacement or
+// linked in the CGN Ledger, since deleting either would break traceability
+// elsewhere (see admin_delete_device in schema.sql).
 export async function deleteDevice(id) {
-  const { error } = await supabase.from("devices").delete().eq("id", id);
+  const { error } = await supabase.rpc("admin_delete_device", { p_device_id: id });
   if (error) throw error;
 }
 

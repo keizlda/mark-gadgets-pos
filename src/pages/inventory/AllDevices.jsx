@@ -75,18 +75,18 @@ function AllDevices() {
   };
 
   const handleDelete = async (device) => {
-    if (!window.confirm(`Delete ${device.batchCode} — ${device.device}? This cannot be undone.`)) return;
+    const warning =
+      device.status === "Sold"
+        ? `Delete ${device.batchCode} — ${device.device}? This unit is Sold — its sale record will be removed too. This cannot be undone.`
+        : `Delete ${device.batchCode} — ${device.device}? This cannot be undone.`;
+    if (!window.confirm(warning)) return;
     try {
       await deleteDevice(device.id);
       loadDevices();
       loadPendingShells();
       loadAllShells();
     } catch (err) {
-      if (err.code === "23503") {
-        showToast("Can't delete this device — it has sales, reservation, or return history. Consider changing its status instead.", "error");
-      } else {
-        showToast(err.message || "Failed to delete device. Please try again.", "error");
-      }
+      showToast(err.message || "Failed to delete device. Please try again.", "error");
     }
   };
 
