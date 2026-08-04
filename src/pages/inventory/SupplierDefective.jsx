@@ -63,7 +63,7 @@ function SupplierDefective() {
     const to = f.dateRange?.to || null;
     return supplierDefectiveRecords.filter((r) => {
       const detectedDate = new Date(r.dateDetected);
-      const matchesSearch = !f.search || r.batchCode.toLowerCase().includes(f.search.toLowerCase());
+      const matchesSearch = !f.search || (r.batchCode || "").toLowerCase().includes(f.search.toLowerCase());
       return (
         matchesSearch &&
         (f.supplier === "All" || r.supplier === f.supplier) &&

@@ -99,8 +99,8 @@ function Reserved() {
       const reservedDate = new Date(r.dateReserved);
       const matchesSearch =
         !f.search ||
-        r.batchCode.toLowerCase().includes(f.search.toLowerCase()) ||
-        r.device.toLowerCase().includes(f.search.toLowerCase());
+        (r.batchCode || "").toLowerCase().includes(f.search.toLowerCase()) ||
+        (r.device || "").toLowerCase().includes(f.search.toLowerCase());
       return (
         matchesSearch &&
         (f.kind === "All" || getDeviceKind(r.device) === f.kind) &&
