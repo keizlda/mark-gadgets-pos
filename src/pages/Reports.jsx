@@ -115,6 +115,8 @@ function Reports() {
         txn: s.batchCode,
         date: s.date,
         time: s.time,
+        customer: s.customer,
+        orderType: s.orderType,
         device: s.device,
         items: 1,
         amount: s.total,
@@ -122,12 +124,32 @@ function Reports() {
       }));
   }, [generatedRange, salesHistory]);
 
-  const totals = useMemo(() => computeTotals(rows), [rows]);
+  const [buyerFilter, setBuyerFilter] = useState("All");
 
-  const cashRows = useMemo(() => rows.filter((r) => r.payment === "Cash"), [rows]);
+  // Only buyers with at least one Bulk order, scoped to the current report
+  // period — lets a same-day bulk order be isolated from the regular
+  // walk-in sales it'd otherwise be mixed in with.
+  const bulkBuyerNames = useMemo(() => {
+    const names = new Set();
+    rows.forEach((r) => {
+      if (r.orderType === "Bulk" && r.customer && r.customer.trim()) {
+        names.add(r.customer.trim());
+      }
+    });
+    return [...names].sort();
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    if (buyerFilter === "All") return rows;
+    return rows.filter((r) => r.customer && r.customer.trim() === buyerFilter);
+  }, [rows, buyerFilter]);
+
+  const totals = useMemo(() => computeTotals(filteredRows), [filteredRows]);
+
+  const cashRows = useMemo(() => filteredRows.filter((r) => r.payment === "Cash"), [filteredRows]);
   const cashTotals = useMemo(() => computeTotals(cashRows), [cashRows]);
 
-  const displayedRows = viewMode === "cash" ? cashRows : rows;
+  const displayedRows = viewMode === "cash" ? cashRows : filteredRows;
   const displayedTotals = viewMode === "cash" ? cashTotals : totals;
 
   const filteredExpenses = useMemo(() => {
@@ -216,8 +238,9 @@ function Reports() {
   };
 
   // Lets admin add straight from the Expenses/Cargo breakdown modal, already
-  // scoped to that category — stays staff-visible (adminOnly defaults
-  // false), same as the main Add Expense form on this page.
+  // scoped to that category — General/Cargo entries are staff-visible no
+  // matter where they're added from, same as the main Add Expense form on
+  // this page.
   const handleAddExpenseFromModal = async ({ date, description, amount, category }) => {
     await addExpense({ date, description, amount, category });
     loadExpenses();
@@ -276,6 +299,20 @@ function Reports() {
           <div className="w-64">
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Date Range</label>
             <DateRangePicker value={customRange} onChange={handleCustomRangeChange} />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Bulk Buyer</label>
+            <select
+              value={buyerFilter}
+              onChange={(e) => setBuyerFilter(e.target.value)}
+              className="w-44 border border-gray-200 rounded-lg text-sm px-3 py-2.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="All">All Sales</option>
+              {bulkBuyerNames.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
           </div>
 
           <button
@@ -358,6 +395,7 @@ function Reports() {
                   <th className="px-3 py-2.5 font-medium rounded-l-lg">#</th>
                   <th className="px-3 py-2.5 font-medium">Date &amp; Time</th>
                   <th className="px-3 py-2.5 font-medium">Batch Code</th>
+                  <th className="px-3 py-2.5 font-medium">Customer</th>
                   <th className="px-3 py-2.5 font-medium">Unit Sold</th>
                   <th className="px-3 py-2.5 font-medium text-right">Total Amount</th>
                   <th className="px-3 py-2.5 font-medium rounded-r-lg">Payment Method</th>
@@ -366,7 +404,7 @@ function Reports() {
               <tbody>
                 {displayedRows.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-gray-400">
+                    <td colSpan={7} className="py-8 text-center text-gray-400">
                       No transactions found for the selected date range.
                     </td>
                   </tr>
@@ -377,6 +415,7 @@ function Reports() {
                       {row.date} {row.time}
                     </td>
                     <td className="px-3 py-3 text-gray-700">{row.txn}</td>
+                    <td className="px-3 py-3 text-gray-700">{row.customer || "—"}</td>
                     <td className="px-3 py-3 text-gray-700">{row.device}</td>
                     <td className="px-3 py-3 text-gray-800 text-right">{peso(row.amount)}</td>
                     <td className="px-3 py-3 text-gray-700">{row.payment}</td>
@@ -385,7 +424,7 @@ function Reports() {
               </tbody>
               <tfoot>
                 <tr className="bg-gray-50 font-bold text-gray-800">
-                  <td className="px-3 py-3 rounded-l-lg" colSpan={3}>
+                  <td className="px-3 py-3 rounded-l-lg" colSpan={4}>
                     {viewMode === "cash" ? "TOTAL (CASH)" : "TOTAL"}
                   </td>
                   <td className="px-3 py-3 text-center">{displayedTotals.totalItems}</td>

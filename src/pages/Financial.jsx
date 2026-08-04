@@ -826,11 +826,6 @@ function Financial() {
                         Personal
                       </span>
                     )}
-                    {e.adminOnly && (
-                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500 align-middle">
-                        Admin Only
-                      </span>
-                    )}
                   </td>
                   <td className="px-3 py-3 text-red-500 text-right">-{peso(e.amount)}</td>
                   <td className="px-3 py-3 text-right">
