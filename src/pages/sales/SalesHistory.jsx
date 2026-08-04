@@ -58,6 +58,7 @@ function SalesHistory() {
   const [dateRange, setDateRange] = useState();
   const [payment, setPayment] = useState("All");
   const [paymentStatus, setPaymentStatus] = useState("All");
+  const [cgnOnly, setCgnOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [openMenu, setOpenMenu] = useState(null);
@@ -112,6 +113,8 @@ function SalesHistory() {
   };
 
   const filtered = salesHistory.filter((s) => {
+    const isCgn = s.customer && s.customer.trim().toLowerCase() === "cgn";
+    if (cgnOnly && !isCgn) return false;
     if (payment !== "All" && s.payment !== payment) return false;
     if (paymentStatus !== "All" && s.paymentStatus !== paymentStatus) return false;
     if (
@@ -147,6 +150,7 @@ function SalesHistory() {
     setDateRange(undefined);
     setPayment("All");
     setPaymentStatus("All");
+    setCgnOnly(false);
     setSearch("");
     setAppliedSearch("");
     setPage(1);
@@ -205,20 +209,32 @@ function SalesHistory() {
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 mt-4">
-          <button
-            onClick={handleClear}
-            className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
-          >
-            Clear
-          </button>
-          <button
-            onClick={handleApply}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-          >
-            <Filter size={14} />
-            Search
-          </button>
+        <div className="flex items-center justify-between mt-4 flex-wrap gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={cgnOnly}
+              onChange={(e) => { setCgnOnly(e.target.checked); setPage(1); }}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Show CGN sales only
+          </label>
+
+          <div className="flex gap-3">
+            <button
+              onClick={handleClear}
+              className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
+            >
+              Clear
+            </button>
+            <button
+              onClick={handleApply}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            >
+              <Filter size={14} />
+              Search
+            </button>
+          </div>
         </div>
       </div>
 
