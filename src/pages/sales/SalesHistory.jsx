@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Search,
   MoreVertical,
@@ -58,7 +58,7 @@ function SalesHistory() {
   const [dateRange, setDateRange] = useState();
   const [payment, setPayment] = useState("All");
   const [paymentStatus, setPaymentStatus] = useState("All");
-  const [cgnOnly, setCgnOnly] = useState(false);
+  const [bulkBuyer, setBulkBuyer] = useState("All");
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [openMenu, setOpenMenu] = useState(null);
@@ -112,9 +112,22 @@ function SalesHistory() {
     }
   };
 
+  // Every distinct named bulk buyer (CGN, Mona, ND, whoever comes next) —
+  // derived from actual sales instead of a hardcoded list, so a brand-new
+  // bulk buyer just shows up here on its own once a Bulk sale is logged
+  // for them.
+  const bulkBuyerNames = useMemo(() => {
+    const names = new Set();
+    salesHistory.forEach((s) => {
+      if (s.orderType === "Bulk" && s.customer && s.customer.trim()) {
+        names.add(s.customer.trim());
+      }
+    });
+    return [...names].sort();
+  }, [salesHistory]);
+
   const filtered = salesHistory.filter((s) => {
-    const isCgn = s.customer && s.customer.trim().toLowerCase() === "cgn";
-    if (cgnOnly && !isCgn) return false;
+    if (bulkBuyer !== "All" && !(s.customer && s.customer.trim() === bulkBuyer)) return false;
     if (payment !== "All" && s.payment !== payment) return false;
     if (paymentStatus !== "All" && s.paymentStatus !== paymentStatus) return false;
     if (
@@ -150,7 +163,7 @@ function SalesHistory() {
     setDateRange(undefined);
     setPayment("All");
     setPaymentStatus("All");
-    setCgnOnly(false);
+    setBulkBuyer("All");
     setSearch("");
     setAppliedSearch("");
     setPage(1);
@@ -161,7 +174,7 @@ function SalesHistory() {
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <p className="text-sm font-medium text-gray-700 mb-4">Filters</p>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Date Range</label>
             <DateRangePicker value={dateRange} onChange={setDateRange} />
@@ -195,6 +208,20 @@ function SalesHistory() {
           </div>
 
           <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Bulk Buyer</label>
+            <select
+              value={bulkBuyer}
+              onChange={(e) => { setBulkBuyer(e.target.value); setPage(1); }}
+              className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="All">All Sales</option>
+              {bulkBuyerNames.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Search Batch Code / Customer</label>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -209,32 +236,20 @@ function SalesHistory() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-4 flex-wrap gap-3">
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={cgnOnly}
-              onChange={(e) => { setCgnOnly(e.target.checked); setPage(1); }}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            Show CGN sales only
-          </label>
-
-          <div className="flex gap-3">
-            <button
-              onClick={handleClear}
-              className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
-            >
-              Clear
-            </button>
-            <button
-              onClick={handleApply}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-            >
-              <Filter size={14} />
-              Search
-            </button>
-          </div>
+        <div className="flex justify-end gap-3 mt-4">
+          <button
+            onClick={handleClear}
+            className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
+          >
+            Clear
+          </button>
+          <button
+            onClick={handleApply}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+          >
+            <Filter size={14} />
+            Search
+          </button>
         </div>
       </div>
 
