@@ -118,6 +118,8 @@ function Reports() {
         customer: s.customer,
         orderType: s.orderType,
         device: s.device,
+        storage: s.storage,
+        color: s.color,
         items: 1,
         amount: s.total,
         payment: s.payment,
@@ -416,7 +418,9 @@ function Reports() {
                     </td>
                     <td className="px-3 py-3 text-gray-700">{row.txn}</td>
                     <td className="px-3 py-3 text-gray-700">{row.customer || "—"}</td>
-                    <td className="px-3 py-3 text-gray-700">{row.device}</td>
+                    <td className="px-3 py-3 text-gray-800 font-medium">
+                      {[row.device, row.storage, row.color].filter(Boolean).join(" · ")}
+                    </td>
                     <td className="px-3 py-3 text-gray-800 text-right">{peso(row.amount)}</td>
                     <td className="px-3 py-3 text-gray-700">{row.payment}</td>
                   </tr>
