@@ -1,9 +1,14 @@
-import { PackagePlus } from "lucide-react";
+import { PackagePlus, Pencil, Trash2 } from "lucide-react";
 import { formatDate } from "../../utils/datetime";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
 
 // Lets staff see what's still being entered from an overnight shipment
-// placeholder (see bulk_order_shells / Log Shipment Arrival).
-function PendingShipmentsCard({ shells }) {
+// placeholder (see bulk_order_shells / Log Shipment Arrival). Edit/Delete
+// are admin-only, same as the rest of All Devices — staff can see progress
+// but correcting or removing a shipment record is an admin action.
+function PendingShipmentsCard({ shells, onEdit, onDelete }) {
+  const isAdmin = useIsAdmin();
+
   if (shells.length === 0) return null;
 
   return (
@@ -26,9 +31,29 @@ function PendingShipmentsCard({ shells }) {
                   {s.deviceName}
                   {variant && <span className="text-gray-400 font-normal"> · {variant}</span>}
                 </p>
-                <p className="text-xs text-gray-500 whitespace-nowrap">
-                  {s.linkedCount}/{s.quantityExpected} logged
-                </p>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <p className="text-xs text-gray-500 whitespace-nowrap">
+                    {s.linkedCount}/{s.quantityExpected} logged
+                  </p>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => onEdit(s)}
+                        className="text-gray-400 hover:text-blue-600 p-1"
+                        aria-label="Edit shipment"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        onClick={() => onDelete(s)}
+                        className="text-gray-400 hover:text-red-500 p-1"
+                        aria-label="Delete shipment"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full bg-blue-500 rounded-full" style={{ width: `${pct}%` }} />

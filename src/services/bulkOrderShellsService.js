@@ -48,6 +48,8 @@ function mapShellProgress(s) {
     dateArrived: s.date_arrived,
     linkedCount: s.linked_count,
     status: s.status,
+    unitCost: s.unit_cost,
+    notes: s.notes,
   };
 }
 
@@ -105,5 +107,40 @@ export async function markShellPaid(shellId) {
 
 export async function markShellUnpaid(shellId) {
   const { error } = await supabase.rpc("mark_bulk_order_shell_unpaid", { p_id: shellId });
+  if (error) throw error;
+}
+
+// Admin-only correction from Pending Shipments — quantity/cost/date/supplier
+// typos happen the same way they do on a device, and shouldn't require
+// deleting and re-logging the whole shipment.
+export async function editBulkOrderShell({
+  id,
+  supplierName,
+  deviceName,
+  storage,
+  color,
+  quantityExpected,
+  unitCost,
+  dateArrived,
+  notes,
+}) {
+  const { error } = await supabase.rpc("edit_bulk_order_shell", {
+    p_id: id,
+    p_supplier_name: supplierName || null,
+    p_device_name: deviceName,
+    p_storage: storage || null,
+    p_color: color || null,
+    p_quantity_expected: quantityExpected,
+    p_unit_cost: unitCost ?? null,
+    p_date_arrived: dateArrived,
+    p_notes: notes || null,
+  });
+  if (error) throw error;
+}
+
+// Any devices already linked to this shell are detached (not deleted) by
+// the RPC — see delete_bulk_order_shell.
+export async function deleteBulkOrderShell(id) {
+  const { error } = await supabase.rpc("delete_bulk_order_shell", { p_id: id });
   if (error) throw error;
 }
