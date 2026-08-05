@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { X, AlertTriangle } from "lucide-react";
 import { getAvailableDevicesForReplacement, getAvailableDevicesForSale } from "../../services/inventoryService";
 import { replaceReturn } from "../../services/returnsService";
+import { matchesQuery } from "../../utils/search";
 
 const OTHER_UNIT = "__other__";
 
@@ -31,9 +32,7 @@ function ReplaceReturnModal({ record, onClose, onReplaced }) {
   }, [replacementId, otherDevices.length]);
 
   const filteredOtherDevices = useMemo(() => {
-    if (!otherSearch) return otherDevices;
-    const q = otherSearch.toLowerCase();
-    return otherDevices.filter((d) => d.product.toLowerCase().includes(q) || d.batchCode.toLowerCase().includes(q));
+    return otherDevices.filter((d) => matchesQuery(d.product, otherSearch) || matchesQuery(d.batchCode, otherSearch));
   }, [otherDevices, otherSearch]);
 
   const selectedOtherDevice = otherDevices.find((d) => d.id === otherDeviceId);

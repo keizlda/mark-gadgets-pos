@@ -4,6 +4,7 @@ import { getLowStockItems } from "../../services/inventoryService";
 import { getDeviceCategories } from "../../services/referenceService";
 import { useServiceData } from "../../hooks/useServiceData";
 import { useIsAdmin } from "../../hooks/useIsAdmin";
+import { matchesQuery } from "../../utils/search";
 import ReorderSettingsModal from "../../components/inventory/ReorderSettingsModal";
 
 const blankFilters = { category: "All", search: "" };
@@ -40,7 +41,7 @@ function LowStock() {
   const records = useMemo(() => {
     const f = appliedFilters;
     return lowStockItems.filter((r) => {
-      const matchesSearch = !f.search || r.device.toLowerCase().includes(f.search.toLowerCase());
+      const matchesSearch = matchesQuery(r.device, f.search);
       return matchesSearch && (f.category === "All" || r.category === f.category);
     });
   }, [appliedFilters, lowStockItems]);

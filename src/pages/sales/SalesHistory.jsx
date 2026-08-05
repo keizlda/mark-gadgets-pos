@@ -16,6 +16,7 @@ import { getSalesHistory, updateSalePaymentStatus, deleteSaleItem } from "../../
 import { getCgnResales } from "../../services/cgnResalesService";
 import { getPaymentMethods } from "../../services/referenceService";
 import { getDeviceById } from "../../services/inventoryService";
+import { matchesQuery } from "../../utils/search";
 import { formatDate } from "../../utils/datetime";
 import InitiateReturnModal from "../../components/sales/InitiateReturnModal";
 import DeviceDetailsModal from "../../components/inventory/DeviceDetailsModal";
@@ -184,11 +185,7 @@ function SalesHistory() {
     if (bulkBuyer !== "All" && !(s.customer && s.customer.trim() === bulkBuyer)) return false;
     if (payment !== "All" && s.payment !== payment) return false;
     if (paymentStatus !== "All" && s.paymentStatus !== paymentStatus) return false;
-    if (
-      appliedSearch &&
-      !(s.batchCode || "").toLowerCase().includes(appliedSearch.toLowerCase()) &&
-      !(s.customer || "").toLowerCase().includes(appliedSearch.toLowerCase())
-    )
+    if (appliedSearch && !matchesQuery(s.batchCode, appliedSearch) && !matchesQuery(s.customer, appliedSearch))
       return false;
     if (dateRange?.from || dateRange?.to) {
       const saleDate = new Date(s.date);

@@ -3,6 +3,7 @@ import { Search, Filter, MoreVertical, Plus, ShoppingCart, Users, Clock, XCircle
 import { useIsAdmin } from "../../hooks/useIsAdmin";
 import { getReservedDevices, cancelReservation } from "../../services/reservationsService";
 import { getDeviceKind } from "../../utils/deviceKind";
+import { matchesQuery } from "../../utils/search";
 import NewReservationModal from "../../components/inventory/NewReservationModal";
 import ReservationDetailsModal from "../../components/inventory/ReservationDetailsModal";
 import ConvertToSaleModal from "../../components/inventory/ConvertToSaleModal";
@@ -97,10 +98,7 @@ function Reserved() {
     const filterDate = f.date ? new Date(`${f.date}T00:00:00`) : null;
     return reservedDevices.filter((r) => {
       const reservedDate = new Date(r.dateReserved);
-      const matchesSearch =
-        !f.search ||
-        (r.batchCode || "").toLowerCase().includes(f.search.toLowerCase()) ||
-        (r.device || "").toLowerCase().includes(f.search.toLowerCase());
+      const matchesSearch = matchesQuery(r.batchCode, f.search) || matchesQuery(r.device, f.search);
       return (
         matchesSearch &&
         (f.kind === "All" || getDeviceKind(r.device) === f.kind) &&

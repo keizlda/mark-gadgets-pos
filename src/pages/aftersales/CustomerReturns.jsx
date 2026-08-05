@@ -15,6 +15,7 @@ import {
 import { useServiceData } from "../../hooks/useServiceData";
 import { getCustomerReturns, rejectReturn } from "../../services/returnsService";
 import { getReturnReasons } from "../../services/referenceService";
+import { matchesQuery } from "../../utils/search";
 import ReturnDetailsModal from "../../components/aftersales/ReturnDetailsModal";
 import ReplaceReturnModal from "../../components/aftersales/ReplaceReturnModal";
 import DateRangePicker from "../../components/common/DateRangePicker";
@@ -60,11 +61,7 @@ function CustomerReturns() {
     const returnDate = new Date(r.returnDate);
     if (from && returnDate < from) return false;
     if (to && returnDate > to) return false;
-    if (
-      appliedSearch &&
-      !(r.batchCode || "").toLowerCase().includes(appliedSearch.toLowerCase()) &&
-      !(r.customer || "").toLowerCase().includes(appliedSearch.toLowerCase())
-    )
+    if (appliedSearch && !matchesQuery(r.batchCode, appliedSearch) && !matchesQuery(r.customer, appliedSearch))
       return false;
     return true;
   });

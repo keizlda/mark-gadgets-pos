@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { X, AlertTriangle } from "lucide-react";
 import { getAvailableDevicesForSale } from "../../services/inventoryService";
 import { createReservation } from "../../services/reservationsService";
+import { matchesQuery } from "../../utils/search";
 
 function toISODate(d) {
   const offset = d.getTimezoneOffset();
@@ -31,9 +32,7 @@ function NewReservationModal({ onClose, onCreated }) {
   }, []);
 
   const filteredDevices = useMemo(() => {
-    if (!deviceSearch) return devices;
-    const q = deviceSearch.toLowerCase();
-    return devices.filter((d) => d.product.toLowerCase().includes(q) || d.batchCode.toLowerCase().includes(q));
+    return devices.filter((d) => matchesQuery(d.product, deviceSearch) || matchesQuery(d.batchCode, deviceSearch));
   }, [devices, deviceSearch]);
 
   const selectedDevice = devices.find((d) => d.id === selectedId);

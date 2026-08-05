@@ -11,6 +11,7 @@ import LogShipmentArrivalModal from "../../components/inventory/LogShipmentArriv
 import EditShipmentArrivalModal from "../../components/inventory/EditShipmentArrivalModal";
 import PendingShipmentsCard from "../../components/inventory/PendingShipmentsCard";
 import { getDeviceKind } from "../../utils/deviceKind";
+import { matchesQuery } from "../../utils/search";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getAllDevices, getLowStockItems, deleteDevice } from "../../services/inventoryService";
 import {
@@ -142,10 +143,7 @@ function AllDevices() {
   const filtered = useMemo(() => {
     return allDevices.filter((d) => {
       const f = appliedFilters;
-      const matchesSearch =
-        !f.search ||
-        d.batchCode.toLowerCase().includes(f.search.toLowerCase()) ||
-        d.device.toLowerCase().includes(f.search.toLowerCase());
+      const matchesSearch = matchesQuery(d.batchCode, f.search) || matchesQuery(d.device, f.search);
       return (
         matchesSearch &&
         (f.category === "All" || d.category === f.category) &&

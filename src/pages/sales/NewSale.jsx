@@ -4,6 +4,7 @@ import { useServiceData } from "../../hooks/useServiceData";
 import { processSale } from "../../services/salesService";
 import { getAvailableDevicesForSale, deleteDevice } from "../../services/inventoryService";
 import { getPosCategories } from "../../services/referenceService";
+import { matchesQuery } from "../../utils/search";
 import { useToast } from "../../hooks/useToast";
 import QuickAddDeviceModal from "../../components/sales/QuickAddDeviceModal";
 import SwapTradeInModal from "../../components/sales/SwapTradeInModal";
@@ -88,10 +89,7 @@ function NewSale() {
     return availableDevices.filter((p) => {
       if (cartIds.has(p.id)) return false;
       const matchesCategory = activeCategory === "All Categories" || p.category === activeCategory;
-      const matchesSearch =
-        !productSearch ||
-        p.product.toLowerCase().includes(productSearch.toLowerCase()) ||
-        p.batchCode.toLowerCase().includes(productSearch.toLowerCase());
+      const matchesSearch = matchesQuery(p.product, productSearch) || matchesQuery(p.batchCode, productSearch);
       return matchesCategory && matchesSearch;
     });
   }, [activeCategory, productSearch, availableDevices, cartIds]);

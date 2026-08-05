@@ -4,6 +4,7 @@ import { useServiceData } from "../../hooks/useServiceData";
 import { useIsAdmin } from "../../hooks/useIsAdmin";
 import { getSupplierDefectiveRecords } from "../../services/inventoryService";
 import { getSuppliers } from "../../services/referenceService";
+import { matchesQuery } from "../../utils/search";
 import UpdateDefectiveStatusModal from "../../components/inventory/UpdateDefectiveStatusModal";
 import EditDefectiveRecordModal from "../../components/inventory/EditDefectiveRecordModal";
 import DateRangePicker from "../../components/common/DateRangePicker";
@@ -63,7 +64,7 @@ function SupplierDefective() {
     const to = f.dateRange?.to || null;
     return supplierDefectiveRecords.filter((r) => {
       const detectedDate = new Date(r.dateDetected);
-      const matchesSearch = !f.search || (r.batchCode || "").toLowerCase().includes(f.search.toLowerCase());
+      const matchesSearch = matchesQuery(r.batchCode, f.search);
       return (
         matchesSearch &&
         (f.supplier === "All" || r.supplier === f.supplier) &&
