@@ -613,8 +613,8 @@ function Reports() {
             <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end print:hidden">
               <div className="w-full max-w-xs space-y-1">
                 <div className="flex justify-between text-sm text-gray-600 px-2 py-1.5">
-                  <span>Store Profit</span>
-                  <span className="font-medium tabular-nums">{peso(totals.totalProfit)}</span>
+                  <span>Total Sales</span>
+                  <span className="font-medium tabular-nums">{peso(totals.totalSales)}</span>
                 </div>
                 <button
                   type="button"
