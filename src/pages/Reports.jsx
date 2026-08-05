@@ -80,11 +80,7 @@ function computeTotals(rows) {
   const totalTransactions = countedRows.length;
   const totalItems = countedRows.reduce((sum, r) => sum + r.items, 0);
   const avgSale = totalTransactions ? totalSales / totalTransactions : 0;
-  // Units added before purchase_price was captured have no netProfit (null)
-  // rather than a false 0 — treated as 0 here same as Financial's totals,
-  // so this stays a lower bound rather than pretending those units are free.
-  const totalProfit = countedRows.reduce((sum, r) => sum + (r.netProfit ?? 0), 0);
-  return { totalSales, totalTransactions, totalItems, avgSale, totalProfit };
+  return { totalSales, totalTransactions, totalItems, avgSale };
 }
 
 function Reports() {
@@ -138,7 +134,6 @@ function Reports() {
         color: s.color,
         items: 1,
         amount: s.total,
-        netProfit: s.netProfit,
         payment: s.payment,
       }));
   }, [generatedRange, salesHistory]);
@@ -199,9 +194,10 @@ function Reports() {
     [expensesByCategory]
   );
 
-  // Net Profit is margin (revenue minus capital) minus expenses — not
-  // revenue minus expenses, which ignores what the units actually cost.
-  const netProfit = totals.totalProfit - categoryTotals.General - categoryTotals.Cargo;
+  // Reports' bottom line is revenue-based (Total Sales minus Expenses/
+  // Cargo), not margin-based — Financial is where the true profit-after-
+  // capital figure lives.
+  const netSalesAfterExpenses = totals.totalSales - categoryTotals.General - categoryTotals.Cargo;
 
   const handleReportTypeChange = (type) => {
     setReportType(type);
@@ -618,11 +614,11 @@ function Reports() {
                 </button>
                 <div
                   className={`flex justify-between text-base font-bold px-2 py-2 mt-1 border-t border-gray-100 ${
-                    netProfit < 0 ? "text-red-500" : "text-gray-800"
+                    netSalesAfterExpenses < 0 ? "text-red-500" : "text-gray-800"
                   }`}
                 >
-                  <span>Net Profit</span>
-                  <span className="tabular-nums">{peso(netProfit)}</span>
+                  <span>Total Sales</span>
+                  <span className="tabular-nums">{peso(netSalesAfterExpenses)}</span>
                 </div>
               </div>
             </div>
