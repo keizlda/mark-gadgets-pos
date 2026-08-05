@@ -64,15 +64,26 @@ function SummaryCard({ icon: Icon, iconBg, label, value, sub, valueClass }) {
 
 const initialRange = getPresetRange("Daily");
 
+// A Bulk order starts Pending until someone confirms payment (see
+// process_sale) — Pending is otherwise never used, every non-bulk sale is
+// Paid immediately. An unpaid bulk order still shows as a row (so staff can
+// see it happened) but doesn't count toward the day's totals until it's
+// actually paid — the report shouldn't claim revenue/profit that hasn't
+// been confirmed yet.
+function isPendingBulk(row) {
+  return row.orderType === "Bulk" && row.paymentStatus === "Pending";
+}
+
 function computeTotals(rows) {
-  const totalSales = rows.reduce((sum, r) => sum + r.amount, 0);
-  const totalTransactions = rows.length;
-  const totalItems = rows.reduce((sum, r) => sum + r.items, 0);
+  const countedRows = rows.filter((r) => !isPendingBulk(r));
+  const totalSales = countedRows.reduce((sum, r) => sum + r.amount, 0);
+  const totalTransactions = countedRows.length;
+  const totalItems = countedRows.reduce((sum, r) => sum + r.items, 0);
   const avgSale = totalTransactions ? totalSales / totalTransactions : 0;
   // Units added before purchase_price was captured have no netProfit (null)
   // rather than a false 0 — treated as 0 here same as Financial's totals,
   // so this stays a lower bound rather than pretending those units are free.
-  const totalProfit = rows.reduce((sum, r) => sum + (r.netProfit ?? 0), 0);
+  const totalProfit = countedRows.reduce((sum, r) => sum + (r.netProfit ?? 0), 0);
   return { totalSales, totalTransactions, totalItems, avgSale, totalProfit };
 }
 
@@ -121,6 +132,7 @@ function Reports() {
         time: s.time,
         customer: s.customer,
         orderType: s.orderType,
+        paymentStatus: s.paymentStatus,
         device: s.device,
         storage: s.storage,
         color: s.color,
@@ -428,15 +440,29 @@ function Reports() {
                     <td className="px-3 py-3 text-gray-700">{row.customer || "—"}</td>
                     <td className="px-3 py-3 text-gray-800 font-medium">
                       {[row.device, row.storage, row.color].filter(Boolean).join(" · ")}
+                      {isPendingBulk(row) && (
+                        <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-600 align-middle">
+                          Bulk · Pending
+                        </span>
+                      )}
                     </td>
-                    <td className="px-3 py-3 text-gray-800 text-right">{peso(row.amount)}</td>
-                    <td
-                      className={`px-3 py-3 text-right font-medium ${
-                        row.netProfit == null ? "text-gray-400" : row.netProfit < 0 ? "text-red-500" : "text-green-600"
-                      }`}
-                    >
-                      {row.netProfit != null ? peso(row.netProfit) : "—"}
-                    </td>
+                    {isPendingBulk(row) ? (
+                      <>
+                        <td className="px-3 py-3 text-right text-orange-500 italic">Pending</td>
+                        <td className="px-3 py-3 text-right text-orange-500 italic">Pending</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-3 py-3 text-gray-800 text-right">{peso(row.amount)}</td>
+                        <td
+                          className={`px-3 py-3 text-right font-medium ${
+                            row.netProfit == null ? "text-gray-400" : row.netProfit < 0 ? "text-red-500" : "text-green-600"
+                          }`}
+                        >
+                          {row.netProfit != null ? peso(row.netProfit) : "—"}
+                        </td>
+                      </>
+                    )}
                     <td className="px-3 py-3 text-gray-700">{row.payment}</td>
                   </tr>
                 ))}
@@ -625,7 +651,8 @@ function Reports() {
         <span className="font-medium">Note:</span>
         <span>
           This report is based on the selected date range. Sales to CGN aren't included — those belong to
-          Financial's CGN Ledger and Sales History instead.
+          Financial's CGN Ledger and Sales History instead. An unpaid Bulk order shows as a row but its amount
+          and profit stay out of the totals until it's marked Paid (Supplier Payables → Bulk Buyers).
         </span>
       </div>
 
