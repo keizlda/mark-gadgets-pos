@@ -156,13 +156,6 @@ function Financial() {
     return { totalCapital, totalDisposal, totalNetProfit };
   }, [storeRows]);
 
-  const cgnTotals = useMemo(() => {
-    const totalCapital = cgnRows.reduce((sum, r) => sum + (r.purchasePrice ?? 0), 0);
-    const totalDisposal = cgnRows.reduce((sum, r) => sum + r.total, 0);
-    const totalNetProfit = cgnRows.reduce((sum, r) => sum + (r.netProfit ?? 0), 0);
-    return { totalCapital, totalDisposal, totalNetProfit };
-  }, [cgnRows]);
-
   // CGN's own resale of those same units to their own customers — a
   // separate business event, tracked in its own table (not devices/sales,
   // since the unit already left our inventory when we sold it to CGN).
@@ -226,13 +219,22 @@ function Financial() {
     return [...soldToCgn, ...cgnResold].sort((a, b) => b.sortDate - a.sortDate);
   }, [cgnRows, filteredCgnResales]);
 
+  // cgn_resales is the sole source of truth for CGN's numbers, not a second
+  // one to add on top of "Sold to CGN" — a unit only ever has one real
+  // capital/disposal/profit, and cgn_resales is where it's recorded once
+  // the full picture (what CGN paid us, what CGN resold it for) is known.
+  // The "Sold to CGN" sale itself is just the inventory-movement record
+  // (marks the device Sold) — it still shows as a ledger row for
+  // traceability, but doesn't contribute its own profit figure, the same
+  // way a Pending bulk order shows as a row without counting toward
+  // Reports' totals until it's confirmed.
   const combinedCgnTotals = useMemo(
     () => ({
-      totalCapital: cgnTotals.totalCapital + cgnResaleTotals.totalCapital,
-      totalDisposal: cgnTotals.totalDisposal + cgnResaleTotals.totalDisposal,
-      totalNetProfit: cgnTotals.totalNetProfit + cgnResaleTotals.totalProfit,
+      totalCapital: cgnResaleTotals.totalCapital,
+      totalDisposal: cgnResaleTotals.totalDisposal,
+      totalNetProfit: cgnResaleTotals.totalProfit,
     }),
-    [cgnTotals, cgnResaleTotals]
+    [cgnResaleTotals]
   );
 
   const [resaleDate, setResaleDate] = useState(toISODate(new Date()));
@@ -609,17 +611,27 @@ function Financial() {
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.date}</td>
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.batchCode}</td>
                     <td className="px-3 py-3 text-gray-800 font-medium">{row.unit}</td>
-                    <td className="px-3 py-3 text-right text-gray-700">
-                      {row.capital != null ? peso(row.capital) : "—"}
-                    </td>
-                    <td className="px-3 py-3 text-right text-gray-800">{peso(row.soldFor)}</td>
-                    <td
-                      className={`px-3 py-3 text-right font-medium ${
-                        row.profit == null ? "text-gray-400" : row.profit < 0 ? "text-red-500" : "text-green-600"
-                      }`}
-                    >
-                      {row.profit != null ? peso(row.profit) : "—"}
-                    </td>
+                    {row.stage === "Sold to CGN" ? (
+                      <>
+                        <td className="px-3 py-3 text-right text-gray-300 italic" colSpan={3}>
+                          Not counted — see CGN Resale
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-3 py-3 text-right text-gray-700">
+                          {row.capital != null ? peso(row.capital) : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-right text-gray-800">{peso(row.soldFor)}</td>
+                        <td
+                          className={`px-3 py-3 text-right font-medium ${
+                            row.profit == null ? "text-gray-400" : row.profit < 0 ? "text-red-500" : "text-green-600"
+                          }`}
+                        >
+                          {row.profit != null ? peso(row.profit) : "—"}
+                        </td>
+                      </>
+                    )}
                     <td className="px-3 py-3 whitespace-nowrap">
                       <span
                         className={`px-2 py-0.5 rounded-full text-xs font-medium ${
