@@ -102,7 +102,10 @@ function AddDevice() {
 
   const [pendingShells, setPendingShells] = useState([]);
   const loadPendingShells = useCallback(() => {
-    getPendingShellsWithProgress().then(setPendingShells);
+    return getPendingShellsWithProgress().then((shells) => {
+      setPendingShells(shells);
+      return shells;
+    });
   }, []);
   useEffect(() => {
     loadPendingShells();
@@ -216,9 +219,38 @@ function AddDevice() {
       });
 
       showToast("Device saved.");
-      setForm(createBlankForm());
-      loadPendingShells();
+
+      // Keep the shipment link (and everything derived from it) selected —
+      // logging a shipment means entering several units in a row that all
+      // belong to the same shell, and resetting the dropdown after every
+      // single save was the actual bug here: forget to re-pick it once and
+      // that unit saves fine but silently never counts toward the
+      // shipment's logged total.
+      const linkedShellId = form.shellId;
+      setForm((f) =>
+        linkedShellId
+          ? {
+              ...createBlankForm(),
+              shellId: f.shellId,
+              category: f.category,
+              model: f.model,
+              customModel: f.customModel,
+              color: f.color,
+              storage: f.storage,
+              supplier: f.supplier,
+            }
+          : createBlankForm()
+      );
       generateBatchCode();
+
+      // Once this save completes the shell (hits quantity_expected), it
+      // drops out of the Pending list — clear the now-stale selection so
+      // the next unit doesn't silently get linked to an already-done shell.
+      loadPendingShells().then((shells) => {
+        if (linkedShellId && !shells.some((s) => s.id === linkedShellId)) {
+          setForm((f) => (f.shellId === linkedShellId ? { ...f, shellId: "" } : f));
+        }
+      });
     } catch (err) {
       if (err.code === "23505") {
         setError("A device with this batch code already exists.");
