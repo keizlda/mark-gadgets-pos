@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Wallet, Info, Users2, MessageSquare, MessageSquarePlus } from "lucide-react";
+import { Wallet, Info, Users2, MessageSquare, MessageSquarePlus, Pencil } from "lucide-react";
 import { getSupplierPayables } from "../services/bulkOrderShellsService";
 import { getSalesHistory, updateSalePaymentStatus, updateSaleNotes } from "../services/salesService";
 import MarkPaymentModal from "../components/payables/MarkPaymentModal";
 import BulkOrderDetailsModal from "../components/payables/BulkOrderDetailsModal";
 import RemarksModal from "../components/payables/RemarksModal";
+import EditBulkOrderDateModal from "../components/payables/EditBulkOrderDateModal";
+import EditShipmentArrivalModal from "../components/inventory/EditShipmentArrivalModal";
 import { useIsAdmin } from "../hooks/useIsAdmin";
 import { useToast } from "../hooks/useToast";
 
@@ -36,6 +38,7 @@ function SupplierPayables() {
 
   const [statusFilter, setStatusFilter] = useState("All");
   const [paymentAction, setPaymentAction] = useState(null); // { shell, action }
+  const [editShell, setEditShell] = useState(null);
 
   const filtered = useMemo(() => {
     if (statusFilter === "All") return shells;
@@ -53,6 +56,12 @@ function SupplierPayables() {
     loadShells();
   };
 
+  const handleShellEditSaved = () => {
+    setEditShell(null);
+    loadShells();
+    showToast("Shipment updated.");
+  };
+
   // ============ Bulk Buyers — the reverse of the above: what other
   // people/branches (bulk sales customers, e.g. CGN, Mona, ND) owe us,
   // not what we owe suppliers. ============
@@ -68,6 +77,7 @@ function SupplierPayables() {
   const [updatingSaleId, setUpdatingSaleId] = useState(null);
   const [viewOrder, setViewOrder] = useState(null);
   const [remarksOrder, setRemarksOrder] = useState(null);
+  const [editOrderDate, setEditOrderDate] = useState(null);
 
   // One row per sale_item, all sharing the same sale — grouped back into
   // one bulk order per saleId so "what they bought" lists every unit under
@@ -129,6 +139,12 @@ function SupplierPayables() {
   const handleSaveRemarks = async (notes) => {
     await updateSaleNotes(remarksOrder.saleId, notes);
     loadSalesHistory();
+  };
+
+  const handleOrderDateSaved = () => {
+    setEditOrderDate(null);
+    loadSalesHistory();
+    showToast("Order date updated.");
   };
 
   return (
@@ -242,21 +258,32 @@ function SupplierPayables() {
                           </span>
                         </td>
                         <td className="py-3 text-right">
-                          {s.supplierPaymentStatus === "Paid" ? (
-                            <button
-                              onClick={() => setPaymentAction({ shell: s, action: "unpay" })}
-                              className="text-sm text-orange-600 border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-50"
-                            >
-                              Mark as Unpaid
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setPaymentAction({ shell: s, action: "pay" })}
-                              className="text-sm text-green-600 border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-50"
-                            >
-                              Mark as Paid
-                            </button>
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditShell(s)}
+                                className="text-gray-400 hover:text-blue-600 p-1"
+                                aria-label="Edit shipment"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            )}
+                            {s.supplierPaymentStatus === "Paid" ? (
+                              <button
+                                onClick={() => setPaymentAction({ shell: s, action: "unpay" })}
+                                className="text-sm text-orange-600 border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-50"
+                              >
+                                Mark as Unpaid
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setPaymentAction({ shell: s, action: "pay" })}
+                                className="text-sm text-green-600 border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-50"
+                              >
+                                Mark as Paid
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -373,23 +400,34 @@ function SupplierPayables() {
                           </div>
                         </td>
                         <td className="py-3 text-right">
-                          {o.paymentStatus === "Paid" ? (
-                            <button
-                              onClick={() => handleToggleBuyerPayment(o)}
-                              disabled={updatingSaleId === o.saleId}
-                              className="text-sm text-orange-600 border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-50 disabled:opacity-60"
-                            >
-                              Mark as Pending
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleToggleBuyerPayment(o)}
-                              disabled={updatingSaleId === o.saleId}
-                              className="text-sm text-green-600 border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-50 disabled:opacity-60"
-                            >
-                              Mark as Paid
-                            </button>
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditOrderDate(o)}
+                                className="text-gray-400 hover:text-blue-600 p-1"
+                                aria-label="Edit order date"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            )}
+                            {o.paymentStatus === "Paid" ? (
+                              <button
+                                onClick={() => handleToggleBuyerPayment(o)}
+                                disabled={updatingSaleId === o.saleId}
+                                className="text-sm text-orange-600 border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-50 disabled:opacity-60"
+                              >
+                                Mark as Pending
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleToggleBuyerPayment(o)}
+                                disabled={updatingSaleId === o.saleId}
+                                className="text-sm text-green-600 border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-50 disabled:opacity-60"
+                              >
+                                Mark as Paid
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -418,6 +456,18 @@ function SupplierPayables() {
           isAdmin={isAdmin}
           onSave={handleSaveRemarks}
           onClose={() => setRemarksOrder(null)}
+        />
+      )}
+
+      {editShell && (
+        <EditShipmentArrivalModal shell={editShell} onClose={() => setEditShell(null)} onSaved={handleShellEditSaved} />
+      )}
+
+      {editOrderDate && (
+        <EditBulkOrderDateModal
+          order={editOrderDate}
+          onClose={() => setEditOrderDate(null)}
+          onSaved={handleOrderDateSaved}
         />
       )}
     </div>

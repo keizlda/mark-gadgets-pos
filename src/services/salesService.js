@@ -153,6 +153,15 @@ export async function updateSaleNotes(saleId, notes) {
   if (error) throw error;
 }
 
+// Moves a bulk order to a different date — sold_at drives which day's
+// Reports/Financial/Sales History a sale shows under, and (like
+// payment_status/notes above) it lives once per sale, so every unit in the
+// order moves together.
+export async function updateSaleDate(saleId, soldAt) {
+  const { error } = await supabase.from("sales").update({ sold_at: soldAt }).eq("id", saleId);
+  if (error) throw error;
+}
+
 // cartItems: [{ id (device uuid), price }]. Each cart line is one specific
 // serialized device, so quantity per line item is always 1. Runs as a single
 // atomic RPC (see process_sale in schema.sql) so a dropped connection can't
