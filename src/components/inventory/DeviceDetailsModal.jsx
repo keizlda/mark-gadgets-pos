@@ -89,6 +89,7 @@ function DeviceDetailsModal({ device, paymentMethod, downPayment, balance, onClo
             {device.dateAdded} <span className="text-gray-400">{device.time}</span>
           </Row>
           {device.notes && <Row label="Notes">{device.notes}</Row>}
+          {saleInfo?.notes && <Row label="Sale Notes">{saleInfo.notes}</Row>}
         </div>
 
         <div className="px-5 py-4 border-t border-gray-100 flex justify-end">

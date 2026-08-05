@@ -205,13 +205,14 @@ export async function getDeviceSaleDate(deviceId) {
   return info?.soldAt ?? null;
 }
 
-// Powers Device Details' "Date Sold" and "Sold To" rows — the customer name
-// entered at checkout, so anyone looking a unit up by batch code (e.g. to
-// process a replacement) can see who it went to without a separate lookup.
+// Powers Device Details' "Date Sold", "Sold To", and "Sale Notes" rows — the
+// customer name and any checkout remarks, so anyone looking a unit up by
+// batch code (e.g. to process a replacement) can see who it went to and
+// what was noted about the sale without a separate lookup.
 export async function getDeviceSaleInfo(deviceId) {
   const { data, error } = await supabase
     .from("sale_items")
-    .select("sales:sale_id ( sold_at, customer_name )")
+    .select("sales:sale_id ( sold_at, customer_name, notes )")
     .eq("device_id", deviceId);
 
   if (error) throw error;
@@ -219,7 +220,7 @@ export async function getDeviceSaleInfo(deviceId) {
   const sales = data.map((d) => d.sales).filter(Boolean);
   if (sales.length === 0) return null;
   const latest = sales.sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at))[0];
-  return { soldAt: latest.sold_at, customerName: latest.customer_name };
+  return { soldAt: latest.sold_at, customerName: latest.customer_name, notes: latest.notes };
 }
 
 export async function getSalesThisMonth() {
