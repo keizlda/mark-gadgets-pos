@@ -69,7 +69,11 @@ function computeTotals(rows) {
   const totalTransactions = rows.length;
   const totalItems = rows.reduce((sum, r) => sum + r.items, 0);
   const avgSale = totalTransactions ? totalSales / totalTransactions : 0;
-  return { totalSales, totalTransactions, totalItems, avgSale };
+  // Units added before purchase_price was captured have no netProfit (null)
+  // rather than a false 0 — treated as 0 here same as Financial's totals,
+  // so this stays a lower bound rather than pretending those units are free.
+  const totalProfit = rows.reduce((sum, r) => sum + (r.netProfit ?? 0), 0);
+  return { totalSales, totalTransactions, totalItems, avgSale, totalProfit };
 }
 
 function Reports() {
@@ -122,6 +126,7 @@ function Reports() {
         color: s.color,
         items: 1,
         amount: s.total,
+        netProfit: s.netProfit,
         payment: s.payment,
       }));
   }, [generatedRange, salesHistory]);
@@ -400,13 +405,14 @@ function Reports() {
                   <th className="px-3 py-2.5 font-medium">Customer</th>
                   <th className="px-3 py-2.5 font-medium">Unit Sold</th>
                   <th className="px-3 py-2.5 font-medium text-right">Total Amount</th>
+                  <th className="px-3 py-2.5 font-medium text-right">Profit</th>
                   <th className="px-3 py-2.5 font-medium rounded-r-lg">Payment Method</th>
                 </tr>
               </thead>
               <tbody>
                 {displayedRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-gray-400">
+                    <td colSpan={8} className="py-8 text-center text-gray-400">
                       No transactions found for the selected date range.
                     </td>
                   </tr>
@@ -422,6 +428,13 @@ function Reports() {
                       {[row.device, row.storage, row.color].filter(Boolean).join(" · ")}
                     </td>
                     <td className="px-3 py-3 text-gray-800 text-right">{peso(row.amount)}</td>
+                    <td
+                      className={`px-3 py-3 text-right font-medium ${
+                        row.netProfit == null ? "text-gray-400" : row.netProfit < 0 ? "text-red-500" : "text-green-600"
+                      }`}
+                    >
+                      {row.netProfit != null ? peso(row.netProfit) : "—"}
+                    </td>
                     <td className="px-3 py-3 text-gray-700">{row.payment}</td>
                   </tr>
                 ))}
@@ -433,6 +446,9 @@ function Reports() {
                   </td>
                   <td className="px-3 py-3 text-center">{displayedTotals.totalItems}</td>
                   <td className="px-3 py-3 text-right">{peso(displayedTotals.totalSales)}</td>
+                  <td className={`px-3 py-3 text-right ${displayedTotals.totalProfit < 0 ? "text-red-500" : "text-green-600"}`}>
+                    {peso(displayedTotals.totalProfit)}
+                  </td>
                   <td className="px-3 py-3 rounded-r-lg"></td>
                 </tr>
               </tfoot>
