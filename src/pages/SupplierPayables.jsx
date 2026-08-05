@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Wallet, Info, Users2 } from "lucide-react";
+import { Wallet, Info, Users2, MessageSquare, MessageSquarePlus } from "lucide-react";
 import { getSupplierPayables } from "../services/bulkOrderShellsService";
-import { getSalesHistory, updateSalePaymentStatus } from "../services/salesService";
+import { getSalesHistory, updateSalePaymentStatus, updateSaleNotes } from "../services/salesService";
 import MarkPaymentModal from "../components/payables/MarkPaymentModal";
 import BulkOrderDetailsModal from "../components/payables/BulkOrderDetailsModal";
+import RemarksModal from "../components/payables/RemarksModal";
+import { useIsAdmin } from "../hooks/useIsAdmin";
 import { useToast } from "../hooks/useToast";
 
 const statusStyles = {
@@ -21,6 +23,7 @@ const buyerFilterOptions = ["All", "Pending", "Paid"];
 
 function SupplierPayables() {
   const showToast = useToast();
+  const isAdmin = useIsAdmin();
   const [view, setView] = useState("suppliers"); // "suppliers" | "buyers"
 
   const [shells, setShells] = useState([]);
@@ -64,6 +67,7 @@ function SupplierPayables() {
   const [buyerFilter, setBuyerFilter] = useState("All");
   const [updatingSaleId, setUpdatingSaleId] = useState(null);
   const [viewOrder, setViewOrder] = useState(null);
+  const [remarksOrder, setRemarksOrder] = useState(null);
 
   // One row per sale_item, all sharing the same sale — grouped back into
   // one bulk order per saleId so "what they bought" lists every unit under
@@ -81,6 +85,7 @@ function SupplierPayables() {
           customer: row.customer?.trim() || "—",
           date: row.date,
           paymentStatus: row.paymentStatus,
+          notes: row.notes || "",
           items: [],
           total: 0,
           totalProfit: 0,
@@ -119,6 +124,11 @@ function SupplierPayables() {
     } finally {
       setUpdatingSaleId(null);
     }
+  };
+
+  const handleSaveRemarks = async (notes) => {
+    await updateSaleNotes(remarksOrder.saleId, notes);
+    loadSalesHistory();
   };
 
   return (
@@ -335,9 +345,32 @@ function SupplierPayables() {
                           ₱{o.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </td>
                         <td className="py-3 pr-4">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${buyerStatusStyles[o.paymentStatus]}`}>
-                            {o.paymentStatus}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${buyerStatusStyles[o.paymentStatus]}`}>
+                              {o.paymentStatus}
+                            </span>
+                            {o.notes ? (
+                              <button
+                                type="button"
+                                onClick={() => setRemarksOrder(o)}
+                                className="text-blue-500 hover:text-blue-700 p-0.5"
+                                title={o.notes}
+                              >
+                                <MessageSquare size={14} />
+                              </button>
+                            ) : (
+                              isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={() => setRemarksOrder(o)}
+                                  className="text-gray-300 hover:text-gray-500 p-0.5"
+                                  title="Add remarks"
+                                >
+                                  <MessageSquarePlus size={14} />
+                                </button>
+                              )
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 text-right">
                           {o.paymentStatus === "Paid" ? (
@@ -378,6 +411,15 @@ function SupplierPayables() {
       )}
 
       {viewOrder && <BulkOrderDetailsModal order={viewOrder} onClose={() => setViewOrder(null)} />}
+
+      {remarksOrder && (
+        <RemarksModal
+          order={remarksOrder}
+          isAdmin={isAdmin}
+          onSave={handleSaveRemarks}
+          onClose={() => setRemarksOrder(null)}
+        />
+      )}
     </div>
   );
 }

@@ -145,6 +145,14 @@ export async function updateSalePaymentStatus(saleId, paymentStatus) {
   if (error) throw error;
 }
 
+// Remarks on a bulk order (Supplier Payables > Bulk Buyers) — notes already
+// lives once per sale, same as payment_status above, so this is the same
+// targeted single-column update rather than a full edit_sale round trip.
+export async function updateSaleNotes(saleId, notes) {
+  const { error } = await supabase.from("sales").update({ notes }).eq("id", saleId);
+  if (error) throw error;
+}
+
 // cartItems: [{ id (device uuid), price }]. Each cart line is one specific
 // serialized device, so quantity per line item is always 1. Runs as a single
 // atomic RPC (see process_sale in schema.sql) so a dropped connection can't
