@@ -187,7 +187,9 @@ function Reports() {
     [expensesByCategory]
   );
 
-  const newProfit = totals.totalSales - categoryTotals.General - categoryTotals.Cargo;
+  // Net Profit is margin (revenue minus capital) minus expenses — not
+  // revenue minus expenses, which ignores what the units actually cost.
+  const netProfit = totals.totalProfit - categoryTotals.General - categoryTotals.Cargo;
 
   const handleReportTypeChange = (type) => {
     setReportType(type);
@@ -585,8 +587,8 @@ function Reports() {
             <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end print:hidden">
               <div className="w-full max-w-xs space-y-1">
                 <div className="flex justify-between text-sm text-gray-600 px-2 py-1.5">
-                  <span>Profit</span>
-                  <span className="font-medium tabular-nums">{peso(totals.totalSales)}</span>
+                  <span>Store Profit</span>
+                  <span className="font-medium tabular-nums">{peso(totals.totalProfit)}</span>
                 </div>
                 <button
                   type="button"
@@ -606,11 +608,11 @@ function Reports() {
                 </button>
                 <div
                   className={`flex justify-between text-base font-bold px-2 py-2 mt-1 border-t border-gray-100 ${
-                    newProfit < 0 ? "text-red-500" : "text-gray-800"
+                    netProfit < 0 ? "text-red-500" : "text-gray-800"
                   }`}
                 >
-                  <span>New Profit</span>
-                  <span className="tabular-nums">{peso(newProfit)}</span>
+                  <span>Net Profit</span>
+                  <span className="tabular-nums">{peso(netProfit)}</span>
                 </div>
               </div>
             </div>
