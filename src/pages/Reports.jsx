@@ -96,6 +96,7 @@ function Reports() {
   const [generatedRange, setGeneratedRange] = useState(initialRange);
   const [viewMode, setViewMode] = useState("all"); // "all" | "cash" | "expenses"
   const [viewDevice, setViewDevice] = useState(null);
+  const [viewSaleInfo, setViewSaleInfo] = useState(null);
 
   const [expenses, setExpenses] = useState([]);
   const loadExpenses = useCallback(() => {
@@ -136,6 +137,8 @@ function Reports() {
         storage: s.storage,
         color: s.color,
         deviceId: s.deviceId,
+        downPayment: s.downPayment,
+        balance: s.balance,
         items: 1,
         amount: s.total,
         payment: s.payment,
@@ -276,11 +279,12 @@ function Reports() {
     }
   };
 
-  const handleViewUnitInfo = async (deviceId) => {
-    if (!deviceId) return;
+  const handleViewUnitInfo = async (row) => {
+    if (!row.deviceId) return;
     try {
-      const device = await getDeviceById(deviceId);
+      const device = await getDeviceById(row.deviceId);
       setViewDevice(device);
+      setViewSaleInfo({ paymentMethod: row.payment, downPayment: row.downPayment, balance: row.balance });
     } catch (err) {
       showToast(err.message || "Failed to load unit info. Please try again.", "error");
     }
@@ -448,7 +452,7 @@ function Reports() {
                     <td className="px-3 py-3">
                       {row.deviceId ? (
                         <button
-                          onClick={() => handleViewUnitInfo(row.deviceId)}
+                          onClick={() => handleViewUnitInfo(row)}
                           className="text-blue-600 hover:underline"
                         >
                           {row.txn}
@@ -672,7 +676,18 @@ function Reports() {
         />
       )}
 
-      {viewDevice && <DeviceDetailsModal device={viewDevice} onClose={() => setViewDevice(null)} />}
+      {viewDevice && (
+        <DeviceDetailsModal
+          device={viewDevice}
+          paymentMethod={viewSaleInfo?.paymentMethod}
+          downPayment={viewSaleInfo?.downPayment}
+          balance={viewSaleInfo?.balance}
+          onClose={() => {
+            setViewDevice(null);
+            setViewSaleInfo(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -103,6 +103,7 @@ function Financial() {
 
   const [showUnsoldUnits, setShowUnsoldUnits] = useState(false);
   const [viewDevice, setViewDevice] = useState(null);
+  const [viewSaleInfo, setViewSaleInfo] = useState(null);
   const [expenseModalCategory, setExpenseModalCategory] = useState(null); // null | "General" | "Cargo" | "Prulife" | "Personal"
   const [ledgerView, setLedgerView] = useState("store"); // "store" | "cgn"
 
@@ -166,6 +167,9 @@ function Financial() {
         key: `sale-${r.saleItemId}`,
         saleItemId: r.saleItemId,
         deviceId: r.deviceId,
+        payment: r.payment,
+        downPayment: r.downPayment,
+        balance: r.balance,
         batchCode: r.batchCode,
         date: r.date,
         sortDate: new Date(r.date),
@@ -211,11 +215,12 @@ function Financial() {
   // History uses — ledger rows only carry the device id, not the full
   // record, so this fetches it on click rather than loading every device
   // up front for rows that mostly never get clicked.
-  const handleViewUnitInfo = async (deviceId) => {
-    if (!deviceId) return;
+  const handleViewUnitInfo = async (row) => {
+    if (!row.deviceId) return;
     try {
-      const device = await getDeviceById(deviceId);
+      const device = await getDeviceById(row.deviceId);
       setViewDevice(device);
+      setViewSaleInfo({ paymentMethod: row.payment, downPayment: row.downPayment, balance: row.balance });
     } catch (err) {
       showToast(err.message || "Failed to load unit info. Please try again.", "error");
     }
@@ -529,7 +534,7 @@ function Financial() {
                     <td className="px-3 py-3 whitespace-nowrap">
                       {row.deviceId ? (
                         <button
-                          onClick={() => handleViewUnitInfo(row.deviceId)}
+                          onClick={() => handleViewUnitInfo(row)}
                           className="text-blue-600 hover:underline"
                         >
                           {row.batchCode}
@@ -570,7 +575,7 @@ function Financial() {
                     <td className="px-3 py-3 whitespace-nowrap">
                       {row.deviceId ? (
                         <button
-                          onClick={() => handleViewUnitInfo(row.deviceId)}
+                          onClick={() => handleViewUnitInfo(row)}
                           className="text-blue-600 hover:underline"
                         >
                           {row.batchCode}
@@ -876,11 +881,23 @@ function Financial() {
           onView={(device) => {
             setShowUnsoldUnits(false);
             setViewDevice(device);
+            setViewSaleInfo(null);
           }}
         />
       )}
 
-      {viewDevice && <DeviceDetailsModal device={viewDevice} onClose={() => setViewDevice(null)} />}
+      {viewDevice && (
+        <DeviceDetailsModal
+          device={viewDevice}
+          paymentMethod={viewSaleInfo?.paymentMethod}
+          downPayment={viewSaleInfo?.downPayment}
+          balance={viewSaleInfo?.balance}
+          onClose={() => {
+            setViewDevice(null);
+            setViewSaleInfo(null);
+          }}
+        />
+      )}
 
       {expenseModalCategory && (
         <ExpenseCategoryModal
