@@ -4,8 +4,6 @@ import { useServiceData } from "../hooks/useServiceData";
 import { getSalesHistory, deleteSaleItem } from "../services/salesService";
 import { getAllDevices, getDeviceById } from "../services/inventoryService";
 import { getAllExpenses, addExpense, deleteExpense } from "../services/expensesService";
-import { getCgnResales, addCgnResale, deleteCgnResale } from "../services/cgnResalesService";
-import { formatDate } from "../utils/datetime";
 import { exportFinancialReport } from "../utils/exportFinancialReport";
 import DateRangePicker from "../components/common/DateRangePicker";
 import UnsoldUnitsModal from "../components/financial/UnsoldUnitsModal";
@@ -156,161 +154,36 @@ function Financial() {
     return { totalCapital, totalDisposal, totalNetProfit };
   }, [storeRows]);
 
-  // CGN's own resale of those same units to their own customers — a
-  // separate business event, tracked in its own table (not devices/sales,
-  // since the unit already left our inventory when we sold it to CGN).
-  const [cgnResales, setCgnResales] = useState([]);
-  const loadCgnResales = useCallback(() => {
-    getCgnResales().then(setCgnResales);
-  }, []);
-  useEffect(() => {
-    loadCgnResales();
-  }, [loadCgnResales]);
-
-  // cgnResales carries its own sale_date, independent of salesHistory, so
-  // it needs its own date-range filter — without this it always showed
-  // every resale ever entered regardless of the report's date range.
-  const filteredCgnResales = useMemo(() => {
-    const from = generatedRange.from ? new Date(generatedRange.from + "T00:00:00") : null;
-    const to = generatedRange.to ? new Date(generatedRange.to + "T00:00:00") : null;
-    return cgnResales.filter((r) => {
-      const d = new Date(r.date + "T00:00:00");
-      return (!from || d >= from) && (!to || d <= to);
-    });
-  }, [cgnResales, generatedRange]);
-
-  // Sold-to-CGN and CGN-resold are the same real-world event, not two
-  // separate profit sources — a unit is "as good as sold" the moment it
-  // leaves for CGN, so its profit is already real whether or not a
-  // cgn_resales entry has been logged for it yet. One row per physical
-  // unit (matched by batch code): prefer the cgn_resales figures when one
-  // exists (that's the fuller record — capital/disposal both confirmed),
-  // otherwise fall back to the sale's own numbers rather than hiding them.
+  // The store's own profit is locked in the moment a unit is sold to CGN —
+  // capital and sale price are both already on file at that point, and
+  // what CGN does with the unit afterward (resells it, for how much, or
+  // not at all) is CGN's own business, not something the store's ledger
+  // waits on. So the CGN Ledger is just the sold-to-CGN sales themselves,
+  // same shape as the Store Ledger above.
   const combinedCgnEntries = useMemo(() => {
-    const resaleByBatch = new Map();
-    filteredCgnResales.forEach((r) => {
-      if (r.batchCode) resaleByBatch.set(r.batchCode, r);
-    });
+    return cgnRows
+      .map((r) => ({
+        key: `sale-${r.saleItemId}`,
+        saleItemId: r.saleItemId,
+        deviceId: r.deviceId,
+        batchCode: r.batchCode,
+        date: r.date,
+        sortDate: new Date(r.date),
+        unit: [r.device, r.storage, r.color].filter(Boolean).join(" · "),
+        capital: r.purchasePrice,
+        soldFor: r.total,
+        profit: r.netProfit,
+        ref: r.supplier || "—",
+      }))
+      .sort((a, b) => b.sortDate - a.sortDate);
+  }, [cgnRows]);
 
-    const matchedBatches = new Set();
-    const entries = [];
-
-    cgnRows.forEach((r) => {
-      const resale = r.batchCode ? resaleByBatch.get(r.batchCode) : null;
-      if (resale) {
-        matchedBatches.add(resale.batchCode);
-        entries.push({
-          key: `resale-${resale.id}`,
-          id: resale.id,
-          saleItemId: null,
-          deviceId: r.deviceId,
-          batchCode: resale.batchCode,
-          date: formatDate(resale.date),
-          sortDate: new Date(resale.date),
-          unit: resale.deviceName,
-          capital: resale.capital,
-          soldFor: resale.disposalPrice,
-          profit: resale.profit,
-          ref: resale.supplierNote || "—",
-        });
-      } else {
-        entries.push({
-          key: `sale-${r.saleItemId}`,
-          id: null,
-          saleItemId: r.saleItemId,
-          deviceId: r.deviceId,
-          batchCode: r.batchCode,
-          date: r.date,
-          sortDate: new Date(r.date),
-          unit: [r.device, r.storage, r.color].filter(Boolean).join(" · "),
-          capital: r.purchasePrice,
-          soldFor: r.total,
-          profit: r.netProfit,
-          ref: r.supplier || "—",
-        });
-      }
-    });
-
-    // A resale with no matching Sold-to-CGN sale (logged directly, or the
-    // sale predates this batch-code matching) still gets its own row.
-    filteredCgnResales.forEach((resale) => {
-      if (resale.batchCode && matchedBatches.has(resale.batchCode)) return;
-      entries.push({
-        key: `resale-${resale.id}`,
-        id: resale.id,
-        saleItemId: null,
-        deviceId: resale.deviceId,
-        batchCode: resale.batchCode || "—",
-        date: formatDate(resale.date),
-        sortDate: new Date(resale.date),
-        unit: resale.deviceName,
-        capital: resale.capital,
-        soldFor: resale.disposalPrice,
-        profit: resale.profit,
-        ref: resale.supplierNote || "—",
-      });
-    });
-
-    return entries.sort((a, b) => b.sortDate - a.sortDate);
-  }, [cgnRows, filteredCgnResales]);
-
-  // Only units that actually have a recorded entry (id set — i.e. matched
-  // to cgn_resales) count toward the total, same as the owner's own
-  // tracking sheet — a unit sold to CGN but not yet recorded there still
-  // shows as a row (see the ledger table below) but reads Pending, not a
-  // real number, until it's actually logged with real capital/disposal.
   const combinedCgnTotals = useMemo(() => {
-    const recorded = combinedCgnEntries.filter((r) => r.id != null);
-    const totalCapital = recorded.reduce((sum, r) => sum + (r.capital ?? 0), 0);
-    const totalDisposal = recorded.reduce((sum, r) => sum + (r.soldFor ?? 0), 0);
-    const totalNetProfit = recorded.reduce((sum, r) => sum + (r.profit ?? 0), 0);
+    const totalCapital = combinedCgnEntries.reduce((sum, r) => sum + (r.capital ?? 0), 0);
+    const totalDisposal = combinedCgnEntries.reduce((sum, r) => sum + (r.soldFor ?? 0), 0);
+    const totalNetProfit = combinedCgnEntries.reduce((sum, r) => sum + (r.profit ?? 0), 0);
     return { totalCapital, totalDisposal, totalNetProfit };
   }, [combinedCgnEntries]);
-
-  const [resaleDate, setResaleDate] = useState(toISODate(new Date()));
-  const [resaleDeviceName, setResaleDeviceName] = useState("");
-  const [resaleCapital, setResaleCapital] = useState("");
-  const [resaleDisposal, setResaleDisposal] = useState("");
-  const [resaleSupplierNote, setResaleSupplierNote] = useState("");
-  const [resaleBatchCode, setResaleBatchCode] = useState("");
-  const [resaleError, setResaleError] = useState("");
-  const [submittingResale, setSubmittingResale] = useState(false);
-
-  const handleAddCgnResale = async (e) => {
-    e.preventDefault();
-    if (!resaleDeviceName.trim() || !resaleCapital || !resaleDisposal) return;
-    setResaleError("");
-    setSubmittingResale(true);
-    try {
-      await addCgnResale({
-        date: resaleDate,
-        deviceName: resaleDeviceName.trim(),
-        capital: Number(resaleCapital),
-        disposalPrice: Number(resaleDisposal),
-        supplierNote: resaleSupplierNote.trim(),
-        batchCode: resaleBatchCode.trim(),
-      });
-      setResaleDeviceName("");
-      setResaleCapital("");
-      setResaleDisposal("");
-      setResaleSupplierNote("");
-      setResaleBatchCode("");
-      loadCgnResales();
-    } catch (err) {
-      setResaleError(err.message || "Failed to save. Please try again.");
-    } finally {
-      setSubmittingResale(false);
-    }
-  };
-
-  const handleRemoveCgnResale = async (id) => {
-    try {
-      await deleteCgnResale(id);
-      loadCgnResales();
-    } catch (err) {
-      showToast(err.message || "Failed to remove entry. Please try again.", "error");
-    }
-  };
 
   // Same "undo the sale" as Sales History's Delete action — lets the admin
   // remove a Sold to CGN entry without leaving the CGN Ledger to find it.
@@ -665,54 +538,27 @@ function Financial() {
                         <span className="text-gray-700">{row.batchCode}</span>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-gray-800 font-medium">
-                      {row.unit}
-                      {row.id == null && (
-                        <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-600 align-middle">
-                          Pending
-                        </span>
-                      )}
+                    <td className="px-3 py-3 text-gray-800 font-medium">{row.unit}</td>
+                    <td className="px-3 py-3 text-right text-gray-700">
+                      {row.capital != null ? peso(row.capital) : "—"}
                     </td>
-                    {row.id == null ? (
-                      <>
-                        <td className="px-3 py-3 text-right text-orange-500 italic">Pending</td>
-                        <td className="px-3 py-3 text-right text-orange-500 italic">Pending</td>
-                        <td className="px-3 py-3 text-right text-orange-500 italic">Pending</td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-3 py-3 text-right text-gray-700">
-                          {row.capital != null ? peso(row.capital) : "—"}
-                        </td>
-                        <td className="px-3 py-3 text-right text-gray-800">{peso(row.soldFor)}</td>
-                        <td
-                          className={`px-3 py-3 text-right font-medium ${
-                            row.profit == null ? "text-gray-400" : row.profit < 0 ? "text-red-500" : "text-green-600"
-                          }`}
-                        >
-                          {row.profit != null ? peso(row.profit) : "—"}
-                        </td>
-                      </>
-                    )}
+                    <td className="px-3 py-3 text-right text-gray-800">{peso(row.soldFor)}</td>
+                    <td
+                      className={`px-3 py-3 text-right font-medium ${
+                        row.profit == null ? "text-gray-400" : row.profit < 0 ? "text-red-500" : "text-green-600"
+                      }`}
+                    >
+                      {row.profit != null ? peso(row.profit) : "—"}
+                    </td>
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.ref}</td>
                     <td className="px-3 py-3 text-right">
-                      {row.id && (
-                        <button
-                          onClick={() => handleRemoveCgnResale(row.id)}
-                          className="text-gray-400 hover:text-red-500 p-1"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                      {row.saleItemId && (
-                        <button
-                          onClick={() => handleRemoveCgnSale(row)}
-                          disabled={removingSaleItemId === row.saleItemId}
-                          className="text-gray-400 hover:text-red-500 p-1 disabled:opacity-60"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleRemoveCgnSale(row)}
+                        disabled={removingSaleItemId === row.saleItemId}
+                        className="text-gray-400 hover:text-red-500 p-1 disabled:opacity-60"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -786,103 +632,6 @@ function Financial() {
           </table>
         </div>
       </div>
-
-      {/* Records a unit's real capital/disposal once known — matches it
-          back to the "Pending" row above by batch code, or adds its own
-          row if there's no matching Sold-to-CGN sale. Only relevant while
-          viewing the CGN ledger. */}
-      {ledgerView === "cgn" && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 print:hidden">
-          <p className="font-bold text-gray-800 mb-1">Record CGN Sale Details</p>
-          <p className="text-xs text-gray-400 mb-4">
-            Enter what CGN actually paid for a unit and what they sold it for — this is what moves a unit from
-            "Pending" to counted in the ledger above.
-          </p>
-
-          {resaleError && (
-            <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4">
-              <AlertTriangle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-red-700">{resaleError}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleAddCgnResale} className="flex flex-wrap items-end gap-3 mt-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Date</label>
-              <input
-                type="date"
-                value={resaleDate}
-                onChange={(e) => setResaleDate(e.target.value)}
-                className="w-40 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex-1 min-w-[180px]">
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Unit</label>
-              <input
-                type="text"
-                value={resaleDeviceName}
-                onChange={(e) => setResaleDeviceName(e.target.value)}
-                placeholder="e.g. iPhone 11 128GB Purple"
-                className="w-full border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Capital</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
-                <input
-                  type="number"
-                  value={resaleCapital}
-                  onChange={(e) => setResaleCapital(e.target.value)}
-                  placeholder="0.00"
-                  className="w-28 border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Resold For</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₱</span>
-                <input
-                  type="number"
-                  value={resaleDisposal}
-                  onChange={(e) => setResaleDisposal(e.target.value)}
-                  placeholder="0.00"
-                  className="w-28 border border-gray-200 rounded-lg text-sm pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Ref (Optional)</label>
-              <input
-                type="text"
-                value={resaleSupplierNote}
-                onChange={(e) => setResaleSupplierNote(e.target.value)}
-                placeholder="e.g. S 06.22"
-                className="w-28 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Batch Code (Optional)</label>
-              <input
-                type="text"
-                value={resaleBatchCode}
-                onChange={(e) => setResaleBatchCode(e.target.value)}
-                placeholder="e.g. 062226-046"
-                className="w-32 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={submittingResale}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
-            >
-              <Plus size={14} />
-              {submittingResale ? "Adding..." : "Add"}
-            </button>
-          </form>
-        </div>
-      )}
 
       {/* Expenses — every entry, all categories, includes both what staff
           logged on Reports and what's logged here (entries added from this
