@@ -117,7 +117,6 @@ export async function exportFinancialReport({
       { label: "Capital", key: "capital", type: Number, format: "#,##0.00" },
       { label: "Sold For", key: "soldFor", type: Number, format: "#,##0.00" },
       { label: "Net Profit", key: "profit", type: Number, format: "#,##0.00" },
-      { label: "Stage", key: "stage", width: 14 },
       { label: "Ref / Supplier", key: "ref", width: 16 },
     ],
     cgnEntries.map((r) => ({
@@ -127,7 +126,6 @@ export async function exportFinancialReport({
       capital: r.capital ?? 0,
       soldFor: r.soldFor,
       profit: r.profit ?? 0,
-      stage: r.stage,
       ref: r.ref,
     }))
   );

@@ -179,63 +179,84 @@ function Financial() {
     });
   }, [cgnResales, generatedRange]);
 
-  const cgnResaleTotals = useMemo(() => {
-    const totalCapital = filteredCgnResales.reduce((sum, r) => sum + r.capital, 0);
-    const totalDisposal = filteredCgnResales.reduce((sum, r) => sum + r.disposalPrice, 0);
-    const totalProfit = filteredCgnResales.reduce((sum, r) => sum + r.profit, 0);
-    return { totalCapital, totalDisposal, totalProfit };
-  }, [filteredCgnResales]);
-
-  // Both legs of the CGN business — what we sold them (wholesale) and what
-  // they resold it for (retail) — combined into one ledger and one profit
-  // figure, since both are the admin's own money either way.
+  // Sold-to-CGN and CGN-resold are the same real-world event, not two
+  // separate profit sources — a unit is "as good as sold" the moment it
+  // leaves for CGN, so its profit is already real whether or not a
+  // cgn_resales entry has been logged for it yet. One row per physical
+  // unit (matched by batch code): prefer the cgn_resales figures when one
+  // exists (that's the fuller record — capital/disposal both confirmed),
+  // otherwise fall back to the sale's own numbers rather than hiding them.
   const combinedCgnEntries = useMemo(() => {
-    const soldToCgn = cgnRows.map((r) => ({
-      key: `sale-${r.saleItemId}`,
-      saleItemId: r.saleItemId,
-      batchCode: r.batchCode,
-      date: r.date,
-      sortDate: new Date(r.date),
-      unit: [r.device, r.storage, r.color].filter(Boolean).join(" · "),
-      capital: r.purchasePrice,
-      soldFor: r.total,
-      profit: r.netProfit,
-      ref: r.supplier || "—",
-      stage: "Sold to CGN",
-    }));
-    const cgnResold = filteredCgnResales.map((r) => ({
-      key: `resale-${r.id}`,
-      id: r.id,
-      date: formatDate(r.date),
-      sortDate: new Date(r.date),
-      batchCode: r.batchCode || "—",
-      unit: r.deviceName,
-      capital: r.capital,
-      soldFor: r.disposalPrice,
-      profit: r.profit,
-      ref: r.supplierNote || "—",
-      stage: "CGN Resale",
-    }));
-    return [...soldToCgn, ...cgnResold].sort((a, b) => b.sortDate - a.sortDate);
+    const resaleByBatch = new Map();
+    filteredCgnResales.forEach((r) => {
+      if (r.batchCode) resaleByBatch.set(r.batchCode, r);
+    });
+
+    const matchedBatches = new Set();
+    const entries = [];
+
+    cgnRows.forEach((r) => {
+      const resale = r.batchCode ? resaleByBatch.get(r.batchCode) : null;
+      if (resale) {
+        matchedBatches.add(resale.batchCode);
+        entries.push({
+          key: `resale-${resale.id}`,
+          id: resale.id,
+          saleItemId: null,
+          batchCode: resale.batchCode,
+          date: formatDate(resale.date),
+          sortDate: new Date(resale.date),
+          unit: resale.deviceName,
+          capital: resale.capital,
+          soldFor: resale.disposalPrice,
+          profit: resale.profit,
+          ref: resale.supplierNote || "—",
+        });
+      } else {
+        entries.push({
+          key: `sale-${r.saleItemId}`,
+          id: null,
+          saleItemId: r.saleItemId,
+          batchCode: r.batchCode,
+          date: r.date,
+          sortDate: new Date(r.date),
+          unit: [r.device, r.storage, r.color].filter(Boolean).join(" · "),
+          capital: r.purchasePrice,
+          soldFor: r.total,
+          profit: r.netProfit,
+          ref: r.supplier || "—",
+        });
+      }
+    });
+
+    // A resale with no matching Sold-to-CGN sale (logged directly, or the
+    // sale predates this batch-code matching) still gets its own row.
+    filteredCgnResales.forEach((resale) => {
+      if (resale.batchCode && matchedBatches.has(resale.batchCode)) return;
+      entries.push({
+        key: `resale-${resale.id}`,
+        id: resale.id,
+        saleItemId: null,
+        batchCode: resale.batchCode || "—",
+        date: formatDate(resale.date),
+        sortDate: new Date(resale.date),
+        unit: resale.deviceName,
+        capital: resale.capital,
+        soldFor: resale.disposalPrice,
+        profit: resale.profit,
+        ref: resale.supplierNote || "—",
+      });
+    });
+
+    return entries.sort((a, b) => b.sortDate - a.sortDate);
   }, [cgnRows, filteredCgnResales]);
 
-  // cgn_resales is the sole source of truth for CGN's numbers, not a second
-  // one to add on top of "Sold to CGN" — a unit only ever has one real
-  // capital/disposal/profit, and cgn_resales is where it's recorded once
-  // the full picture (what CGN paid us, what CGN resold it for) is known.
-  // The "Sold to CGN" sale itself is just the inventory-movement record
-  // (marks the device Sold) — it still shows as a ledger row for
-  // traceability, but doesn't contribute its own profit figure, the same
-  // way a Pending bulk order shows as a row without counting toward
-  // Reports' totals until it's confirmed.
-  const combinedCgnTotals = useMemo(
-    () => ({
-      totalCapital: cgnResaleTotals.totalCapital,
-      totalDisposal: cgnResaleTotals.totalDisposal,
-      totalNetProfit: cgnResaleTotals.totalProfit,
-    }),
-    [cgnResaleTotals]
-  );
+  const combinedCgnTotals = useMemo(() => {
+    const totalCapital = combinedCgnEntries.reduce((sum, r) => sum + (r.capital ?? 0), 0);
+    const totalDisposal = combinedCgnEntries.reduce((sum, r) => sum + (r.soldFor ?? 0), 0);
+    const totalNetProfit = combinedCgnEntries.reduce((sum, r) => sum + (r.profit ?? 0), 0);
+    return { totalCapital, totalDisposal, totalNetProfit };
+  }, [combinedCgnEntries]);
 
   const [resaleDate, setResaleDate] = useState(toISODate(new Date()));
   const [resaleDeviceName, setResaleDeviceName] = useState("");
@@ -569,9 +590,9 @@ function Financial() {
 
       {/* Ledger table — toggled between the full store ledger and the CGN
           one via the Store Ledger/CGN Ledger buttons above. The CGN view
-          merges both legs of that business into one table: units we sold
-          to CGN (wholesale) and what CGN resold them for to their own
-          customers (retail) — a "Stage" column tells the two apart. */}
+          is one row per physical unit CGN bought, same as the store's own
+          tracking sheet — no "Sold to CGN" vs "CGN Resale" split, since
+          they're the same event. */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <p className="font-bold text-gray-800 mb-4">
           {ledgerView === "cgn" ? "CGN Ledger" : "Unit Financial Ledger"}
@@ -590,7 +611,7 @@ function Financial() {
                   {ledgerView === "cgn" ? "Sold For" : "Disposal Price"}
                 </th>
                 <th className="px-3 py-2.5 font-medium text-right">Net Profit</th>
-                <th className="px-3 py-2.5 font-medium">{ledgerView === "cgn" ? "Stage" : "Supplier"}</th>
+                <th className="px-3 py-2.5 font-medium">{ledgerView === "cgn" ? "Ref" : "Supplier"}</th>
                 {ledgerView === "cgn" && <th className="px-3 py-2.5 font-medium rounded-r-lg text-right">Remove</th>}
                 {ledgerView !== "cgn" && <th className="px-3 py-2.5 font-medium rounded-r-lg"></th>}
               </tr>
@@ -611,36 +632,18 @@ function Financial() {
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.date}</td>
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.batchCode}</td>
                     <td className="px-3 py-3 text-gray-800 font-medium">{row.unit}</td>
-                    {row.stage === "Sold to CGN" ? (
-                      <>
-                        <td className="px-3 py-3 text-right text-gray-300 italic" colSpan={3}>
-                          Not counted — see CGN Resale
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-3 py-3 text-right text-gray-700">
-                          {row.capital != null ? peso(row.capital) : "—"}
-                        </td>
-                        <td className="px-3 py-3 text-right text-gray-800">{peso(row.soldFor)}</td>
-                        <td
-                          className={`px-3 py-3 text-right font-medium ${
-                            row.profit == null ? "text-gray-400" : row.profit < 0 ? "text-red-500" : "text-green-600"
-                          }`}
-                        >
-                          {row.profit != null ? peso(row.profit) : "—"}
-                        </td>
-                      </>
-                    )}
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          row.stage === "CGN Resale" ? "bg-teal-100 text-teal-700" : "bg-blue-100 text-blue-700"
-                        }`}
-                      >
-                        {row.stage}
-                      </span>
+                    <td className="px-3 py-3 text-right text-gray-700">
+                      {row.capital != null ? peso(row.capital) : "—"}
                     </td>
+                    <td className="px-3 py-3 text-right text-gray-800">{peso(row.soldFor)}</td>
+                    <td
+                      className={`px-3 py-3 text-right font-medium ${
+                        row.profit == null ? "text-gray-400" : row.profit < 0 ? "text-red-500" : "text-green-600"
+                      }`}
+                    >
+                      {row.profit != null ? peso(row.profit) : "—"}
+                    </td>
+                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.ref}</td>
                     <td className="px-3 py-3 text-right">
                       {row.id && (
                         <button
