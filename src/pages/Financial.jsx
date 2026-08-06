@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Coins, Printer, FileSpreadsheet, Search, PiggyBank, TrendingUp, Wallet, Plus, Trash2, AlertTriangle, Boxes } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
 import { getSalesHistory, deleteSaleItem } from "../services/salesService";
-import { getAllDevices } from "../services/inventoryService";
+import { getAllDevices, getDeviceById } from "../services/inventoryService";
 import { getAllExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import { getCgnResales, addCgnResale, deleteCgnResale } from "../services/cgnResalesService";
 import { formatDate } from "../utils/datetime";
@@ -203,6 +203,7 @@ function Financial() {
           key: `resale-${resale.id}`,
           id: resale.id,
           saleItemId: null,
+          deviceId: r.deviceId,
           batchCode: resale.batchCode,
           date: formatDate(resale.date),
           sortDate: new Date(resale.date),
@@ -217,6 +218,7 @@ function Financial() {
           key: `sale-${r.saleItemId}`,
           id: null,
           saleItemId: r.saleItemId,
+          deviceId: r.deviceId,
           batchCode: r.batchCode,
           date: r.date,
           sortDate: new Date(r.date),
@@ -237,6 +239,7 @@ function Financial() {
         key: `resale-${resale.id}`,
         id: resale.id,
         saleItemId: null,
+        deviceId: resale.deviceId,
         batchCode: resale.batchCode || "—",
         date: formatDate(resale.date),
         sortDate: new Date(resale.date),
@@ -328,6 +331,20 @@ function Financial() {
       showToast(err.message || "Failed to delete sale. Please try again.", "error");
     } finally {
       setRemovingSaleItemId(null);
+    }
+  };
+
+  // Lets a ledger row's batch code open the same Device Details popup Sales
+  // History uses — ledger rows only carry the device id, not the full
+  // record, so this fetches it on click rather than loading every device
+  // up front for rows that mostly never get clicked.
+  const handleViewUnitInfo = async (deviceId) => {
+    if (!deviceId) return;
+    try {
+      const device = await getDeviceById(deviceId);
+      setViewDevice(device);
+    } catch (err) {
+      showToast(err.message || "Failed to load unit info. Please try again.", "error");
     }
   };
 
@@ -636,7 +653,18 @@ function Financial() {
                   <tr key={row.key} className="border-b border-gray-50 last:border-0">
                     <td className="px-3 py-3 text-gray-500">{index + 1}</td>
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.date}</td>
-                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.batchCode}</td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      {row.deviceId ? (
+                        <button
+                          onClick={() => handleViewUnitInfo(row.deviceId)}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {row.batchCode}
+                        </button>
+                      ) : (
+                        <span className="text-gray-700">{row.batchCode}</span>
+                      )}
+                    </td>
                     <td className="px-3 py-3 text-gray-800 font-medium">
                       {row.unit}
                       {row.id == null && (
@@ -693,7 +721,18 @@ function Financial() {
                   <tr key={row.saleItemId} className="border-b border-gray-50 last:border-0">
                     <td className="px-3 py-3 text-gray-500">{index + 1}</td>
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.date}</td>
-                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.batchCode}</td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      {row.deviceId ? (
+                        <button
+                          onClick={() => handleViewUnitInfo(row.deviceId)}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {row.batchCode}
+                        </button>
+                      ) : (
+                        <span className="text-gray-700">{row.batchCode}</span>
+                      )}
+                    </td>
                     <td className="px-3 py-3 text-gray-800 font-medium">
                       {[row.device, row.storage, row.color].filter(Boolean).join(" · ")}
                       {isPendingBulk(row) && (

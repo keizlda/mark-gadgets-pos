@@ -15,8 +15,10 @@ import { useServiceData } from "../hooks/useServiceData";
 import { useIsAdmin } from "../hooks/useIsAdmin";
 import { getSalesHistory } from "../services/salesService";
 import { getExpenses, addExpense, deleteExpense } from "../services/expensesService";
+import { getDeviceById } from "../services/inventoryService";
 import DateRangePicker from "../components/common/DateRangePicker";
 import ExpenseCategoryModal from "../components/financial/ExpenseCategoryModal";
+import DeviceDetailsModal from "../components/inventory/DeviceDetailsModal";
 import { useToast } from "../hooks/useToast";
 
 const REPORT_TYPES = ["Daily", "Weekly", "Monthly", "Custom Range"];
@@ -93,6 +95,7 @@ function Reports() {
   const [dateTo, setDateTo] = useState(initialRange.to);
   const [generatedRange, setGeneratedRange] = useState(initialRange);
   const [viewMode, setViewMode] = useState("all"); // "all" | "cash" | "expenses"
+  const [viewDevice, setViewDevice] = useState(null);
 
   const [expenses, setExpenses] = useState([]);
   const loadExpenses = useCallback(() => {
@@ -132,6 +135,7 @@ function Reports() {
         device: s.device,
         storage: s.storage,
         color: s.color,
+        deviceId: s.deviceId,
         items: 1,
         amount: s.total,
         payment: s.payment,
@@ -269,6 +273,16 @@ function Reports() {
       loadExpenses();
     } catch (err) {
       showToast(err.message || "Failed to remove expense. Please try again.", "error");
+    }
+  };
+
+  const handleViewUnitInfo = async (deviceId) => {
+    if (!deviceId) return;
+    try {
+      const device = await getDeviceById(deviceId);
+      setViewDevice(device);
+    } catch (err) {
+      showToast(err.message || "Failed to load unit info. Please try again.", "error");
     }
   };
 
@@ -431,7 +445,18 @@ function Reports() {
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">
                       {row.date} {row.time}
                     </td>
-                    <td className="px-3 py-3 text-gray-700">{row.txn}</td>
+                    <td className="px-3 py-3">
+                      {row.deviceId ? (
+                        <button
+                          onClick={() => handleViewUnitInfo(row.deviceId)}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {row.txn}
+                        </button>
+                      ) : (
+                        <span className="text-gray-700">{row.txn}</span>
+                      )}
+                    </td>
                     <td className="px-3 py-3 text-gray-700">{row.customer || "—"}</td>
                     <td className="px-3 py-3 text-gray-800 font-medium">
                       {[row.device, row.storage, row.color].filter(Boolean).join(" · ")}
@@ -646,6 +671,8 @@ function Reports() {
           onClose={() => setExpenseModalCategory(null)}
         />
       )}
+
+      {viewDevice && <DeviceDetailsModal device={viewDevice} onClose={() => setViewDevice(null)} />}
     </div>
   );
 }
