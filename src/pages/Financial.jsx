@@ -251,10 +251,16 @@ function Financial() {
     return entries.sort((a, b) => b.sortDate - a.sortDate);
   }, [cgnRows, filteredCgnResales]);
 
+  // Only units that actually have a recorded entry (id set — i.e. matched
+  // to cgn_resales) count toward the total, same as the owner's own
+  // tracking sheet — a unit sold to CGN but not yet recorded there still
+  // shows as a row (see the ledger table below) but reads Pending, not a
+  // real number, until it's actually logged with real capital/disposal.
   const combinedCgnTotals = useMemo(() => {
-    const totalCapital = combinedCgnEntries.reduce((sum, r) => sum + (r.capital ?? 0), 0);
-    const totalDisposal = combinedCgnEntries.reduce((sum, r) => sum + (r.soldFor ?? 0), 0);
-    const totalNetProfit = combinedCgnEntries.reduce((sum, r) => sum + (r.profit ?? 0), 0);
+    const recorded = combinedCgnEntries.filter((r) => r.id != null);
+    const totalCapital = recorded.reduce((sum, r) => sum + (r.capital ?? 0), 0);
+    const totalDisposal = recorded.reduce((sum, r) => sum + (r.soldFor ?? 0), 0);
+    const totalNetProfit = recorded.reduce((sum, r) => sum + (r.profit ?? 0), 0);
     return { totalCapital, totalDisposal, totalNetProfit };
   }, [combinedCgnEntries]);
 
@@ -288,7 +294,7 @@ function Financial() {
       setResaleBatchCode("");
       loadCgnResales();
     } catch (err) {
-      setResaleError(err.message || "Failed to add resale entry. Please try again.");
+      setResaleError(err.message || "Failed to save. Please try again.");
     } finally {
       setSubmittingResale(false);
     }
@@ -299,7 +305,7 @@ function Financial() {
       await deleteCgnResale(id);
       loadCgnResales();
     } catch (err) {
-      showToast(err.message || "Failed to remove resale entry. Please try again.", "error");
+      showToast(err.message || "Failed to remove entry. Please try again.", "error");
     }
   };
 
@@ -631,18 +637,35 @@ function Financial() {
                     <td className="px-3 py-3 text-gray-500">{index + 1}</td>
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.date}</td>
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.batchCode}</td>
-                    <td className="px-3 py-3 text-gray-800 font-medium">{row.unit}</td>
-                    <td className="px-3 py-3 text-right text-gray-700">
-                      {row.capital != null ? peso(row.capital) : "—"}
+                    <td className="px-3 py-3 text-gray-800 font-medium">
+                      {row.unit}
+                      {row.id == null && (
+                        <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-600 align-middle">
+                          Pending
+                        </span>
+                      )}
                     </td>
-                    <td className="px-3 py-3 text-right text-gray-800">{peso(row.soldFor)}</td>
-                    <td
-                      className={`px-3 py-3 text-right font-medium ${
-                        row.profit == null ? "text-gray-400" : row.profit < 0 ? "text-red-500" : "text-green-600"
-                      }`}
-                    >
-                      {row.profit != null ? peso(row.profit) : "—"}
-                    </td>
+                    {row.id == null ? (
+                      <>
+                        <td className="px-3 py-3 text-right text-orange-500 italic">Pending</td>
+                        <td className="px-3 py-3 text-right text-orange-500 italic">Pending</td>
+                        <td className="px-3 py-3 text-right text-orange-500 italic">Pending</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-3 py-3 text-right text-gray-700">
+                          {row.capital != null ? peso(row.capital) : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-right text-gray-800">{peso(row.soldFor)}</td>
+                        <td
+                          className={`px-3 py-3 text-right font-medium ${
+                            row.profit == null ? "text-gray-400" : row.profit < 0 ? "text-red-500" : "text-green-600"
+                          }`}
+                        >
+                          {row.profit != null ? peso(row.profit) : "—"}
+                        </td>
+                      </>
+                    )}
                     <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{row.ref}</td>
                     <td className="px-3 py-3 text-right">
                       {row.id && (
@@ -725,14 +748,16 @@ function Financial() {
         </div>
       </div>
 
-      {/* Add a CGN resale entry — CGN's own resale of a unit to their end
-          customer, from CGN's own report. Feeds straight into the merged
-          ledger above. Only relevant while viewing the CGN ledger. */}
+      {/* Records a unit's real capital/disposal once known — matches it
+          back to the "Pending" row above by batch code, or adds its own
+          row if there's no matching Sold-to-CGN sale. Only relevant while
+          viewing the CGN ledger. */}
       {ledgerView === "cgn" && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 print:hidden">
-          <p className="font-bold text-gray-800 mb-1">Add CGN Resale Entry</p>
+          <p className="font-bold text-gray-800 mb-1">Record CGN Sale Details</p>
           <p className="text-xs text-gray-400 mb-4">
-            Record what CGN resold a unit for to their own customer — shows up in the ledger above as "CGN Resale".
+            Enter what CGN actually paid for a unit and what they sold it for — this is what moves a unit from
+            "Pending" to counted in the ledger above.
           </p>
 
           {resaleError && (
