@@ -87,7 +87,7 @@ export async function deleteDevice(id) {
 export async function getAvailableDevicesForReplacement(deviceName) {
   const { data, error } = await supabase
     .from("devices")
-    .select("id, batch_code, device_name, storage, color")
+    .select("id, batch_code, device_name, storage, color, selling_price")
     .eq("status", "Available")
     .eq("device_name", deviceName);
 
@@ -99,6 +99,7 @@ export async function getAvailableDevicesForReplacement(deviceName) {
     device: d.device_name,
     storage: d.storage,
     color: d.color,
+    price: d.selling_price,
   }));
 }
 

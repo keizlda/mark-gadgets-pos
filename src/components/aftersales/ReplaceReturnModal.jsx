@@ -15,6 +15,9 @@ function ReplaceReturnModal({ record, onClose, onReplaced }) {
   const [otherSearch, setOtherSearch] = useState("");
   const [otherDeviceId, setOtherDeviceId] = useState("");
 
+  const [newPrice, setNewPrice] = useState("");
+  const [priceTouched, setPriceTouched] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -36,20 +39,36 @@ function ReplaceReturnModal({ record, onClose, onReplaced }) {
   }, [otherDevices, otherSearch]);
 
   const selectedOtherDevice = otherDevices.find((d) => d.id === otherDeviceId);
+  const selectedCandidate = candidates.find((c) => c.id === replacementId);
+  const goesToSupplierDefective = record ? ["Defective Unit", "Not as Described"].includes(record.reason) : false;
+
+  // Prefill the price from whichever replacement was just picked, but only
+  // until staff actually edits it — otherwise every re-render would stomp
+  // a manual override back to the device's list price.
+  useEffect(() => {
+    if (priceTouched) return;
+    const suggested = selectedOtherDevice?.price ?? selectedCandidate?.price;
+    if (suggested != null) setNewPrice(String(suggested));
+  }, [selectedOtherDevice, selectedCandidate, priceTouched]);
 
   if (!record) return null;
 
   const resolvedReplacementId = replacementId === OTHER_UNIT ? otherDeviceId : replacementId;
+  const parsedPrice = Number(newPrice);
 
   const handleConfirm = async () => {
     if (!resolvedReplacementId) {
       setError("Select a replacement unit.");
       return;
     }
+    if (!newPrice || Number.isNaN(parsedPrice) || parsedPrice <= 0) {
+      setError("Enter a valid sale price for the replacement.");
+      return;
+    }
     setError("");
     setSubmitting(true);
     try {
-      await replaceReturn(record.id, record.deviceId, resolvedReplacementId, record.reason);
+      await replaceReturn(record.id, record.deviceId, resolvedReplacementId, record.reason, parsedPrice);
       onReplaced();
     } catch (err) {
       setError(err.message || "Failed to replace return. Please try again.");
@@ -96,6 +115,7 @@ function ReplaceReturnModal({ record, onClose, onReplaced }) {
               {candidates.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.batchCode} — {c.storage} · {c.color}
+                  {c.price != null ? ` · ₱${c.price.toLocaleString()}` : ""}
                 </option>
               ))}
               <option value={OTHER_UNIT}>Other unit (different model)</option>
@@ -160,8 +180,37 @@ function ReplaceReturnModal({ record, onClose, onReplaced }) {
             </div>
           )}
 
+          {resolvedReplacementId && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                Sale Price for Replacement
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">₱</span>
+                <input
+                  type="number"
+                  value={newPrice}
+                  onChange={(e) => {
+                    setNewPrice(e.target.value);
+                    setPriceTouched(true);
+                  }}
+                  min="0"
+                  step="0.01"
+                  className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              {record.originalPrice != null && (
+                <p className="text-xs text-gray-400 mt-1.5">
+                  Original sale price was ₱{record.originalPrice.toLocaleString()}.
+                </p>
+              )}
+            </div>
+          )}
+
           <p className="text-xs text-gray-400">
-            The returned unit ({record.batchCode}) will be sent to Supplier Defective automatically.
+            {goesToSupplierDefective
+              ? `The returned unit (${record.batchCode}) will be sent to Supplier Defective automatically.`
+              : `The returned unit (${record.batchCode}) will go back to Available stock — "${record.reason}" isn't a defect.`}
           </p>
         </div>
 
@@ -175,7 +224,7 @@ function ReplaceReturnModal({ record, onClose, onReplaced }) {
           </button>
           <button
             onClick={handleConfirm}
-            disabled={submitting || !resolvedReplacementId}
+            disabled={submitting || !resolvedReplacementId || !newPrice || Number.isNaN(parsedPrice) || parsedPrice <= 0}
             className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
           >
             {submitting ? "Replacing..." : "Replace Return"}

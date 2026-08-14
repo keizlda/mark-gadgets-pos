@@ -9,6 +9,7 @@ export async function getCustomerReturns() {
     returned_at,
     sale_items:sale_item_id (
       device_id,
+      price_at_sale,
       sales:sale_id ( customer_name, customer_phone, sold_at ),
       devices:device_id ( batch_code, device_name, category, storage, color )
     ),
@@ -30,6 +31,7 @@ export async function getCustomerReturns() {
       storage: r.sale_items?.devices?.storage,
       color: r.sale_items?.devices?.color,
       category: r.sale_items?.devices?.category,
+      originalPrice: r.sale_items?.price_at_sale ?? null,
       reason: r.reason,
       purchaseDate: r.sale_items?.sales?.sold_at ? formatDate(r.sale_items.sales.sold_at) : null,
       returnDate: formatDate(r.returned_at),
@@ -53,19 +55,24 @@ export async function createReturn({ saleItemId, reason }) {
   if (error) throw error;
 }
 
-// Resolves a return by handing the customer a replacement unit of the same
-// model. The original (broken) unit is transferred straight to Supplier
-// Defective — rather than sitting around as "Customer Returned" — with the
-// return reason carried over as the issue description. The replacement is
-// marked Sold and linked on the return record. No cash refunds. Runs as a
-// single atomic RPC (see replace_return in schema.sql) so this 4-write
+// Resolves a return by handing the customer a replacement unit — same
+// model or a different one entirely. Where the original unit ends up
+// depends on the reason: Defective Unit / Not as Described go to Supplier
+// Defective (with the reason carried over as the issue description);
+// anything else (Changed Mind, Not Compatible, Wrong Item Ordered) goes
+// back to Available since there's nothing actually wrong with it. The
+// replacement is marked Sold and linked on the return record; newPrice
+// (optional) updates the sale's price_at_sale, since a different-model
+// swap rarely costs the same as what it's replacing. Runs as a single
+// atomic RPC (see replace_return in schema.sql) so this multi-write
 // sequence can't be left half-applied by a dropped connection.
-export async function replaceReturn(returnId, originalDeviceId, replacementDeviceId, reason) {
+export async function replaceReturn(returnId, originalDeviceId, replacementDeviceId, reason, newPrice) {
   const { error } = await supabase.rpc("replace_return", {
     p_return_id: returnId,
     p_original_device_id: originalDeviceId,
     p_replacement_device_id: replacementDeviceId,
     p_reason: reason,
+    p_new_price: newPrice ?? null,
   });
   if (error) throw error;
 }

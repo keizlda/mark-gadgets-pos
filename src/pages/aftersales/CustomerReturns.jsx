@@ -383,7 +383,10 @@ function CustomerReturns() {
       {/* Info note */}
       <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-700">
         <span className="font-medium">Note:</span>
-        <span>Returns are resolved with a replacement unit of the same model — no cash refunds.</span>
+        <span>
+          Returns are resolved with a replacement unit — same model or a different one. Defective Unit / Not as
+          Described returns send the original to Supplier Defective; other reasons put it back in Available stock.
+        </span>
       </div>
 
       {detailsRecord && (
