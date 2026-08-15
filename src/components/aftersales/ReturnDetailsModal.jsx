@@ -4,6 +4,7 @@ const statusStyles = {
   Replaced: "bg-green-100 text-green-600",
   Pending: "bg-orange-100 text-orange-600",
   Rejected: "bg-red-100 text-red-600",
+  "On Hold": "bg-blue-100 text-blue-600",
 };
 
 function Row({ label, children }) {

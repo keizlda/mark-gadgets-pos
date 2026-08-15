@@ -84,3 +84,28 @@ export async function rejectReturn(returnId) {
   const { error } = await supabase.rpc("reject_return", { p_return_id: returnId });
   if (error) throw error;
 }
+
+// For when there's no replacement in stock yet — routes the original
+// unit immediately (Supplier Defective or Available, depending on
+// reason) and marks the return On Hold, without waiting for a
+// replacement to be picked. See hold_return_for_restock in schema.sql.
+export async function holdReturnForRestock(returnId, originalDeviceId) {
+  const { error } = await supabase.rpc("hold_return_for_restock", {
+    p_return_id: returnId,
+    p_original_device_id: originalDeviceId,
+  });
+  if (error) throw error;
+}
+
+// Finishes an On Hold return once a replacement is available — same
+// sale-repointing/price logic as replaceReturn, minus the original-device
+// routing (already done when it went on hold). See complete_held_return
+// in schema.sql.
+export async function completeHeldReturn(returnId, replacementDeviceId, newPrice) {
+  const { error } = await supabase.rpc("complete_held_return", {
+    p_return_id: returnId,
+    p_replacement_device_id: replacementDeviceId,
+    p_new_price: newPrice ?? null,
+  });
+  if (error) throw error;
+}

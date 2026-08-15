@@ -7,13 +7,14 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  PauseCircle,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
-import { getCustomerReturns, rejectReturn } from "../../services/returnsService";
+import { getCustomerReturns, rejectReturn, holdReturnForRestock } from "../../services/returnsService";
 import { getReturnReasons } from "../../services/referenceService";
 import { matchesQuery } from "../../utils/search";
 import ReturnDetailsModal from "../../components/aftersales/ReturnDetailsModal";
@@ -25,6 +26,7 @@ const statusStyles = {
   Replaced: "bg-green-100 text-green-600",
   Pending: "bg-orange-100 text-orange-600",
   Rejected: "bg-red-100 text-red-600",
+  "On Hold": "bg-blue-100 text-blue-600",
 };
 
 function CustomerReturns() {
@@ -50,7 +52,9 @@ function CustomerReturns() {
   const [sortDir, setSortDir] = useState("desc");
   const [detailsRecord, setDetailsRecord] = useState(null);
   const [replaceRecord, setReplaceRecord] = useState(null);
+  const [replaceMode, setReplaceMode] = useState("replace");
   const [rejectingId, setRejectingId] = useState(null);
+  const [holdingId, setHoldingId] = useState(null);
 
   const from = dateRange?.from || null;
   const to = dateRange?.to || null;
@@ -78,6 +82,7 @@ function CustomerReturns() {
   const replaced = customerReturns.filter((r) => r.status === "Replaced");
   const pending = customerReturns.filter((r) => r.status === "Pending");
   const rejected = customerReturns.filter((r) => r.status === "Rejected");
+  const onHold = customerReturns.filter((r) => r.status === "On Hold");
 
   const handleApply = () => {
     setAppliedSearch(search);
@@ -117,6 +122,20 @@ function CustomerReturns() {
     loadReturns();
   };
 
+  const handleHold = async (record) => {
+    if (!window.confirm(`Put the return for ${record.batchCode} on hold? The original unit will be routed now, and you'll complete the replacement once stock is available.`)) return;
+    setHoldingId(record.id);
+    try {
+      await holdReturnForRestock(record.id, record.deviceId);
+      loadReturns();
+    } catch (err) {
+      showToast(err.message || "Failed to hold return. Please try again.", "error");
+    } finally {
+      setHoldingId(null);
+      setOpenMenu(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -138,6 +157,7 @@ function CustomerReturns() {
               <option value="All">All Status</option>
               <option value="Replaced">Replaced</option>
               <option value="Pending">Pending</option>
+              <option value="On Hold">On Hold</option>
               <option value="Rejected">Rejected</option>
             </select>
           </div>
@@ -191,7 +211,7 @@ function CustomerReturns() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3.5">
           <div className="h-11 w-11 rounded-full bg-purple-500 flex items-center justify-center shrink-0">
             <RotateCcw size={18} className="text-white" />
@@ -221,6 +241,17 @@ function CustomerReturns() {
           <div>
             <p className="text-xs text-gray-400">Pending Returns</p>
             <p className="text-xl font-bold text-gray-800 leading-tight">{pending.length}</p>
+            <p className="text-xs text-gray-400">Returns</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3.5">
+          <div className="h-11 w-11 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
+            <PauseCircle size={18} className="text-white" />
+          </div>
+          <div>
+            <p className="text-xs text-gray-400">On Hold</p>
+            <p className="text-xl font-bold text-gray-800 leading-tight">{onHold.length}</p>
             <p className="text-xs text-gray-400">Returns</p>
           </div>
         </div>
@@ -306,10 +337,17 @@ function CustomerReturns() {
                           {row.status === "Pending" && (
                             <>
                               <button
-                                onClick={() => { setReplaceRecord(row); setOpenMenu(null); }}
+                                onClick={() => { setReplaceRecord(row); setReplaceMode("replace"); setOpenMenu(null); }}
                                 className="block w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-gray-50"
                               >
                                 Replace Return
+                              </button>
+                              <button
+                                onClick={() => handleHold(row)}
+                                disabled={holdingId === row.id}
+                                className="block w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-gray-50 disabled:opacity-60"
+                              >
+                                {holdingId === row.id ? "Holding..." : "Hold for Restock"}
                               </button>
                               <button
                                 onClick={() => handleReject(row)}
@@ -319,6 +357,14 @@ function CustomerReturns() {
                                 {rejectingId === row.id ? "Rejecting..." : "Reject Return"}
                               </button>
                             </>
+                          )}
+                          {row.status === "On Hold" && (
+                            <button
+                              onClick={() => { setReplaceRecord(row); setReplaceMode("complete"); setOpenMenu(null); }}
+                              className="block w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-gray-50"
+                            >
+                              Complete Replacement
+                            </button>
                           )}
                         </div>
                       )}
@@ -386,6 +432,8 @@ function CustomerReturns() {
         <span>
           Returns are resolved with a replacement unit — same model or a different one. Defective Unit / Not as
           Described returns send the original to Supplier Defective; other reasons put it back in Available stock.
+          No replacement in stock yet? Use "Hold for Restock" to route the original unit now and complete the
+          replacement once stock arrives.
         </span>
       </div>
 
@@ -396,6 +444,7 @@ function CustomerReturns() {
       {replaceRecord && (
         <ReplaceReturnModal
           record={replaceRecord}
+          mode={replaceMode}
           onClose={() => setReplaceRecord(null)}
           onReplaced={handleReplaced}
         />
