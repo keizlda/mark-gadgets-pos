@@ -14,7 +14,7 @@ import {
 import { useServiceData } from "../hooks/useServiceData";
 import { useIsAdmin } from "../hooks/useIsAdmin";
 import { getSalesHistory } from "../services/salesService";
-import { getExpenses, addExpense, deleteExpense } from "../services/expensesService";
+import { getExpenses, getAllExpenses, addExpense, deleteExpense } from "../services/expensesService";
 import { getDeviceById } from "../services/inventoryService";
 import DateRangePicker from "../components/common/DateRangePicker";
 import ExpenseCategoryModal from "../components/financial/ExpenseCategoryModal";
@@ -100,8 +100,8 @@ function Reports() {
 
   const [expenses, setExpenses] = useState([]);
   const loadExpenses = useCallback(() => {
-    getExpenses().then(setExpenses);
-  }, []);
+    (isAdmin ? getAllExpenses() : getExpenses()).then(setExpenses);
+  }, [isAdmin]);
   useEffect(() => {
     loadExpenses();
   }, [loadExpenses]);
