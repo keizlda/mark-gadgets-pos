@@ -249,6 +249,7 @@ function Reports() {
         description: expenseDesc.trim(),
         amount: Number(expenseAmount),
         category: expenseCategory,
+        adminOnly: isAdmin,
       });
       setExpenseDesc("");
       setExpenseAmount("");
@@ -261,12 +262,12 @@ function Reports() {
     }
   };
 
-  // Lets admin add straight from the Expenses/Cargo breakdown modal, already
-  // scoped to that category — General/Cargo entries are staff-visible no
-  // matter where they're added from, same as the main Add Expense form on
-  // this page.
+  // Lets staff/admin add straight from the Expenses/Cargo breakdown modal,
+  // already scoped to that category — same admin_only rule as the main Add
+  // Expense form on this page: it's whoever's actually logged in that
+  // decides staff visibility, not which form was used.
   const handleAddExpenseFromModal = async ({ date, description, amount, category }) => {
-    await addExpense({ date, description, amount, category });
+    await addExpense({ date, description, amount, category, adminOnly: isAdmin });
     loadExpenses();
   };
 
