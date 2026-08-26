@@ -396,7 +396,14 @@ begin
     insert into public.sale_items (sale_id, device_id, price_at_sale, quantity)
     values (v_sale_id, v_device_id, (v_item->>'price')::numeric, 1);
 
-    update public.devices set status = 'Sold' where id = v_device_id;
+    -- Guarded on status='Available' so two staff both ringing up the same
+    -- stale "Available" unit (New Sale's device list isn't live-refreshed)
+    -- can't both succeed — the second one rolls back the whole sale with
+    -- a clear error instead of silently double-selling the unit.
+    update public.devices set status = 'Sold' where id = v_device_id and status = 'Available';
+    if not found then
+      raise exception 'One of these units is no longer available — it may have just been sold or reserved by someone else. Refresh and try again.';
+    end if;
   end loop;
 
   return v_sale_id;
@@ -422,6 +429,15 @@ as $$
 declare
   v_sale_id uuid;
 begin
+  -- Guarded on status='Active' so a stale Reserved page (no live refresh)
+  -- can't convert a reservation that's already been converted or
+  -- cancelled by someone else — fails with a clear error instead of
+  -- creating a second sale for a unit already sold once.
+  update public.reservations set status = 'Converted' where id = p_reservation_id and status = 'Active';
+  if not found then
+    raise exception 'This reservation is no longer active — it may have already been converted or cancelled.';
+  end if;
+
   insert into public.sales (customer_name, customer_phone, salesperson_id, payment_method, reference_number, total_amount, notes, status)
   values (p_customer_name, p_customer_phone, p_salesperson_id, p_payment_method, p_reference_number, p_total_price, p_notes, 'Completed')
   returning id into v_sale_id;
@@ -430,8 +446,6 @@ begin
   values (v_sale_id, p_device_id, p_total_price, 1);
 
   update public.devices set status = 'Sold' where id = p_device_id;
-
-  update public.reservations set status = 'Converted' where id = p_reservation_id;
 
   return v_sale_id;
 end;
@@ -623,7 +637,12 @@ begin
   values (p_device_id, p_customer_name, p_customer_phone, p_salesperson_id, p_reserved_until, p_total_price, coalesce(p_down_payment, 0), 'Active')
   returning id into v_reservation_id;
 
-  update public.devices set status = 'Reserved' where id = p_device_id;
+  -- Guarded the same way as process_sale — a stale "Available" list
+  -- can't let two staff both reserve the same unit.
+  update public.devices set status = 'Reserved' where id = p_device_id and status = 'Available';
+  if not found then
+    raise exception 'This unit is no longer available to reserve — it may have just been sold or reserved by someone else. Refresh and try again.';
+  end if;
 
   return v_reservation_id;
 end;
@@ -636,7 +655,15 @@ security invoker
 set search_path = public
 as $$
 begin
-  update public.reservations set status = 'Cancelled' where id = p_reservation_id;
+  -- Guarded on status='Active' so a stale Reserved page can't cancel a
+  -- reservation that's already been converted to a sale by someone
+  -- else, which would otherwise revert an already-sold device back to
+  -- Available.
+  update public.reservations set status = 'Cancelled' where id = p_reservation_id and status = 'Active';
+  if not found then
+    raise exception 'This reservation is no longer active — it may have already been converted or cancelled.';
+  end if;
+
   update public.devices set status = 'Available' where id = p_device_id;
 end;
 $$;
@@ -950,6 +977,11 @@ begin
   if v_previous_status = 'Sold' and p_status = 'Available' then
     select array_agg(distinct sale_id) into v_affected_sale_ids
     from public.sale_items where device_id = p_id;
+
+    -- A return filed against this device's sale_item would otherwise
+    -- block the delete below with a foreign-key violation — same fix
+    -- already applied to delete_sale_item, just missing here.
+    delete from public.customer_returns where sale_item_id in (select id from public.sale_items where device_id = p_id);
 
     delete from public.sale_items where device_id = p_id;
 
