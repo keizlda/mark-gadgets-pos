@@ -1,0 +1,11 @@
+-- 20260807120000 widened replace_return from 4 params to 5 (added
+-- p_new_price) using `create or replace`, which only replaces a function
+-- with the exact same signature — a different param count creates a
+-- second overload instead of replacing the old one. With no drop
+-- statement anywhere in the migration history, a full replay (fresh
+-- environment, db reset, disaster recovery) recreates the stale 4-param
+-- version from 20260801140000 and then adds the 5-param one alongside
+-- it, leaving two live overloads that break PostgREST's function
+-- resolution — exactly what process_sale and add_device/update_device
+-- already had to be fixed for (see 20260801180000, 20260803140000).
+drop function if exists public.replace_return(uuid, uuid, uuid, text);
