@@ -134,18 +134,27 @@ create table public.sale_items (
 );
 
 -- No cash refunds — every return is either Rejected or resolved by handing
--- the customer a replacement unit of the same model (replacement_device_id).
--- A sold item can only ever be returned once (unique sale_item_id) — this is
--- the invariant that stops "Return" from being submitted twice on one item.
+-- the customer a replacement unit (replacement_device_id). A sale_item can
+-- only have one ACTIVE (Pending/On Hold) return at a time — enforced by the
+-- partial unique index below, not a plain column constraint — because a
+-- Replace Return repoints sale_items.device_id to the replacement, so the
+-- same sale_item can legitimately go through this whole cycle again later
+-- if that replacement unit itself gets returned. A plain unique(sale_item_id)
+-- would permanently block any further return on that line item the moment
+-- the first one resolved.
 create table public.customer_returns (
   id uuid primary key default gen_random_uuid(),
-  sale_item_id uuid not null references public.sale_items (id) unique,
+  sale_item_id uuid not null references public.sale_items (id),
   reason text not null,
   status text not null default 'Pending' check (status in ('Pending', 'Replaced', 'Rejected', 'On Hold')),
   replacement_device_id uuid references public.devices (id),
   returned_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
+
+create unique index customer_returns_one_active_per_sale_item
+  on public.customer_returns (sale_item_id)
+  where status in ('Pending', 'On Hold');
 
 create table public.supplier_defective_records (
   id uuid primary key default gen_random_uuid(),
