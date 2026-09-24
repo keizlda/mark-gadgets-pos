@@ -17,6 +17,12 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Vercel
+.vercel
+
+# Supabase CLI link cache
+supabase/.temp
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -27,3 +33,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.env*
