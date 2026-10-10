@@ -23,7 +23,7 @@ export function isAccessoryLikeCategory(category) {
 // is stored; devices.category in the DB is plural ("iPhones") to match its
 // own CHECK constraint — AddDevice's categoryToDbValue maps between them.
 export const productCatalogMeta = {
-  iPhone: { brand: "Apple", storages: ["128GB", "256GB", "512GB", "1TB"] },
+  iPhone: { brand: "Apple", storages: ["64GB", "128GB", "256GB", "512GB", "1TB"] },
   iPad: { brand: "Apple", storages: ["64GB", "128GB", "256GB", "512GB"] },
   "Apple Watch": { brand: "Apple", storages: ["-"] },
   MacBook: { brand: "Apple", storages: ["256GB", "512GB", "1TB", "2TB"] },
