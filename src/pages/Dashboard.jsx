@@ -19,6 +19,8 @@ const categoryColors = {
   iPads: "#22c55e",
   "Apple Watches": "#f97316",
   MacBooks: "#a855f7",
+  Accessories: "#14b8a6",
+  "Repair Parts": "#64748b",
 };
 
 function Dashboard() {
@@ -52,9 +54,10 @@ function Dashboard() {
     { label: "Returned", value: allDevices.filter((d) => d.status === "Returned" || d.status === "Customer Returned").length, unit: "Units", color: "purple" },
   ];
 
-  const totalDevices = allDevices.length;
+  const availableDevices = allDevices.filter((d) => d.status === "Available");
+  const totalDevices = availableDevices.length;
   const inventoryByCategory = deviceCategories.map((cat) => {
-    const value = allDevices.filter((d) => d.category === cat).length;
+    const value = availableDevices.filter((d) => d.category === cat).length;
     return {
       name: cat,
       value,
