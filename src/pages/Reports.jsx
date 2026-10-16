@@ -512,11 +512,25 @@ function Reports() {
                     ) : (
                       <td className="px-3 py-3 text-gray-800 text-right">{peso(row.amount)}</td>
                     )}
-                    <td className="px-3 py-3 text-gray-700">{row.payment}</td>
+                    <td className="px-3 py-3 text-gray-700">
+                      {row.payment}
+                      {row.downPayment != null && (
+                        <span className="block text-xs text-emerald-600">DP {peso(Number(row.downPayment))}</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
+                {/* Cash-only view has no financed sales, so this would just
+                    repeat TOTAL there. */}
+                {viewMode === "all" && (
+                  <tr className="font-bold text-emerald-600">
+                    <td className="px-3 py-3" colSpan={5}>TOTAL CASH ON HAND</td>
+                    <td className="px-3 py-3 text-right">{peso(cashOnHand)}</td>
+                    <td className="px-3 py-3"></td>
+                  </tr>
+                )}
                 <tr className="bg-gray-50 font-bold text-gray-800">
                   <td className="px-3 py-3 rounded-l-lg" colSpan={4}>
                     {viewMode === "cash" ? "TOTAL (CASH)" : "TOTAL"}
