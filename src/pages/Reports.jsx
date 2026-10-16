@@ -10,6 +10,7 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
+  Wallet,
 } from "lucide-react";
 import { useServiceData } from "../hooks/useServiceData";
 import { useIsAdmin } from "../hooks/useIsAdmin";
@@ -76,6 +77,28 @@ function isPendingBulk(row) {
   return row.orderType === "Bulk" && row.paymentStatus === "Pending";
 }
 
+// Staff reconcile the register against this, so a financed sale (any sale
+// with a down payment — NewSale.jsx only sets one for its FINANCING_METHODS)
+// only contributes what was actually collected, not the full contracted
+// price. Grouped by sale (not row) first, since rows here are one per unit —
+// a multi-unit Bulk order financed as one sale would otherwise count its
+// single down payment once per unit instead of once.
+function computeCashOnHand(rows) {
+  const bySale = new Map();
+  for (const r of rows.filter((r) => !isPendingBulk(r))) {
+    const key = r.saleId ?? r.txn;
+    if (!bySale.has(key)) {
+      bySale.set(key, { downPayment: r.downPayment, amount: 0 });
+    }
+    bySale.get(key).amount += r.amount;
+  }
+  let cashOnHand = 0;
+  for (const sale of bySale.values()) {
+    cashOnHand += sale.downPayment != null ? Number(sale.downPayment) : sale.amount;
+  }
+  return cashOnHand;
+}
+
 function computeTotals(rows) {
   const countedRows = rows.filter((r) => !isPendingBulk(r));
   const totalSales = countedRows.reduce((sum, r) => sum + r.amount, 0);
@@ -128,6 +151,7 @@ function Reports() {
       })
       .map((s) => ({
         txn: s.batchCode,
+        saleId: s.saleId,
         date: s.date,
         time: s.time,
         customer: s.customer,
@@ -166,6 +190,10 @@ function Reports() {
   }, [rows, buyerFilter]);
 
   const totals = useMemo(() => computeTotals(filteredRows), [filteredRows]);
+  // Tracks the same date range/buyer filter as Total Sales (not the Cash
+  // Sales Only / Expenses Only toggle below) so the two sit side by side as
+  // a direct comparison: contracted total vs. what's actually in hand.
+  const cashOnHand = useMemo(() => computeCashOnHand(filteredRows), [filteredRows]);
 
   const cashRows = useMemo(() => filteredRows.filter((r) => r.payment === "Cash"), [filteredRows]);
   const cashTotals = useMemo(() => computeTotals(cashRows), [cashRows]);
@@ -363,7 +391,7 @@ function Reports() {
 
       {/* Summary cards — icons/colored boxes are screen-only decoration; the
           same numbers already appear in the printed table's totals row. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 print:hidden">
         <SummaryCard
           icon={ShoppingBag}
           iconBg="bg-green-50 text-green-600"
@@ -371,6 +399,14 @@ function Reports() {
           value={peso(totals.totalSales)}
           sub="Total Sales Amount"
           valueClass="text-green-600"
+        />
+        <SummaryCard
+          icon={Wallet}
+          iconBg="bg-emerald-50 text-emerald-600"
+          label="CASH ON HAND"
+          value={peso(cashOnHand)}
+          sub="Down payment only for financed sales"
+          valueClass="text-emerald-600"
         />
         <SummaryCard
           icon={Receipt}
