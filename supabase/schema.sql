@@ -701,7 +701,10 @@ begin
 end;
 $$;
 
--- Marking Resolved puts the device back to Available. Undoing that (moving
+-- Marking Resolved puts the device back to Available — unless a sale_item
+-- still points at it (the customer never got a replacement, so the fixed
+-- unit went back to them): then it's Sold, and any On Hold return on that
+-- sale_item closes as Replaced with the same unit. Undoing a resolve (moving
 -- the record back off Resolved) puts it back to Supplier Defective — but
 -- only if the device is still sitting Available untouched since then; if
 -- it's since been reserved/sold/whatever else, leave it alone rather than
@@ -720,6 +723,7 @@ as $$
 declare
   v_previous_status text;
   v_current_device_status text;
+  v_sale_item_id uuid;
 begin
   select status into v_previous_status from public.supplier_defective_records where id = p_id;
 
@@ -729,7 +733,17 @@ begin
 
   if p_device_id is not null then
     if p_status = 'Resolved' then
-      update public.devices set status = 'Available' where id = p_device_id;
+      select id into v_sale_item_id from public.sale_items where device_id = p_device_id limit 1;
+
+      if v_sale_item_id is not null then
+        update public.devices set status = 'Sold' where id = p_device_id;
+
+        update public.customer_returns
+        set status = 'Replaced', replacement_device_id = p_device_id
+        where sale_item_id = v_sale_item_id and status = 'On Hold';
+      else
+        update public.devices set status = 'Available' where id = p_device_id;
+      end if;
     elsif v_previous_status = 'Resolved' and p_status <> 'Resolved' then
       select status into v_current_device_status from public.devices where id = p_device_id;
       if v_current_device_status = 'Available' then
