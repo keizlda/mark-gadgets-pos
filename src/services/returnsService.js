@@ -1,8 +1,10 @@
 import { supabase } from "../lib/supabaseClient";
+import { fetchAll } from "../lib/fetchAll";
 import { formatDate, formatTime } from "../utils/datetime";
 
 export async function getCustomerReturns() {
-  const { data, error } = await supabase.from("customer_returns").select(`
+  const data = await fetchAll(() =>
+    supabase.from("customer_returns").select(`
     id,
     reason,
     status,
@@ -14,9 +16,8 @@ export async function getCustomerReturns() {
       devices:device_id ( batch_code, device_name, category, storage, color )
     ),
     replacement:replacement_device_id ( batch_code, device_name )
-  `);
-
-  if (error) throw error;
+  `)
+  );
 
   return data
     .slice()

@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { fetchAll } from "../lib/fetchAll";
 import { formatDate, formatTime } from "../utils/datetime";
 import { expireOverdueReservations } from "./reservationsService";
 
@@ -29,9 +30,7 @@ function mapDevice(d) {
 export async function getAllDevices() {
   await expireOverdueReservations();
 
-  const { data, error } = await supabase.from("devices").select(DEVICE_SELECT);
-
-  if (error) throw error;
+  const data = await fetchAll(() => supabase.from("devices").select(DEVICE_SELECT));
 
   return data
     .slice()
@@ -106,12 +105,12 @@ export async function getAvailableDevicesForReplacement(deviceName) {
 // Every available unit, individually — New Sale sells specific serialized
 // devices, not "quantity of a product", so each row here is one real unit.
 export async function getAvailableDevicesForSale() {
-  const { data, error } = await supabase
-    .from("devices")
-    .select("id, batch_code, device_name, category, storage, color, selling_price, purchase_price")
-    .eq("status", "Available");
-
-  if (error) throw error;
+  const data = await fetchAll(() =>
+    supabase
+      .from("devices")
+      .select("id, batch_code, device_name, category, storage, color, selling_price, purchase_price")
+      .eq("status", "Available")
+  );
 
   return data.map((d) => ({
     id: d.id,
@@ -189,7 +188,8 @@ export async function getLowStockItems() {
 }
 
 export async function getSupplierDefectiveRecords() {
-  const { data, error } = await supabase.from("supplier_defective_records").select(`
+  const data = await fetchAll(() =>
+    supabase.from("supplier_defective_records").select(`
     id,
     issue_description,
     status,
@@ -198,9 +198,8 @@ export async function getSupplierDefectiveRecords() {
     device_id,
     devices:device_id ( batch_code, device_name, storage, color ),
     suppliers:supplier_id ( name )
-  `);
-
-  if (error) throw error;
+  `)
+  );
 
   return data
     .slice()

@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { fetchAll } from "../lib/fetchAll";
 
 function mapExpense(e) {
   return {
@@ -15,25 +16,25 @@ function mapExpense(e) {
 // themselves — anything added from Financial by an admin is admin_only
 // and stays out, regardless of category.
 export async function getExpenses() {
-  const { data, error } = await supabase
-    .from("expenses")
-    .select("id, expense_date, description, amount, admin_only, category")
-    .eq("admin_only", false)
-    .order("expense_date", { ascending: false });
-
-  if (error) throw error;
+  const data = await fetchAll(() =>
+    supabase
+      .from("expenses")
+      .select("id, expense_date, description, amount, admin_only, category")
+      .eq("admin_only", false)
+      .order("expense_date", { ascending: false })
+  );
   return data.map(mapExpense);
 }
 
 // Financial (admin-only) sees everything — both what staff logged on
 // Reports and what admin logged here — for a complete picture.
 export async function getAllExpenses() {
-  const { data, error } = await supabase
-    .from("expenses")
-    .select("id, expense_date, description, amount, admin_only, category")
-    .order("expense_date", { ascending: false });
-
-  if (error) throw error;
+  const data = await fetchAll(() =>
+    supabase
+      .from("expenses")
+      .select("id, expense_date, description, amount, admin_only, category")
+      .order("expense_date", { ascending: false })
+  );
   return data.map(mapExpense);
 }
 

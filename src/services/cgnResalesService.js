@@ -1,15 +1,16 @@
 import { supabase } from "../lib/supabaseClient";
+import { fetchAll } from "../lib/fetchAll";
 
 // CGN's own resale of units we already sold them — a separate business
 // event from our own sales, tracked in its own table (see cgn_resales in
 // schema.sql) rather than another devices/sales row.
 export async function getCgnResales() {
-  const { data, error } = await supabase
-    .from("cgn_resales")
-    .select("id, sale_date, device_name, capital, disposal_price, supplier_note, batch_code, device_id")
-    .order("sale_date", { ascending: false });
-
-  if (error) throw error;
+  const data = await fetchAll(() =>
+    supabase
+      .from("cgn_resales")
+      .select("id, sale_date, device_name, capital, disposal_price, supplier_note, batch_code, device_id")
+      .order("sale_date", { ascending: false })
+  );
 
   return data.map((r) => ({
     id: r.id,

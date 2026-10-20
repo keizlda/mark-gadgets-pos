@@ -1,8 +1,10 @@
 import { supabase } from "../lib/supabaseClient";
+import { fetchAll } from "../lib/fetchAll";
 import { formatDate, formatTime } from "../utils/datetime";
 
 export async function getSalesHistory() {
-  const { data, error } = await supabase.from("sale_items").select(`
+  const data = await fetchAll(() =>
+    supabase.from("sale_items").select(`
     id,
     price_at_sale,
     quantity,
@@ -33,9 +35,8 @@ export async function getSalesHistory() {
       date_added,
       suppliers:supplier_id ( name )
     )
-  `);
-
-  if (error) throw error;
+  `)
+  );
 
   return data
     .slice()

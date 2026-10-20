@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { fetchAll } from "../lib/fetchAll";
 import { getProductCatalog } from "./referenceService";
 
 export async function getReorderSettings() {
@@ -22,11 +23,10 @@ export async function getReorderSettings() {
 // distinct device names actually in inventory (covers custom "Other" models
 // staff typed in manually that aren't in the catalog).
 export async function getDeviceModelNames() {
-  const [catalog, { data, error }] = await Promise.all([
+  const [catalog, data] = await Promise.all([
     getProductCatalog(),
-    supabase.from("devices").select("device_name"),
+    fetchAll(() => supabase.from("devices").select("id, device_name")),
   ]);
-  if (error) throw error;
 
   const catalogModels = Object.values(catalog).flatMap((c) => c.models);
   const inventoryModels = data.map((d) => d.device_name);
