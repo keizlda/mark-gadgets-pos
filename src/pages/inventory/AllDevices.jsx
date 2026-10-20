@@ -11,6 +11,7 @@ import LogShipmentArrivalModal from "../../components/inventory/LogShipmentArriv
 import EditShipmentArrivalModal from "../../components/inventory/EditShipmentArrivalModal";
 import PendingShipmentsCard from "../../components/inventory/PendingShipmentsCard";
 import { getDeviceKind } from "../../utils/deviceKind";
+import { isAccessoryLikeCategory } from "../../data/referenceData";
 import { matchesQuery } from "../../utils/search";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getAllDevices, getLowStockItems, deleteDevice } from "../../services/inventoryService";
@@ -186,9 +187,22 @@ function AllDevices() {
       .sort((a, b) => new Date(b.dateArrived) - new Date(a.dateArrived));
   }, [filtered, shellsById]);
 
+  // Total/Available count serialized devices only — accessories and repair
+  // parts are tallied separately in the breakdown so a box of cables or a
+  // spare LCD doesn't inflate "how many phones do we have".
+  const isAvailable = (d) => d.status === "Available";
+  const byGroup = (category) => allDevices.filter((d) => d.category === category);
+  const accessories = byGroup("Accessories");
+  const repairParts = byGroup("Repair Parts");
+  const devicesOnly = allDevices.filter((d) => !isAccessoryLikeCategory(d.category));
   const stats = {
-    total: allDevices.length,
-    available: allDevices.filter((d) => d.status === "Available").length,
+    total: devicesOnly.length,
+    available: devicesOnly.filter(isAvailable).length,
+    breakdown: [
+      { label: "Devices", total: devicesOnly.length, available: devicesOnly.filter(isAvailable).length },
+      { label: "Accessories", total: accessories.length, available: accessories.filter(isAvailable).length },
+      { label: "Repair Parts", total: repairParts.length, available: repairParts.filter(isAvailable).length },
+    ],
     reserved: allDevices.filter((d) => d.status === "Reserved").length,
     defective: allDevices.filter((d) => d.status === "Supplier Defective").length,
     returned: allDevices.filter((d) => d.status === "Returned" || d.status === "Customer Returned").length,
