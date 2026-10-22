@@ -13,6 +13,7 @@ import { getAllDevices, getLowStockItems } from "../services/inventoryService";
 import { getSalesHistory } from "../services/salesService";
 import { getDeviceCategories } from "../services/referenceService";
 import { matchesQuery } from "../utils/search";
+import { formatDate } from "../utils/datetime";
 
 const categoryColors = {
   iPhones: "#3b82f6",
@@ -44,7 +45,7 @@ function Dashboard() {
     setDeviceSearch("");
   };
 
-  const todayStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const todayStr = formatDate(new Date());
 
   const statCards = [
     { label: "Available", value: allDevices.filter((d) => d.status === "Available").length, unit: "Units", color: "green" },

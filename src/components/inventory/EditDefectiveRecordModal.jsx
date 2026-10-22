@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, AlertTriangle } from "lucide-react";
 import { editSupplierDefectiveRecord } from "../../services/inventoryService";
-import { toDatetimeLocalString } from "../../utils/datetime";
+import { toDatetimeLocalString, fromStoreDateTime } from "../../utils/datetime";
 import SupplierSelect from "./SupplierSelect";
 
 // Admin-only correction of a supplier defective record's own fields — the
@@ -27,7 +27,7 @@ function EditDefectiveRecordModal({ record, onClose, onUpdated }) {
       await editSupplierDefectiveRecord(record.id, {
         issueDescription: issueDescription.trim(),
         supplierName: supplier,
-        dateDetected: new Date(dateDetected).toISOString(),
+        dateDetected: fromStoreDateTime(dateDetected).toISOString(),
       });
       onUpdated();
     } catch (err) {

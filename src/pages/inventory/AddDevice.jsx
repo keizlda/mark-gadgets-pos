@@ -5,21 +5,15 @@ import { getProductCatalog } from "../../services/referenceService";
 import { addDevice, getNextBatchSequence } from "../../services/inventoryService";
 import { getPendingShellsWithProgress } from "../../services/bulkOrderShellsService";
 import { isAccessoryLikeCategory } from "../../data/referenceData";
-import { formatDate, todayLocalDateString } from "../../utils/datetime";
+import { formatDate, todayLocalDateString, batchCodeDatePrefix, fromStoreDateTime } from "../../utils/datetime";
 import SupplierSelect from "../../components/inventory/SupplierSelect";
 import ManageCatalogModal from "../../components/inventory/ManageCatalogModal";
 import { useToast } from "../../hooks/useToast";
 import { useIsAdmin } from "../../hooks/useIsAdmin";
 
-// Batch codes follow MMDDYY-### (e.g. 073026-001) — prefilling the date
-// part means staff only ever need to type the sequence number.
-function batchCodeDatePrefix() {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
-  return `${mm}${dd}${yy}-`;
-}
+// Batch codes follow MMDDYY-### (e.g. 073026-001) — batchCodeDatePrefix
+// prefills the date part (Manila's date), so staff only ever need to type
+// the sequence number.
 
 function formatShellLabel(shell) {
   const variant = [shell.storage, shell.color].filter(Boolean).join(" · ");
@@ -198,7 +192,7 @@ function AddDevice() {
       // Manila time. When the receipt date is today, use the real current
       // timestamp; a backdated date still gets that day's local midnight.
       const isToday = form.dateReceived === todayLocalDateString();
-      const dateAdded = isToday ? new Date().toISOString() : new Date(`${form.dateReceived}T00:00:00`).toISOString();
+      const dateAdded = isToday ? new Date().toISOString() : fromStoreDateTime(form.dateReceived).toISOString();
 
       await addDevice({
         batchCode: form.batchCode.trim(),

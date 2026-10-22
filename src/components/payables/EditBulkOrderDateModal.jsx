@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, AlertTriangle } from "lucide-react";
 import { updateSaleDate } from "../../services/salesService";
+import { fromStoreDateTime } from "../../utils/datetime";
 
 // Local (not UTC) YYYY-MM-DD, for prefilling a <input type="date"> from a
 // stored timestamptz — see the identical helper in EditShipmentArrivalModal.
@@ -26,7 +27,7 @@ function EditBulkOrderDateModal({ order, onClose, onSaved }) {
     setError("");
     setSubmitting(true);
     try {
-      await updateSaleDate(order.saleId, new Date(`${date}T00:00:00`).toISOString());
+      await updateSaleDate(order.saleId, fromStoreDateTime(date).toISOString());
       onSaved();
     } catch (err) {
       setError(err.message || "Failed to save date. Please try again.");

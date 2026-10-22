@@ -5,14 +5,7 @@ import { getProductCatalog } from "../../services/referenceService";
 import { addDevice, getNextBatchSequence } from "../../services/inventoryService";
 import { isAccessoryLikeCategory } from "../../data/referenceData";
 import SupplierSelect from "../inventory/SupplierSelect";
-
-function batchCodeDatePrefix() {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
-  return `${mm}${dd}${yy}-`;
-}
+import { batchCodeDatePrefix } from "../../utils/datetime";
 
 // Mirrors Add Device's category mapping — kept local since it's a handful
 // of lines, not worth sharing a module for.

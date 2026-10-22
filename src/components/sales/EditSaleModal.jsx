@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, AlertTriangle, Pencil } from "lucide-react";
 import { editSale } from "../../services/salesService";
-import { toDatetimeLocalString } from "../../utils/datetime";
+import { toDatetimeLocalString, fromStoreDateTime } from "../../utils/datetime";
 
 // Admin-only correction for a sale after the fact — customer info, this
 // unit's sold price, notes, financing/reference detail, and the sale/
@@ -42,8 +42,8 @@ function EditSaleModal({ row, onClose, onSaved }) {
         downPayment: isFinancing && downPayment !== "" ? Number(downPayment) : null,
         balance: isFinancing && balance !== "" ? Number(balance) : null,
         priceAtSale: Number(priceAtSale),
-        soldAt: new Date(soldAt).toISOString(),
-        dateAdded: new Date(dateAdded).toISOString(),
+        soldAt: fromStoreDateTime(soldAt).toISOString(),
+        dateAdded: fromStoreDateTime(dateAdded).toISOString(),
       });
       onSaved();
     } catch (err) {

@@ -1,4 +1,5 @@
 import writeXlsxFile from "write-excel-file/browser";
+import { STORE_TIME_ZONE } from "./datetime";
 
 const HEADER_STYLE = { fontWeight: "bold", backgroundColor: "#f3f4f6" };
 
@@ -32,7 +33,7 @@ function buildSummarySheet({ reportType, generatedRange, totals, cgnTotals, expe
     ["Mark Gadgets — Financial Report", ""],
     ["Report Type", reportType],
     ["Date Range", `${generatedRange.from || "—"} to ${generatedRange.to || "—"}`],
-    ["Generated", new Date().toLocaleString("en-PH")],
+    ["Generated", new Date().toLocaleString("en-PH", { timeZone: STORE_TIME_ZONE })],
     ["", ""],
     ["Store Capital", totals.totalCapital],
     ["Store Disposal", totals.totalDisposal],

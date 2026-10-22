@@ -281,16 +281,18 @@ left join public.suppliers sup on sup.id = s.supplier_id
 left join public.devices d on d.bulk_order_shell_id = s.id
 group by s.id, sup.name;
 
--- Monthly completed-sales totals, for the Dashboard trend chart.
+-- Monthly completed-sales totals, for the Dashboard trend chart. Bucketed
+-- by Manila's calendar month — the DB session is UTC, so a plain
+-- date_trunc would put early-morning sales on the 1st in the prior month.
 create view public.sales_by_month_view
 with (security_invoker = true) as
 select
-  date_trunc('month', sold_at) as month_start,
-  to_char(date_trunc('month', sold_at), 'Mon') as month,
+  date_trunc('month', sold_at at time zone 'Asia/Manila') at time zone 'Asia/Manila' as month_start,
+  to_char(date_trunc('month', sold_at at time zone 'Asia/Manila'), 'Mon') as month,
   sum(total_amount) as sales
 from public.sales
 where status = 'Completed'
-group by date_trunc('month', sold_at);
+group by date_trunc('month', sold_at at time zone 'Asia/Manila');
 
 -- Recent devices with whichever customer they're most associated with right
 -- now (their most recent sale, falling back to their most recent reservation).

@@ -10,6 +10,7 @@ import UnsoldUnitsModal from "../components/financial/UnsoldUnitsModal";
 import ExpenseCategoryModal from "../components/financial/ExpenseCategoryModal";
 import DeviceDetailsModal from "../components/inventory/DeviceDetailsModal";
 import { useToast } from "../hooks/useToast";
+import { storeToday } from "../utils/datetime";
 
 const REPORT_TYPES = ["Daily", "Weekly", "Monthly", "Quarterly", "Annually", "Custom Range"];
 
@@ -36,7 +37,7 @@ const toISODate = (d) => {
 
 // Returns null for "Custom Range" — the user picks the dates manually in that case.
 function getPresetRange(type) {
-  const today = new Date();
+  const today = storeToday();
   if (type === "Daily") {
     return { from: toISODate(today), to: toISODate(today) };
   }

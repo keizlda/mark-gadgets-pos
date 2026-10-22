@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { X, Trash2, Plus, AlertTriangle } from "lucide-react";
+import { todayLocalDateString } from "../../utils/datetime";
 
 const peso = (n) => "₱" + Number(n || 0).toLocaleString("en-PH", { maximumFractionDigits: 2 });
 
-const toISODate = (d) => {
-  const offset = d.getTimezoneOffset();
-  return new Date(d.getTime() - offset * 60000).toISOString().slice(0, 10);
-};
 
 // Line-item breakdown behind one of Financial's/Reports' Expenses/Cargo/
 // Prulife summary rows — mirrors UnsoldUnitsModal's click-to-drill-in
@@ -17,7 +14,7 @@ function ExpenseCategoryModal({ category, entries, isAdmin, onRemove, onAdd, onC
   const displayLabel = category === "General" ? "Expenses" : category;
   const total = entries.reduce((sum, e) => sum + e.amount, 0);
 
-  const [date, setDate] = useState(toISODate(new Date()));
+  const [date, setDate] = useState(todayLocalDateString());
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");

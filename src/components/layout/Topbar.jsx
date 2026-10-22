@@ -2,6 +2,7 @@ import { Menu, Calendar, User } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getCurrentProfile } from "../../services/authService";
+import { STORE_TIME_ZONE } from "../../utils/datetime";
 
 const roleLabels = {
   admin: "Administrator",
@@ -29,6 +30,7 @@ function Topbar({ onMenuClick }) {
   const profile = useServiceData(getCurrentProfile, null);
 
   const today = new Date().toLocaleDateString("en-US", {
+    timeZone: STORE_TIME_ZONE,
     year: "numeric",
     month: "long",
     day: "numeric",

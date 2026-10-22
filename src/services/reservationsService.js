@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
-import { formatDate, formatTime } from "../utils/datetime";
+import { formatDate, formatTime, fromStoreDateTime } from "../utils/datetime";
 
 // No backend cron in this app — expiration is swept client-side whenever
 // reservations or devices are read, so it's always caught up to date
@@ -87,9 +87,9 @@ export async function createReservation({
     p_customer_name: customerName,
     p_customer_phone: customerPhone || null,
     p_salesperson_id: session?.user?.id || null,
-    // A date-only value parses as midnight UTC, which prints as 8 AM in
-    // Manila and would make the expiration sweep cut the day short.
-    p_reserved_until: new Date(`${reservedUntil}T00:00:00`).toISOString(),
+    // Manila midnight of the picked day — a date-only value parses as
+    // midnight UTC (8 AM Manila), which would cut the day short.
+    p_reserved_until: fromStoreDateTime(reservedUntil).toISOString(),
     p_total_price: totalPrice,
     p_down_payment: downPayment || 0,
   });

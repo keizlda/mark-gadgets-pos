@@ -3,6 +3,7 @@ import { X, AlertTriangle } from "lucide-react";
 import { getAvailableDevicesForSale } from "../../services/inventoryService";
 import { createReservation } from "../../services/reservationsService";
 import { matchesQuery } from "../../utils/search";
+import { storeToday } from "../../utils/datetime";
 
 function toISODate(d) {
   const offset = d.getTimezoneOffset();
@@ -10,7 +11,7 @@ function toISODate(d) {
 }
 
 function defaultReservedUntil() {
-  const d = new Date();
+  const d = storeToday();
   d.setDate(d.getDate() + 7);
   return toISODate(d);
 }

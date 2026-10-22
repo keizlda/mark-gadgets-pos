@@ -3,7 +3,7 @@ import { X, AlertTriangle } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getProductCatalog } from "../../services/referenceService";
 import { createBulkOrderShell } from "../../services/bulkOrderShellsService";
-import { todayLocalDateString } from "../../utils/datetime";
+import { todayLocalDateString, fromStoreDateTime } from "../../utils/datetime";
 import { isAccessoryLikeCategory } from "../../data/referenceData";
 import SupplierSelect from "./SupplierSelect";
 
@@ -77,7 +77,7 @@ function LogShipmentArrivalModal({ onClose, onCreated }) {
         color: form.color,
         quantityExpected: Number(form.quantityExpected),
         unitCost: form.unitCost === "" ? null : Number(form.unitCost),
-        dateArrived: new Date(`${form.dateArrived}T00:00:00`).toISOString(),
+        dateArrived: fromStoreDateTime(form.dateArrived).toISOString(),
       });
       onCreated();
     } catch (err) {

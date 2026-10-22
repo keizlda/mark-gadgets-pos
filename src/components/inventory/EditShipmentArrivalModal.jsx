@@ -2,14 +2,7 @@ import { useState } from "react";
 import { X, AlertTriangle } from "lucide-react";
 import { editBulkOrderShell } from "../../services/bulkOrderShellsService";
 import SupplierSelect from "./SupplierSelect";
-
-// Local (not UTC) YYYY-MM-DD, for prefilling a <input type="date"> from a
-// stored timestamptz — same reasoning as todayLocalDateString in
-// utils/datetime.js, just for an arbitrary date instead of always today.
-const toISODate = (d) => {
-  const offset = d.getTimezoneOffset();
-  return new Date(d.getTime() - offset * 60000).toISOString().slice(0, 10);
-};
+import { toStoreDateString, fromStoreDateTime } from "../../utils/datetime";
 
 // Plain fields, no category/model cascade — bulk_order_shells never stored
 // a category (that dropdown in Log Shipment only ever drove the catalog
@@ -24,7 +17,7 @@ function EditShipmentArrivalModal({ shell, onClose, onSaved }) {
     color: shell.color || "",
     quantityExpected: shell.quantityExpected ?? "",
     unitCost: shell.unitCost ?? "",
-    dateArrived: toISODate(new Date(shell.dateArrived)),
+    dateArrived: toStoreDateString(new Date(shell.dateArrived)),
     notes: shell.notes || "",
   });
   const [submitting, setSubmitting] = useState(false);
@@ -57,7 +50,7 @@ function EditShipmentArrivalModal({ shell, onClose, onSaved }) {
         color: form.color.trim(),
         quantityExpected: Number(form.quantityExpected),
         unitCost: form.unitCost === "" ? null : Number(form.unitCost),
-        dateArrived: new Date(`${form.dateArrived}T00:00:00`).toISOString(),
+        dateArrived: fromStoreDateTime(form.dateArrived).toISOString(),
         notes: form.notes.trim(),
       });
       onSaved();

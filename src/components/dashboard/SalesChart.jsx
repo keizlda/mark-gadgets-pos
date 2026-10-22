@@ -1,6 +1,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useServiceData } from "../../hooks/useServiceData";
 import { getSalesThisMonth } from "../../services/salesService";
+import { toStoreDateString } from "../../utils/datetime";
 
 function SalesChart() {
   const salesThisMonth = useServiceData(getSalesThisMonth, []);
@@ -9,11 +10,9 @@ function SalesChart() {
   // a new month started with zero sales yet (it kept showing the prior
   // month's total under "This Month"). Match on the actual calendar month
   // instead, so a monthless gap correctly reads ₱0.
-  const now = new Date();
-  const currentMonth = salesThisMonth.find((m) => {
-    const d = new Date(m.monthStart);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  });
+  // Compared as Manila "YYYY-MM" — month_start is Manila midnight on the 1st.
+  const thisMonth = toStoreDateString().slice(0, 7);
+  const currentMonth = salesThisMonth.find((m) => toStoreDateString(new Date(m.monthStart)).slice(0, 7) === thisMonth);
   const total = currentMonth ? currentMonth.sales : 0;
 
   return (
