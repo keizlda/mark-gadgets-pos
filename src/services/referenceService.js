@@ -92,6 +92,14 @@ export async function getSuppliers(type) {
   return data.map((s) => s.name);
 }
 
+// Filter dropdowns search existing records, which can still belong to an
+// archived supplier — so unlike getSuppliers(), archived names are included.
+export async function getSupplierFilterNames() {
+  const { data, error } = await supabase.from("suppliers").select("name").order("name");
+  if (error) throw error;
+  return data.map((s) => s.name);
+}
+
 // The admin management view needs archived suppliers too (to restore them),
 // which the active-only getSuppliers() above deliberately excludes.
 export async function getAllSuppliers() {

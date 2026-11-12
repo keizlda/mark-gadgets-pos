@@ -3,7 +3,7 @@ import { Search, Filter, MoreVertical, Wrench, ShoppingBag, Truck, CheckCircle2,
 import { useServiceData } from "../../hooks/useServiceData";
 import { useIsAdmin } from "../../hooks/useIsAdmin";
 import { getSupplierDefectiveRecords } from "../../services/inventoryService";
-import { getSuppliers } from "../../services/referenceService";
+import { getSupplierFilterNames } from "../../services/referenceService";
 import { matchesQuery } from "../../utils/search";
 import UpdateDefectiveStatusModal from "../../components/inventory/UpdateDefectiveStatusModal";
 import EditDefectiveRecordModal from "../../components/inventory/EditDefectiveRecordModal";
@@ -18,7 +18,7 @@ const statusStyles = {
 const blankFilters = { dateRange: undefined, supplier: "All", status: "All", search: "" };
 
 function SupplierDefective() {
-  const suppliers = useServiceData(getSuppliers, []);
+  const suppliers = useServiceData(getSupplierFilterNames, []);
   const isAdmin = useIsAdmin();
 
   const [supplierDefectiveRecords, setSupplierDefectiveRecords] = useState([]);

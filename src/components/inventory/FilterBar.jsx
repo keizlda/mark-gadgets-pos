@@ -1,11 +1,11 @@
 import { Search, Filter } from "lucide-react";
 import { useServiceData } from "../../hooks/useServiceData";
-import { getDeviceCategories, getDeviceStorages, getSuppliers } from "../../services/referenceService";
+import { getDeviceCategories, getDeviceStorages, getSupplierFilterNames } from "../../services/referenceService";
 
 function FilterBar({ filters, setFilters, onApply, onClear, kinds = [] }) {
   const deviceCategories = useServiceData(getDeviceCategories, []);
   const deviceStorages = useServiceData(getDeviceStorages, []);
-  const suppliers = useServiceData(getSuppliers, []);
+  const suppliers = useServiceData(getSupplierFilterNames, []);
   const statuses = ["Available", "Sold", "Reserved", "Customer Returned", "Supplier Defective", "Returned"];
   const conditions = ["Brand New", "Pre-owned"];
 
