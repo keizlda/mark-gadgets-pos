@@ -18,6 +18,9 @@
       "Bash(npx vercel *)",
       "Bash(supabase *)",
       "Bash(npx supabase *)",
+      "Bash(bash scripts/db-query.sh:*)",
+      "Bash(npx supabase db push:*)",
+      "Bash(npx supabase functions deploy:*)",
       "Edit",
       "Write"
     ]

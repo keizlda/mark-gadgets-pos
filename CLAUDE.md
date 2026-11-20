@@ -83,10 +83,42 @@ committed file.
   Vercel project dashboard. Project name on Vercel is expected to match the
   repo name (`mark-gadgets-pos`) unless it's been renamed there — confirm
   on vercel.com if a push doesn't trigger the deploy you expect.
-- No Vercel or Supabase CLI is installed/used locally as of this writing —
-  everything goes through the GitHub push (Vercel) and the Supabase SQL
-  Editor web dashboard (schema). `.claude/settings.json` pre-authorizes
-  `vercel`/`supabase` CLI commands anyway in case that changes later.
+- No Vercel CLI is used locally — deploys go through the GitHub push.
+  The live DB is reached with `scripts/db-query.sh` and `npx supabase db
+  push` (see "Live Database Access" below). `.claude/settings.json`
+  pre-authorizes both, plus `vercel`/`supabase` CLI commands.
+
+## Live Database Access
+
+`.env.deploy` (repo root, gitignored by `.env*`, never committed) holds
+`SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, and optionally
+`SUPABASE_DB_PASSWORD`. `bash scripts/db-query.sh "<sql>"` POSTs one SQL
+string to the Supabase Management API and prints the JSON result. Run it
+from the Bash tool (Git Bash) — `bash` in PowerShell resolves to WSL here.
+
+Standing rules:
+- **Debug against live data yourself** — roles, row counts, RLS policies
+  (`pg_policies`), grants, function definitions (`pg_get_functiondef`) —
+  instead of asking the user to run SQL.
+- **Read-only queries** (SELECT, catalog inspection): run freely.
+- **Schema changes**: write a migration file in `supabase/migrations/`,
+  apply it with `npx supabase db push` — never ad-hoc DDL through the
+  query script.
+- **Destructive statements on live data** (DELETE, UPDATE without a narrow
+  WHERE, DROP, TRUNCATE): show the user the exact statement and wait for
+  their OK before running it.
+- **Never print the access token**, and never put it in a commit, URL, or
+  log. The script passes it to Node via the environment only.
+
+**`db push` is NOT safe to run yet.** The remote migration history
+(`supabase_migrations.schema_migrations`) records only one version
+(`20261022031256`, applied via MCP and not present locally), while
+`supabase/migrations/` holds ~49 hand-run files. A first `db push` would
+try to re-run every one of them against live data. Before the first push,
+mark the historical files as already applied with `npx supabase migration
+repair --status applied <version>...` (that only writes to the history
+table, but still get the user's OK first), and add a local copy of
+`20261022031256` so local and remote agree.
 
 ## HOW YOU WORK ON THIS PROJECT
 
@@ -112,10 +144,9 @@ Safety below):
    full current-state schema (it's what a fresh project would be bootstrapped
    from — there's no migration-replay tooling, so it must stay accurate on
    its own).
-3. Hand the migration SQL to the user to run in the Supabase SQL Editor (no
-   CLI push exists for this project) — or run it yourself via the Supabase
-   CLI/API if that becomes available on the new machine and is
-   pre-authorized in `.claude/settings.json`.
+3. Apply it yourself with `npx supabase db push` (see "Live Database
+   Access" — including the migration-history caveat before the first push).
+   Don't hand SQL to the user to paste into the dashboard.
 4. Any atomic multi-step operation (e.g. "record a sale AND mark a device
    sold") must be a Postgres RPC (`security invoker`, `set search_path =
    public`), never a client-side multi-call sequence — a dropped connection
